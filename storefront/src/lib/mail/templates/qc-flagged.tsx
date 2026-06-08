@@ -6,7 +6,7 @@
 
 import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface QcFlaggedProps {
   customerName: string;
@@ -27,7 +27,7 @@ export function QcFlaggedEmail({
 
   return (
     <BaseLayout preview="Baskı kalitesi için kısa bir kontrol.">
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         Dosyanda düzeltilmesi gereken bir nokta var
       </Text>
@@ -82,11 +82,7 @@ export function QcFlaggedEmail({
         istersen bize bildirebilirsin — kararı sen ver.
       </Text>
 
-      <Section style={{ margin: "28px 0 8px" }}>
-        <Link href={orderUrl} style={mailStyles.buttonPrimary}>
-          Dosyamı güncelle →
-        </Link>
-      </Section>
+      <Button href={orderUrl} label="Dosyamı güncelle" />
 
       <Text style={mailStyles.pSecondary}>
         Emin değilsen yardımcı olalım —{" "}

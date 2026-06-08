@@ -7,7 +7,7 @@
 
 import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface ProofReadyProps {
   customerName: string;
@@ -16,16 +16,14 @@ export interface ProofReadyProps {
 }
 
 export function ProofReadyEmail({
-  customerName,
   orderId,
   productTitle,
 }: ProofReadyProps) {
-  const firstName = customerName.split(" ")[0] || customerName;
   const proofUrl = `${SITE}/onay/${orderId}`;
 
   return (
     <BaseLayout preview="Baskıdan önce son söz sende.">
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         Provan hazır — onayını bekliyoruz
       </Text>
@@ -62,15 +60,7 @@ export function ProofReadyEmail({
           Prova görselini onay sayfasında yakınlaştırarak inceleyebilirsin.
           Onayladığın hâliyle basılır.
         </Text>
-        <Link
-          href={proofUrl}
-          style={{
-            ...mailStyles.buttonPrimary,
-            display: "inline-block",
-          }}
-        >
-          Provamı incele ve onayla →
-        </Link>
+        <Button href={proofUrl} label="Provamı incele ve onayla" />
       </Section>
 
       <Text style={mailStyles.pSecondary}>

@@ -5,9 +5,9 @@
  * ettiğinde trigger.
  */
 
-import { Link, Section, Text } from "@react-email/components";
+import { Link, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface OrderDeliveredProps {
   customerName: string;
@@ -27,7 +27,7 @@ export function OrderDeliveredEmail({
 
   return (
     <BaseLayout preview="Eline ulaştı mı? Bir şey olursa buradayız.">
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         Siparişin teslim edildi
       </Text>
@@ -41,11 +41,7 @@ export function OrderDeliveredEmail({
         ulaş; hızlıca çözelim.
       </Text>
 
-      <Section style={{ margin: "28px 0 8px" }}>
-        <Link href={orderUrl} style={mailStyles.buttonPrimary}>
-          Siparişimi gör →
-        </Link>
-      </Section>
+      <Button href={orderUrl} label="Siparişimi gör" />
 
       <Text style={mailStyles.pSecondary}>
         Sorun bildirmek için{" "}

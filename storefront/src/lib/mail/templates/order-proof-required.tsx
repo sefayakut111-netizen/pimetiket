@@ -4,7 +4,7 @@
 
 import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface OrderProofRequiredProps {
   customerName: string;
@@ -24,7 +24,7 @@ export function OrderProofRequiredEmail({
 
   return (
     <BaseLayout preview="Baskıdan önce son söz sende.">
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         Baskı provan hazır
       </Text>
@@ -55,15 +55,11 @@ export function OrderProofRequiredEmail({
         </Text>
       </Section>
 
-      <Section style={{ margin: "28px 0 8px" }}>
-        <Link href={proofUrl} style={mailStyles.buttonPrimary}>
-          Provamı incele ve onayla →
-        </Link>
-      </Section>
+      <Button href={proofUrl} label="Provamı incele ve onayla" />
 
       <Text style={mailStyles.pSecondary}>
-        Onay vermezsen sipariş beklemede kalır; 36 saat içinde yanıt
-        gelmezse otomatik iptal ve iade süreci başlar. Soruların için{" "}
+        Onay vermezsen sipariş beklemede kalır; yanıt gelmezse otomatik
+        iptal ve iade süreci başlar. Soruların için{" "}
         <Link href={`${SITE}/destek`} style={{ color: COLORS.pimMercan }}>
           destek
         </Link>

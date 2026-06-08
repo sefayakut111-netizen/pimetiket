@@ -5,7 +5,7 @@
 
 import { Hr, Link, Row, Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface OrderConfirmationProps {
   customerName: string;
@@ -38,7 +38,7 @@ export function OrderConfirmationEmail({
 
   return (
     <BaseLayout preview="Ödemeni aldık; sıradaki adımı aşağıda özetledik.">
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         Teşekkürler {firstName}, siparişin alındı
       </Text>
@@ -158,14 +158,7 @@ export function OrderConfirmationEmail({
         </Text>
       )}
 
-      <Section style={{ margin: "28px 0 8px" }}>
-        <Link
-          href={`${SITE}/siparis/${orderId}`}
-          style={mailStyles.buttonPrimary}
-        >
-          Siparişimi görüntüle →
-        </Link>
-      </Section>
+      <Button href={`${SITE}/siparis/${orderId}`} label="Siparişimi görüntüle" />
 
       <Text style={mailStyles.pSecondary}>
         Her aşamada seni e-posta ile bilgilendireceğiz. Sorun olursa{" "}

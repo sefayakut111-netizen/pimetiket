@@ -7,7 +7,7 @@
 
 import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export type ShipmentStatusKind =
   | "in_transit"
@@ -35,9 +35,9 @@ const STATUS_TEXT: Record<ShipmentStatusKind, string> = {
 
 const STATUS_BODY: Record<ShipmentStatusKind, string> = {
   in_transit:
-    "Siparişin taşıyıcı sisteminde transfer ediliyor. Tahmini 1–3 iş günü içinde elinde olabilir.",
+    "Siparişin taşıyıcı sisteminde transfer ediliyor; ilerledikçe seni bilgilendireceğiz.",
   out_for_delivery:
-    "Kargo bugün teslim için yola çıktı. Kurye genelde 09:00–18:00 arası teslim eder.",
+    "Kargo bugün teslim için yola çıktı.",
   failed:
     "Kurye teslimat yapamadı (adres veya ulaşılamama). Takip numarasıyla taşıyıcıya ulaş veya bize yaz.",
   returned:
@@ -60,7 +60,7 @@ export function ShipmentStatusEmail({
 
   return (
     <BaseLayout preview="Kargo aşamasındaki son durum.">
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         Siparişin yolda ilerliyor
       </Text>
@@ -97,17 +97,10 @@ export function ShipmentStatusEmail({
         </Text>
       </Section>
 
-      <Section style={{ margin: "28px 0 8px" }}>
-        {trackingUrl ? (
-          <Link href={trackingUrl} style={mailStyles.buttonPrimary}>
-            Kargomu takip et →
-          </Link>
-        ) : (
-          <Link href={orderUrl} style={mailStyles.buttonPrimary}>
-            Siparişimi takip et →
-          </Link>
-        )}
-      </Section>
+      <Button
+        href={trackingUrl ?? orderUrl}
+        label={trackingUrl ? "Kargomu takip et" : "Siparişimi takip et"}
+      />
 
       <Text style={mailStyles.pSecondary}>
         Sorun olursa{" "}

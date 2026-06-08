@@ -6,7 +6,7 @@
 
 import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface QcRejectedProps {
   customerName: string;
@@ -61,7 +61,7 @@ export function QcRejectedEmail({
 
   return (
     <BaseLayout preview="Düzeltmek için ne gerektiğini açıkladık.">
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         Dosyan baskıya hazır değil — birlikte çözelim
       </Text>
@@ -110,11 +110,7 @@ export function QcRejectedEmail({
         hazırlayacağından emin değilsen adım adım yardımcı oluruz.
       </Text>
 
-      <Section style={{ margin: "28px 0 8px" }}>
-        <Link href={orderUrl} style={mailStyles.buttonPrimary}>
-          Yeni dosya yükle →
-        </Link>
-      </Section>
+      <Button href={orderUrl} label="Yeni dosya yükle" />
 
       <Text style={mailStyles.pSecondary}>
         Takılırsan{" "}

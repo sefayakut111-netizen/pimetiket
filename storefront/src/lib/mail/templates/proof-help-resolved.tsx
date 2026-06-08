@@ -4,7 +4,7 @@
 
 import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface ProofHelpResolvedProps {
   customerName: string;
@@ -26,7 +26,7 @@ export function ProofHelpResolvedEmail({
 
   return (
     <BaseLayout preview="Prova yardım talebine cevap geldi.">
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         Yardım talebine cevap geldi
       </Text>
@@ -92,11 +92,7 @@ export function ProofHelpResolvedEmail({
         </Text>
       </Section>
 
-      <Section style={{ margin: "28px 0 8px" }}>
-        <Link href={proofUrl} style={mailStyles.buttonPrimary}>
-          Provayı tekrar incele →
-        </Link>
-      </Section>
+      <Button href={proofUrl} label="Provayı tekrar incele" />
 
       <Text style={mailStyles.pSecondary}>
         Hâlâ net olmayan bir şey varsa{" "}

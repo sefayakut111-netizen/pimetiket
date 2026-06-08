@@ -5,9 +5,9 @@
  * Kriter: orders.status='awaiting_upload' + 24+ saat önce paid.
  */
 
-import { Link, Section, Text } from "@react-email/components";
+import { Link, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface OrderUploadReminderProps {
   customerName: string;
@@ -27,7 +27,7 @@ export function OrderUploadReminderEmail({
 
   return (
     <BaseLayout preview="Baskıya başlamak için tek eksik dosyan.">
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         Tasarımını bekliyoruz
       </Text>
@@ -43,11 +43,7 @@ export function OrderUploadReminderEmail({
         . Dosyanı yükler yüklemez sürecini başlatıyoruz.
       </Text>
 
-      <Section style={{ margin: "28px 0 8px" }}>
-        <Link href={uploadUrl} style={mailStyles.buttonPrimary}>
-          Tasarımımı yükle →
-        </Link>
-      </Section>
+      <Button href={uploadUrl} label="Tasarımımı yükle" />
 
       <Text style={mailStyles.pSecondary}>
         Dosya hazırlarken takıldıysan (ölçü, çözünürlük, kesim payı){" "}

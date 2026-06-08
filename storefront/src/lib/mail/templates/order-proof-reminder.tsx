@@ -2,9 +2,9 @@
  * Pim Etiket — Baskı onayı hatırlatma maili.
  */
 
-import { Link, Section, Text } from "@react-email/components";
+import { Link, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface OrderProofReminderProps {
   customerName: string;
@@ -14,16 +14,14 @@ export interface OrderProofReminderProps {
 }
 
 export function OrderProofReminderEmail({
-  customerName,
   orderId,
   pendingCount,
 }: OrderProofReminderProps) {
-  const firstName = customerName.split(" ")[0] || customerName;
   const proofUrl = `${SITE}/onay/${orderId}`;
 
   return (
     <BaseLayout preview="Onaylamadan baskıya geçmiyoruz.">
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         Provan onayını bekliyor
       </Text>
@@ -39,11 +37,7 @@ export function OrderProofReminderEmail({
         )}
       </Text>
 
-      <Section style={{ margin: "28px 0 8px" }}>
-        <Link href={proofUrl} style={mailStyles.buttonPrimary}>
-          Provamı onayla →
-        </Link>
-      </Section>
+      <Button href={proofUrl} label="Provamı onayla" />
 
       <Text style={mailStyles.pSecondary}>
         Bir sorun ya da değişiklik varsa aynı sayfadan iletebilir, istersen{" "}

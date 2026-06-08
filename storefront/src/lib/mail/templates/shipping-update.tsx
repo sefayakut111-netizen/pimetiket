@@ -5,7 +5,7 @@
 
 import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface ShippingUpdateProps {
   customerName: string;
@@ -31,7 +31,7 @@ export function ShippingUpdateEmail({
 
   return (
     <BaseLayout preview={preheader}>
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         {firstName}, siparişin kargoda
       </Text>
@@ -88,14 +88,10 @@ export function ShippingUpdateEmail({
         )}
       </Section>
 
-      <Section style={{ margin: "24px 0 8px" }}>
-        <Link
-          href={trackingUrl ?? `${SITE}/siparis/${orderId}`}
-          style={mailStyles.buttonPrimary}
-        >
-          Kargomu takip et →
-        </Link>
-      </Section>
+      <Button
+        href={trackingUrl ?? `${SITE}/siparis/${orderId}`}
+        label="Kargomu takip et"
+      />
 
       <Text style={mailStyles.pSecondary}>
         Teslimde bir sorun olursa bize hemen yaz —{" "}

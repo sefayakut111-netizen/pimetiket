@@ -4,7 +4,7 @@
 
 import { Link, Section, Text } from "@react-email/components";
 import * as React from "react";
-import { BaseLayout, mailStyles, COLORS, SITE } from "./base";
+import { BaseLayout, Button, Eyebrow, mailStyles, COLORS, SITE } from "./base";
 
 export interface OrderProofApprovedProps {
   customerName: string;
@@ -18,7 +18,6 @@ export function OrderProofApprovedEmail({
   customerName,
   orderId,
   itemCount,
-  estimatedProductionDays = 2,
   estimatedDelivery,
 }: OrderProofApprovedProps) {
   const firstName = customerName.split(" ")[0] || customerName;
@@ -26,7 +25,7 @@ export function OrderProofApprovedEmail({
 
   return (
     <BaseLayout preview="Onayın alındı, üretime geçiyoruz.">
-      <Text style={mailStyles.meta}>SİPARİŞ #{orderId}</Text>
+      <Eyebrow>Sipariş #{orderId}</Eyebrow>
       <Text style={mailStyles.h1}>
         Onayın alındı, üretime başlıyoruz
       </Text>
@@ -65,13 +64,13 @@ export function OrderProofApprovedEmail({
             lineHeight: 1.7,
           }}
         >
-          · Operatör son kontrol (1–2 saat)
+          · Operatör son kontrolden geçirir
           <br />
-          · Üretim (~{estimatedProductionDays} iş günü)
+          · Tasarımların baskıya alınır
           <br />
-          · Kargoya verildiğinde ayrı e-posta
+          · Kargoya verildiğinde takip numaranı paylaşırız
           <br />
-          · Kargo teslimi (3–5 iş günü, taşıyıcıya bağlı)
+          · Teslimde ayrıca bilgilendiririz
         </Text>
       </Section>
 
@@ -93,11 +92,7 @@ export function OrderProofApprovedEmail({
         </Section>
       )}
 
-      <Section style={{ margin: "28px 0 8px" }}>
-        <Link href={orderUrl} style={mailStyles.buttonPrimary}>
-          Siparişimi takip et →
-        </Link>
-      </Section>
+      <Button href={orderUrl} label="Siparişimi takip et" />
 
       <Text style={mailStyles.pSecondary}>
         Her aşamada e-posta bildirimi alacaksın. Sorun olursa{" "}
