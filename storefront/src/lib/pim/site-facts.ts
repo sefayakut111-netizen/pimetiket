@@ -3,8 +3,8 @@
  * Uydurma kargo/teslim/fiyat YOK; değişince burayı güncelle.
  */
 
-/** Kargo anlaşması — site genelinde tek firma */
-export const PIM_CARRIER_NAME = "Yurtiçi Kargo";
+/** Kargo anlaşması — site genelinde birincil taşıyıcılar */
+export const PIM_CARRIER_NAME = "Yurtiçi Kargo + DHL";
 
 /** Üretimden kargoya verme (iş günü, hafta sonu + resmi tatil hariç) */
 export const PIM_PRODUCTION_BUSINESS_DAYS = {
@@ -15,7 +15,7 @@ export const PIM_PRODUCTION_BUSINESS_DAYS = {
 /** site_settings varsayılanları (admin ayarlar ile aynı) */
 export const PIM_SHIPPING_DEFAULTS = {
   feeTry: 49,
-  freeThresholdTry: 500,
+  freeThresholdTry: 1000,
 } as const;
 
 export const PIM_ORDER_LIMITS = {
