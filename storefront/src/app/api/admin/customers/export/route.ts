@@ -84,8 +84,12 @@ export async function GET(req: Request) {
     segment: deriveSegment(r),
   }));
 
-  // Filtreler
-  if (segment !== "all") {
+  // Filtreler (liste endpoint ile aynı mantık)
+  if (segment === "risk_lost") {
+    rows = rows.filter((r) => r.segment === "risk" || r.segment === "lost");
+  } else if (segment === "has_order") {
+    rows = rows.filter((r) => r.order_count > 0);
+  } else if (segment !== "all") {
     rows = rows.filter((r) => r.segment === segment);
   }
   if (search) {

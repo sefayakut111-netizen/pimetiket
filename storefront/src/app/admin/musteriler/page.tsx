@@ -6,8 +6,8 @@
  * Yeni versiyon: auth.users + orders join → kayıtlı tüm kullanıcılar.
  *
  * Yapı:
- *   - 4 KPI kart (Toplam · Tekrar+VIP · Risk · Sipariş yok)
- *   - Segment chip filtresi (Tümü · VIP · Tekrar · Yeni · Risk · Kayıp · Sipariş yok)
+ *   - 4 KPI kart (Toplam · Tekrar+VIP · Risk · Üye)
+ *   - Segment chip filtresi (Tümü · Müşteri · Üye · VIP · Tekrar · Yeni · Risk · Kayıp)
  *   - Search (email/ad/telefon)
  *   - Bulk select skeleton (Sprint 3'te aksiyon eklenecek)
  *   - Tablo: müşteri · segment · sipariş · ciro · email · 2FA · son hareket
@@ -27,7 +27,7 @@ import type {
 } from "@/app/api/admin/customers/route";
 
 type Segment = AdminCustomerWithSegment["segment"];
-type SegmentFilter = Segment | "all" | "risk_lost";
+type SegmentFilter = Segment | "all" | "risk_lost" | "has_order";
 
 interface KPI {
   total: number;
@@ -37,6 +37,7 @@ interface KPI {
   risk: number;
   lost: number;
   no_order: number;
+  has_order: number;
   total_revenue: number;
 }
 
@@ -80,7 +81,7 @@ const SEGMENT_META: Record<
     ring: "ring-kirmizi/20",
   },
   no_order: {
-    label: "Sipariş yok",
+    label: "Üye — sipariş vermemiş",
     dot: "gri",
     color: "text-gri-700",
     bg: "bg-gri-100",
@@ -90,13 +91,21 @@ const SEGMENT_META: Record<
 
 const FILTER_OPTIONS: { id: SegmentFilter; label: string }[] = [
   { id: "all", label: "Tümü" },
+  { id: "has_order", label: "Müşteri (sipariş ≥ 1)" },
+  { id: "no_order", label: "Üye — sipariş vermemiş" },
   { id: "vip", label: "VIP" },
   { id: "repeat", label: "Tekrar" },
   { id: "new", label: "Yeni" },
   { id: "risk", label: "Risk" },
   { id: "lost", label: "Kayıp" },
-  { id: "no_order", label: "Sipariş yok" },
 ];
+
+function filterChipCount(id: SegmentFilter, kpi: KPI): number | null {
+  if (id === "all") return null;
+  if (id === "risk_lost") return kpi.risk + kpi.lost;
+  if (id === "has_order") return kpi.has_order;
+  return kpi[id as keyof KPI] as number;
+}
 
 const fmt = (n: number) => Math.round(n).toLocaleString("tr-TR");
 
@@ -295,7 +304,7 @@ export default function AdminMusterilerPage() {
               filter: "risk_lost" as SegmentFilter,
             },
             {
-              label: "Sipariş vermemiş",
+              label: "Üye (sipariş vermemiş)",
               value: kpi?.no_order ?? 0,
               accent: "text-gri-700",
               bg: "bg-gri-100",
@@ -356,9 +365,9 @@ export default function AdminMusterilerPage() {
                 )}
               >
                 {f.label}
-                {f.id !== "all" && kpi && (
+                {kpi && filterChipCount(f.id, kpi) != null && (
                   <span className="ml-1.5 opacity-70">
-                    ({kpi[f.id as keyof KPI] ?? 0})
+                    ({filterChipCount(f.id, kpi)})
                   </span>
                 )}
               </button>

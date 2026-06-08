@@ -100,7 +100,7 @@ const SEGMENT_META: Record<
     bg: "bg-kirmizi/10",
   },
   no_order: {
-    label: "Sipariş yok",
+    label: "Üye — sipariş vermemiş",
     dot: "gri",
     color: "text-gri-700",
     bg: "bg-gri-100",
