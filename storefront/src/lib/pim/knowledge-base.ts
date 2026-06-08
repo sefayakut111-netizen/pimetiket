@@ -62,6 +62,15 @@ function buildEtiketPageLine(): string {
   return `- /etiket → etiket ürün sayfası (ŞU AN sipariş kapalı — ${ETIKET_LAUNCH_LABEL}'da açılacak)`;
 }
 
+function buildProductionBlock(): string {
+  return `ÜRETİM & KALİTE (detay: /nasil-uretiyoruz):
+- Yalnızca Avrupa menşeli malzeme: Avery Dennison, Orafol, Fasson.
+- Şeffaf, hologram ve metalize zeminlerde beyaz zemin baskı → canlı, örtücü renk.
+- Baskı tekniği: sticker → Mimaki; folyo (vinil) ve şeffaf etiket → UV baskı; kuşe, PP ve kraft etiket → lazer baskı; rulo etiket → dijital baskı (29 Haziran'da açılıyor).
+- AI dosya kontrolü (DPI/CMYK/bleed) + dijital prova onayı — müşteri onaylamadan basılmaz; kalite kontrol her işte.
+- "Nasıl üretiyorsunuz" / "hangi malzeme" sorulunca bu özet + /nasil-uretiyoruz yönlendir. Fason partner adı/şehri SÖYLEME.`;
+}
+
 function buildEtiketPriceRule(): string {
   if (ETIKET_TABAKA_ENABLED) {
     return `- Kesin FİYAT için: sticker → redirect_to_configurator (product=sticker) veya /sticker konfigüratörü. Tabaka etiket → redirect_to_configurator (product=etiket, formFactor=tabaka) veya /etiket/yapilandir?form=tabaka. Rulo kapalıysa rulo fiyatı VERME — redirect ETME.`;
@@ -84,6 +93,7 @@ export function buildPimKnowledgeBase(
   const etiketSalesBlock = buildEtiketSalesBlock();
   const etiketPageLine = buildEtiketPageLine();
   const etiketPriceRule = buildEtiketPriceRule();
+  const productionBlock = buildProductionBlock();
 
   return `
 PİM ETİKET HAKKINDA:
@@ -94,6 +104,7 @@ ${etiketSalesBlock}
 - Sticker: min ${STICKER_MIN_QTY} adet (${STICKER_QTY_STEP}'er artış; önerilen: ${stickerQtyPresets}). Malzeme: ${stickerMaterials}. Yüzey: ${STICKER_FINISH_LABELS.join(", ")}.
 - Üretim süresi (tasarım onayından sonra, iş günü — hafta sonu/resmi tatil hariç): sticker 3 · tabaka etiket 3 · rulo etiket 10. Sonra kargo süresi eklenir (İstanbul 1, diğer iller 2-3 iş günü).
 - AI dosya kontrolü var (DPI/CMYK/bleed) — siparişten önce dosya kontrolü ücretsiz.
+${productionBlock}
 - Tasarım dosyası formatları: PDF, PNG, JPEG, AI, PSD, SVG kabul; EPS desteklenmez.
 - KDV dahil fiyat gösterilir.
 - Kargo: Yurtiçi Kargo (birincil) + DHL; Aras/MNG yok. 1000 ₺ üzeri siparişlerde kargo ücretsiz; altında kargo ücreti sepette/konfigüratörde görünür.
@@ -103,6 +114,7 @@ ${etiketSalesBlock}
 SİTE SAYFALARI (LİNK YÖNLENDİRMESİ):
 ${etiketPageLine}
 - /sticker → sticker konfigüratörü (3 iş günü üretim, ${STICKER_MIN_QTY}+ adet) — TAM AÇIK, sipariş alınır
+- /nasil-uretiyoruz → üretim süreci ve kalite (Avrupa malzeme, baskı tekniği, AI kontrol, prova)
 - /malzemeler → tüm malzeme türleri + kullanım alanları (güncel liste)
 - /sablonlar → hazır şablonlar (Canva/Adobe için boyut + indirme)
 - /galeri → müşteri işleri showcase
