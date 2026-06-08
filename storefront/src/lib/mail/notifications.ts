@@ -118,6 +118,36 @@ import {
 } from "./templates/newsletter-welcome";
 import { buildUnsubscribeUrl } from "./unsubscribe";
 import { humanizeOperatorNoteForCustomer } from "./humanize-operator-note";
+import { humanizeQcReason, humanizeQcWarnings } from "./humanize-qc";
+import {
+  buildDailySummaryFallback,
+  generateDailySummaryAi,
+  type DailySummaryStats,
+} from "./generate-daily-summary";
+import {
+  AdminNewOrderEmail,
+  type AdminNewOrderProps,
+} from "./templates/admin-new-order";
+import {
+  AdminDailySummaryEmail,
+  type AdminDailySummaryProps,
+} from "./templates/admin-daily-summary";
+import {
+  AdminSupportTicketEmail,
+  type AdminSupportTicketProps,
+} from "./templates/admin-support-ticket";
+import {
+  FasonStatusEmail,
+  type FasonStatusProps,
+} from "./templates/fason-status";
+import {
+  FasonCancelledEmail,
+  type FasonCancelledProps,
+} from "./templates/fason-cancelled";
+import {
+  AdminAutoRefundEmail,
+  type AdminAutoRefundProps,
+} from "./templates/admin-auto-refund";
 
 const SITE_URL_FALLBACK =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
@@ -479,10 +509,15 @@ export async function sendQcRejected(args: {
     (profile as { display_name?: string | null } | null)?.display_name ??
     email.split("@")[0];
 
+  const reason = await humanizeQcReason({
+    reason: args.reason,
+    issueCategory: args.issueCategory,
+  });
+
   const props: QcRejectedProps = {
     customerName,
     orderId: args.orderId,
-    reason: args.reason,
+    reason,
     fileName: args.fileName,
     issueCategory: args.issueCategory ?? "other",
   };
@@ -533,10 +568,12 @@ export async function sendQcFlagged(args: {
     (profile as { display_name?: string | null } | null)?.display_name ??
     email.split("@")[0];
 
+  const warnings = await humanizeQcWarnings(args.warnings);
+
   const props: QcFlaggedProps = {
     customerName,
     orderId: args.orderId,
-    warnings: args.warnings,
+    warnings,
   };
 
   const html = await render(QcFlaggedEmail(props));
@@ -1426,4 +1463,302 @@ export async function sendNewsletterWelcome(args: {
   }
 
   return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+// ============================================================
+// Admin / fason iç bildirimleri (15–20)
+// ============================================================
+
+function getAdminNotificationEmails(): string[] {
+  return (process.env.ADMIN_NOTIFICATION_EMAIL ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  awaiting_upload: "Tasarım bekliyor",
+  paid: "Ödendi",
+  qc_pending: "QC bekliyor",
+  proof_pending: "Prova onayı bekliyor",
+  in_production: "Üretimde",
+};
+
+async function issueFasonToken(
+  assignmentId: string,
+  partnerId: string
+): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("fn_generate_fason_token", {
+    p_assignment_id: assignmentId,
+    p_fason_partner_id: partnerId,
+    p_days: 14,
+  });
+  if (error || typeof data !== "string" || !data) {
+    console.warn("[mail/notifications] fason token issue failed:", error?.message);
+    return null;
+  }
+  return data;
+}
+
+/** 15) Yeni sipariş — admin anlık bildirim */
+export async function sendAdminNewOrder(args: {
+  orderId: string;
+  userId: string;
+}): Promise<{ ok: boolean; sent: number; reason?: string }> {
+  const adminEmails = getAdminNotificationEmails();
+  if (adminEmails.length === 0) {
+    return { ok: true, sent: 0, reason: "no_admin_emails" };
+  }
+
+  const admin = createAdminClient();
+  const { data: orderData } = await admin
+    .from("orders")
+    .select("total, address, status, order_items(product, qty, title)")
+    .eq("id", args.orderId)
+    .maybeSingle();
+
+  type OrderRow = {
+    total: number | string;
+    address: { fullName?: string; name?: string } | null;
+    status: string;
+    order_items: Array<{ product: string; qty: number; title: string }>;
+  };
+  const order = orderData as unknown as OrderRow | null;
+  if (!order) return { ok: false, sent: 0, reason: "order_not_found" };
+
+  const customerName =
+    order.address?.fullName ?? order.address?.name ?? "Yeni müşteri";
+  const items = (order.order_items ?? [])
+    .map((i) => `${i.qty}× ${i.title}`)
+    .join(" · ");
+  const total = `${Math.round(Number(order.total) || 0).toLocaleString("tr-TR")} ₺`;
+  const status =
+    ORDER_STATUS_LABELS[order.status] ?? order.status ?? "—";
+
+  const props: AdminNewOrderProps = {
+    orderId: args.orderId,
+    total,
+    customerName,
+    items: items || "—",
+    status,
+  };
+
+  const html = await render(AdminNewOrderEmail(props));
+  const subject = `Yeni sipariş — ${args.orderId} · ${total}`;
+  const text = `Yeni sipariş ${args.orderId} — ${total}\n${customerName}\n${items}\n${SITE_URL_FALLBACK}/admin/siparisler`;
+
+  let sent = 0;
+  for (const to of adminEmails) {
+    const result = await enqueuePrerendered({
+      to,
+      subject,
+      html,
+      text,
+      orderId: args.orderId,
+      kind: "admin_new_order",
+      category: "admin",
+      idempotencyKey: `admin_new_order:${args.orderId}:${to}`,
+    });
+    if (result.ok && !result.suppressed) sent++;
+  }
+
+  return { ok: sent > 0, sent };
+}
+
+/** 16) Günlük özet — admin (AI brifing + fallback) */
+export async function sendAdminDailySummary(
+  stats: DailySummaryStats
+): Promise<{ ok: boolean; sent: number; reason?: string }> {
+  const adminEmails = getAdminNotificationEmails();
+  if (adminEmails.length === 0) {
+    return { ok: true, sent: 0, reason: "no_admin_emails" };
+  }
+
+  const date = new Date().toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const aiSummary = await generateDailySummaryAi(stats);
+  const fallbackStats = buildDailySummaryFallback(stats);
+
+  const props: AdminDailySummaryProps = {
+    date,
+    aiSummary: aiSummary ?? undefined,
+    fallbackStats,
+  };
+
+  const html = await render(AdminDailySummaryEmail(props));
+  const subject = `Günlük özet — ${stats.newOrders24h} sipariş`;
+  const text = aiSummary ?? fallbackStats;
+
+  const dayKey = new Date().toISOString().slice(0, 10);
+  let sent = 0;
+  for (const to of adminEmails) {
+    const result = await enqueuePrerendered({
+      to,
+      subject,
+      html,
+      text,
+      kind: "admin_daily_summary",
+      category: "admin",
+      idempotencyKey: `admin_daily_summary:${dayKey}:${to}`,
+    });
+    if (result.ok && !result.suppressed) sent++;
+  }
+
+  return { ok: sent > 0, sent };
+}
+
+/** 17) Yeni destek talebi — admin */
+export async function sendAdminSupportTicket(args: {
+  ticketId: string;
+  customerName: string;
+  subject: string;
+  messagePreview: string;
+}): Promise<{ ok: boolean; sent: number; reason?: string }> {
+  const adminEmails = getAdminNotificationEmails();
+  if (adminEmails.length === 0) {
+    return { ok: true, sent: 0, reason: "no_admin_emails" };
+  }
+
+  const props: AdminSupportTicketProps = {
+    ticketId: args.ticketId,
+    customerName: args.customerName,
+    subject: args.subject,
+    messagePreview: args.messagePreview,
+  };
+
+  const html = await render(AdminSupportTicketEmail(props));
+  const subject = `Yeni destek talebi — ${args.subject}`;
+  const text = `${args.ticketId} — ${args.customerName}\n${args.messagePreview}\n${SITE_URL_FALLBACK}/admin/destek`;
+
+  let sent = 0;
+  for (const to of adminEmails) {
+    const result = await enqueuePrerendered({
+      to,
+      subject,
+      html,
+      text,
+      kind: "admin_support_ticket",
+      category: "admin",
+      idempotencyKey: `admin_support_ticket:${args.ticketId}:${to}`,
+    });
+    if (result.ok && !result.suppressed) sent++;
+  }
+
+  return { ok: sent > 0, sent };
+}
+
+/** 18) Fason iş durumu — partner */
+export async function sendFasonStatus(args: {
+  orderId: string;
+  statusText: string;
+  partnerEmail: string;
+  assignmentId: string;
+  partnerId: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const token = await issueFasonToken(args.assignmentId, args.partnerId);
+  if (!token) return { ok: false, reason: "token_failed" };
+
+  const props: FasonStatusProps = {
+    orderId: args.orderId,
+    statusText: args.statusText,
+    token,
+  };
+
+  const html = await render(FasonStatusEmail(props));
+  const subject = `İş güncellemesi — ${args.orderId}`;
+  const text = `${args.orderId}: ${args.statusText}\n${SITE_URL_FALLBACK}/fason/${token}`;
+
+  const result = await enqueuePrerendered({
+    to: args.partnerEmail,
+    subject,
+    html,
+    text,
+    orderId: args.orderId,
+    kind: "fason_status",
+    category: "fason",
+    idempotencyKey: `fason_status:${args.assignmentId}:${args.statusText}`,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/** 19) Fason iş iptali — partner */
+export async function sendFasonCancelled(args: {
+  orderId: string;
+  partnerEmail: string;
+  assignmentId: string;
+  partnerId: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const token = await issueFasonToken(args.assignmentId, args.partnerId);
+  if (!token) return { ok: false, reason: "token_failed" };
+
+  const props: FasonCancelledProps = {
+    orderId: args.orderId,
+    token,
+  };
+
+  const html = await render(FasonCancelledEmail(props));
+  const subject = `İş ataması iptal edildi — ${args.orderId}`;
+  const text = `${args.orderId} ataması iptal edildi.\n${SITE_URL_FALLBACK}/fason/${token}`;
+
+  const result = await enqueuePrerendered({
+    to: args.partnerEmail,
+    subject,
+    html,
+    text,
+    orderId: args.orderId,
+    kind: "fason_cancelled",
+    category: "fason",
+    idempotencyKey: `fason_cancelled:${args.assignmentId}`,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/** 20) Otomatik iade — admin bilgilendirme */
+export async function sendAdminAutoRefund(args: {
+  orderId: string;
+  userId: string;
+  refundAmount: number;
+}): Promise<{ ok: boolean; sent: number; reason?: string }> {
+  const adminEmails = getAdminNotificationEmails();
+  if (adminEmails.length === 0) {
+    return { ok: true, sent: 0, reason: "no_admin_emails" };
+  }
+
+  const customerName = await resolveCustomerName(args.userId, args.orderId);
+  const refundAmount = `${args.refundAmount.toLocaleString("tr-TR", {
+    maximumFractionDigits: 2,
+  })} ₺`;
+
+  const props: AdminAutoRefundProps = {
+    orderId: args.orderId,
+    refundAmount,
+    customerName,
+  };
+
+  const html = await render(AdminAutoRefundEmail(props));
+  const subject = `Otomatik iade — ${args.orderId}`;
+  const text = `${args.orderId} — ${refundAmount} — ${customerName}`;
+
+  let sent = 0;
+  for (const to of adminEmails) {
+    const result = await enqueuePrerendered({
+      to,
+      subject,
+      html,
+      text,
+      orderId: args.orderId,
+      kind: "admin_auto_refund",
+      category: "admin",
+      idempotencyKey: `admin_auto_refund:${args.orderId}:${to}`,
+    });
+    if (result.ok && !result.suppressed) sent++;
+  }
+
+  return { ok: sent > 0, sent };
 }

@@ -5,7 +5,6 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logOrderEvent } from "@/lib/order-events-server";
-import { enqueueMail } from "@/lib/mail/enqueue";
 
 export const REVOKABLE_ASSIGNMENT_STATUSES = new Set([
   "assigned",
@@ -147,20 +146,15 @@ export async function revokeFasonAssignment(
     .in("status", ["pending", "failed"]);
 
   if (partnerEmail) {
-    await enqueueMail({
-      templateKey: "fason_assignment_cancelled",
-      to: partnerEmail,
-      category: "fason",
-      targetType: "assignment",
-      targetId: assignment.id,
-      payload: {
-        order_id: assignment.order_id,
-        fason_name: partnerName,
-        reason: opts.reason?.slice(0, 500) ?? "İdari karar",
-      },
-      idempotencyKey: `fason_cancelled:${assignment.id}`,
-      subject: `Sipariş ${assignment.order_id} ataması iptal edildi`,
-    });
+    const { sendFasonCancelled } = await import("@/lib/mail/notifications");
+    void sendFasonCancelled({
+      orderId: assignment.order_id,
+      partnerEmail,
+      assignmentId: assignment.id,
+      partnerId: assignment.fason_partner_id,
+    }).catch((err) =>
+      console.error("[revoke-assignment] fason cancel mail:", err)
+    );
   }
 
   let orderStatusAfter = order.status;

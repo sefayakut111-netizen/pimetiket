@@ -255,6 +255,17 @@ async function processRefund(
   );
 
   if (refundAmount != null && refundAmount > 0) {
+    const { sendAdminAutoRefund } = await import("@/lib/mail/notifications");
+    void sendAdminAutoRefund({
+      orderId,
+      userId: row.user_id,
+      refundAmount,
+    }).catch((err) =>
+      console.error(`[cron/auto-refund] admin notify ${orderId}:`, err)
+    );
+  }
+
+  if (refundAmount != null && refundAmount > 0) {
     const mail = await sendRefundCompleted({
       userId: row.user_id,
       orderId,

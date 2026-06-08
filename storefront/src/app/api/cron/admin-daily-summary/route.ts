@@ -20,7 +20,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { withCronRun } from "@/lib/cron-logger";
-import { enqueueMail } from "@/lib/mail/enqueue";
+import { sendAdminDailySummary } from "@/lib/mail/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -151,17 +151,8 @@ export async function GET(req: Request) {
     partnerCapacityWarn,
   };
 
-  // 6) Her admin için outbox kaydı
-  let sent = 0;
-  for (const to of adminEmails) {
-    const result = await enqueueMail({
-      to,
-      templateKey: "admin_daily_summary",
-      category: "admin",
-      payload: { ...data, generated_at: new Date().toISOString() },
-    });
-    if (result.ok) sent++;
-  }
+  const mailResult = await sendAdminDailySummary(data);
+  const sent = mailResult.sent;
 
       const responseData = { ok: true, sent, data };
 

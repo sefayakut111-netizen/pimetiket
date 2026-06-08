@@ -35,7 +35,6 @@ import {
 import { ensureOrderDesignsPromoted } from "@/lib/storage/promote-temp-designs";
 import { buildOrderItemMeta, orderItemsMetaHasDesignTempIds } from "@/lib/order-item-meta";
 import { applyCouponAfterOrder } from "@/lib/payment/coupon-server";
-import { enqueueMail } from "@/lib/mail/enqueue";
 import { withAdminTestOrderMarker } from "@/lib/admin-test-order";
 import { isAdminOrStaffUserId } from "@/lib/supabase/assert-admin";
 import { logServerAudit } from "@/lib/audit-log-server";
@@ -502,78 +501,14 @@ export async function POST(req: NextRequest) {
   // konforu). ADMIN_NOTIFICATION_EMAIL env'i set ise yeni siparişte
   // Sefa'ya mail atılır. Birden fazla admin için virgülle ayrılmış liste.
   // Resend env yoksa enqueue NO-OP (outbox'a yazılır ama gönderim olmaz).
-  void notifyAdminNewOrder({ admin, orderId, userId: intent.user_id }).catch(
-    (err) => console.error("[payment/callback] admin notify failed:", err)
+  void import("@/lib/mail/notifications").then(({ sendAdminNewOrder }) =>
+    sendAdminNewOrder({ orderId, userId: intent.user_id }).catch((err) =>
+      console.error("[payment/callback] admin notify failed:", err)
+    )
   );
 
   // 15) PayTR'ye "OK" yanıtı (KRİTİK — yoksa retry yapar)
   return new NextResponse("OK");
-}
-
-// ============================================================
-// Admin bildirim helper (Sefa 21 May v68)
-// ============================================================
-async function notifyAdminNewOrder({
-  admin,
-  orderId,
-  userId,
-}: {
-  admin: ReturnType<typeof createAdminClient>;
-  orderId: string;
-  userId: string;
-}): Promise<void> {
-  const adminEmails = (process.env.ADMIN_NOTIFICATION_EMAIL ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (adminEmails.length === 0) return; // env yok → skip
-
-  // Sipariş + items özet için tek query
-  type OrderRow = {
-    total: number | string;
-    address: { fullName?: string } | null;
-    status: string;
-    order_items: Array<{ product: string; qty: number; title: string }>;
-  };
-  const { data: orderData } = await admin
-    .from("orders")
-    .select("total, address, status, order_items(product, qty, title)")
-    .eq("id", orderId)
-    .maybeSingle();
-  const order = orderData as unknown as OrderRow | null;
-  if (!order) return;
-
-  // Müşteri bilgisi auth.users'tan email
-  const { data: userData } = await admin.auth.admin.getUserById(userId);
-  const customerEmail = userData?.user?.email ?? "—";
-
-  const addr = order.address ?? {};
-  const items = order.order_items ?? [];
-  const itemsSummary = items
-    .map((i) => `${i.qty}× ${i.title} (${i.product})`)
-    .join(" · ");
-  const total = Number(order.total) || 0;
-  const totalText = `${Math.round(total).toLocaleString("tr-TR")} ₺`;
-  const hasDesign = (order.status as string) !== "awaiting_upload";
-
-  // Her admin için ayrı outbox kaydı
-  for (const to of adminEmails) {
-    await enqueueMail({
-      to,
-      templateKey: "admin_new_order",
-      category: "admin",
-      targetType: "order",
-      targetId: orderId,
-      payload: {
-        order_id: orderId,
-        customer_email: customerEmail,
-        customer_name: addr.fullName ?? "Yeni müşteri",
-        total_text: totalText,
-        items_summary: itemsSummary || "—",
-        has_design: hasDesign,
-      },
-    });
-  }
 }
 
 // ============================================================

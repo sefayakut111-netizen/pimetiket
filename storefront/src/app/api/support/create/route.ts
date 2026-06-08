@@ -124,31 +124,13 @@ export async function POST(req: Request) {
     body.guest_name?.trim() ??
     "Üye";
 
-  const adminEmails = (process.env.ADMIN_NOTIFICATION_EMAIL ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  for (const to of adminEmails) {
-    await enqueueMail({
-      to,
-      templateKey: "admin_new_support_ticket",
-      category: "admin",
-      targetType: "ticket",
-      targetId: data.id,
-      idempotencyKey: `support_new:${data.id}:${to}`,
-      payload: {
-        ticket_id: data.id,
-        subject,
-        category,
-        message_preview: messagePreview,
-        customer_email: customerEmail ?? "—",
-        customer_name: customerName,
-        order_id: orderId,
-        is_guest: !user,
-      },
-    });
-  }
+  const { sendAdminSupportTicket } = await import("@/lib/mail/notifications");
+  void sendAdminSupportTicket({
+    ticketId: data.id,
+    customerName,
+    subject,
+    messagePreview,
+  }).catch((err) => console.error("[support/create] admin mail:", err));
 
   if (customerEmail) {
     await enqueueMail({
