@@ -19,8 +19,16 @@ import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
 import type { AllowedMime } from "@/lib/storage/design-files";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
+import {
+  isSvgMime,
+  maybeSanitizeUploadBytes,
+} from "@/lib/upload/sanitize-svg";
 import { isR2StorageKey } from "@/lib/storage/purge-r2";
-import { deleteFromR2, downloadFromR2 } from "@/lib/storage/r2-client";
+import {
+  deleteFromR2,
+  downloadFromR2,
+  uploadToR2,
+} from "@/lib/storage/r2-client";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
 import { orderDesignUploadSlotsComplete } from "@/lib/order-design-upload-slots";
 import type {
@@ -168,6 +176,44 @@ export async function POST(req: NextRequest) {
       { error: "magic_byte_check_failed" },
       { status: 500 }
     );
+  }
+
+  if (isSvgMime(fileRow.mime_type, fileRow.original_name)) {
+    try {
+      let raw: Uint8Array;
+      if (isR2StorageKey(fileRow.storage_path)) {
+        raw = await downloadFromR2(fileRow.storage_path);
+      } else {
+        const { data: blob, error: dlErr } = await admin.storage
+          .from(STORAGE_BUCKET)
+          .download(fileRow.storage_path);
+        if (dlErr || !blob) throw dlErr ?? new Error("svg_download_failed");
+        raw = new Uint8Array(await blob.arrayBuffer());
+      }
+      const clean = maybeSanitizeUploadBytes(
+        raw,
+        fileRow.mime_type,
+        fileRow.original_name
+      );
+      if (isR2StorageKey(fileRow.storage_path)) {
+        await uploadToR2({
+          key: fileRow.storage_path,
+          body: clean,
+          contentType: fileRow.mime_type,
+        });
+      } else {
+        const { error: reUpErr } = await admin.storage
+          .from(STORAGE_BUCKET)
+          .upload(fileRow.storage_path, clean, {
+            contentType: fileRow.mime_type,
+            upsert: true,
+          });
+        if (reUpErr) throw reUpErr;
+      }
+    } catch (svgErr) {
+      console.error("[design/upload-complete] svg sanitize:", svgErr);
+      return NextResponse.json({ error: "svg_sanitize_failed" }, { status: 400 });
+    }
   }
 
   // 2) Status'u 'analyzing'e geçir + sha256 set et

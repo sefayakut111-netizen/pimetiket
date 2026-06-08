@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient } from "@supabase/supabase-js";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
+import { maybeSanitizeUploadBytes } from "@/lib/upload/sanitize-svg";
 import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE,
@@ -150,8 +151,17 @@ export async function POST(
     }
   }
 
-  const fileBytes = await file.arrayBuffer();
-  const headerBytes = new Uint8Array(fileBytes).slice(0, 64);
+  let uploadBytes: Buffer | ArrayBuffer = await file.arrayBuffer();
+  try {
+    uploadBytes = maybeSanitizeUploadBytes(uploadBytes, mimeType, file.name);
+  } catch (svgErr) {
+    console.error("[admin/upload-design] svg sanitize:", svgErr);
+    return NextResponse.json(
+      { error: "SVG dosyası güvenlik kontrolünden geçemedi." },
+      { status: 400 }
+    );
+  }
+  const headerBytes = new Uint8Array(uploadBytes).slice(0, 64);
   const magic = detectMimeFromMagicBytes(
     headerBytes,
     mimeType as AllowedMime
@@ -187,7 +197,7 @@ export async function POST(
 
   const { error: uploadErr } = await admin.storage
     .from(STORAGE_BUCKET)
-    .upload(storagePath, fileBytes, {
+    .upload(storagePath, uploadBytes, {
       contentType: mimeType,
       upsert: false,
     });

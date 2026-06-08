@@ -14,6 +14,7 @@ import {
   getExtensionFromMime,
   ALLOWED_MIME_TYPES,
 } from "@/lib/storage/design-files";
+import { maybeSanitizeUploadBytes } from "@/lib/upload/sanitize-svg";
 
 const BodySchema = z.object({
   designFileId: z.string().uuid(),
@@ -86,9 +87,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "source_missing" }, { status: 404 });
   }
 
+  let uploadBody: Blob | Buffer = blob;
+  try {
+    uploadBody = maybeSanitizeUploadBytes(
+      await blob.arrayBuffer(),
+      row.mime_type,
+      row.original_name
+    );
+  } catch (svgErr) {
+    console.error("[design/reprint-from-file] svg sanitize:", svgErr);
+    return NextResponse.json({ error: "svg_sanitize_failed" }, { status: 400 });
+  }
+
   const { error: upErr } = await admin.storage
     .from(STORAGE_BUCKET)
-    .upload(destPath, blob, {
+    .upload(destPath, uploadBody, {
       contentType: row.mime_type,
       upsert: false,
     });

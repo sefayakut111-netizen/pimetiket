@@ -22,6 +22,10 @@ import {
 } from "@/lib/storage/design-files";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
 import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
+import {
+  isSvgMime,
+  maybeSanitizeUploadBytes,
+} from "@/lib/upload/sanitize-svg";
 
 const CompleteBodySchema = z.object({
   fileId: z.string().uuid(),
@@ -137,6 +141,36 @@ export async function POST(req: NextRequest) {
       { error: "magic_byte_check_exception" },
       { status: 500 }
     );
+  }
+
+  if (isSvgMime(body.mimeType, body.originalName)) {
+    try {
+      const { data: fullBlob, error: fullDlErr } = await admin.storage
+        .from(STORAGE_BUCKET)
+        .download(body.storagePath);
+      if (fullDlErr || !fullBlob) {
+        throw fullDlErr ?? new Error("svg_download_failed");
+      }
+      const clean = maybeSanitizeUploadBytes(
+        await fullBlob.arrayBuffer(),
+        body.mimeType,
+        body.originalName
+      );
+      const { error: reUpErr } = await admin.storage
+        .from(STORAGE_BUCKET)
+        .upload(body.storagePath, clean, {
+          contentType: body.mimeType,
+          upsert: true,
+        });
+      if (reUpErr) throw reUpErr;
+    } catch (svgErr) {
+      console.error("[design/temp-complete] svg sanitize:", svgErr);
+      await admin.storage.from(STORAGE_BUCKET).remove([body.storagePath]);
+      return NextResponse.json(
+        { error: "svg_sanitize_failed" },
+        { status: 400 }
+      );
+    }
   }
 
   // design_temp_uploads INSERT

@@ -20,6 +20,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AllowedMime } from "@/lib/storage/design-files";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
+import { maybeSanitizeUploadBytes } from "@/lib/upload/sanitize-svg";
 import type { TablesUpdate } from "@/lib/supabase/types";
 import { getSlotMeta } from "@/lib/site-image-slots";
 
@@ -153,7 +154,20 @@ export async function POST(req: Request) {
   }
 
   // Magic-byte check (SVG dışında — SVG için XML scan zaten var)
-  const buffer = await file.arrayBuffer();
+  let buffer: ArrayBuffer;
+  try {
+    buffer = maybeSanitizeUploadBytes(
+      await file.arrayBuffer(),
+      claimedMime,
+      file.name
+    ).buffer;
+  } catch (svgErr) {
+    console.error("[admin/site-images] svg sanitize:", svgErr);
+    return NextResponse.json(
+      { error: "svg_sanitize_failed", detail: "SVG güvenlik kontrolünden geçemedi." },
+      { status: 400 }
+    );
+  }
   const bytes = new Uint8Array(buffer);
   const magic = detectMimeFromMagicBytes(
     bytes.slice(0, 512),
