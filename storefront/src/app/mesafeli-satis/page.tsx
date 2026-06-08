@@ -1,4 +1,9 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
+import {
+  PIM_LEGAL_ENTITY,
+  PIM_PRODUCTION_BUSINESS_DAYS,
+} from "@/lib/pim/site-facts";
+import { DEFAULT_CONTACT_PHONE, formatPhoneDisplay } from "@/lib/site-settings-shared";
 
 export const metadata = {
   title: "Mesafeli Satış Sözleşmesi",
@@ -24,25 +29,21 @@ export default function MesafeliSatisPage() {
 
       <h2>1. Taraflar</h2>
       <p>
-        <strong>SATICI:</strong> SEFA YAKUT KIRTASİYE BASKI TİCARET LİMİTED
-        ŞİRKETİ (&ldquo;Pim Etiket&rdquo;)
+        <strong>SATICI:</strong> {PIM_LEGAL_ENTITY.companyName}{" "}
+        (&ldquo;Pim Etiket&rdquo;)
         <br />
-        Vergi Dairesi / No: Doğanbey Vergi Dairesi / 7580607612
+        Vergi Dairesi / No: {PIM_LEGAL_ENTITY.taxOffice} /{" "}
+        {PIM_LEGAL_ENTITY.vkn}
         <br />
-        Mersis No: 0758060761200001
+        Tebligat Adresi: {PIM_LEGAL_ENTITY.address}
         <br />
-        Ticaret Sicil No: 493212
+        E-posta:{" "}
+        <a href={`mailto:${PIM_LEGAL_ENTITY.email}`}>{PIM_LEGAL_ENTITY.email}</a>
         <br />
-        Ana Faaliyet: 464903 — Kırtasiye Ürünleri Toptan Ticareti
+        Telefon: {formatPhoneDisplay(DEFAULT_CONTACT_PHONE)}
         <br />
-        Tebligat Adresi: Workinton Ankara Söğütözü, Beştepeler Mah. Nergis
-        Sok. No:7/2 ViaFlat İş Merkezi Ofis: 27-28, 06510 Çankaya/Ankara
-        <br />
-        E-posta: <a href="mailto:info@pimetiket.com">info@pimetiket.com</a>
-        <br />
-        Telefon: [Sefa tarafından eklenecek — Workinton ofis hattı]
-        <br />
-        Web: <a href="https://pimetiket.com">pimetiket.com</a>
+        Web:{" "}
+        <a href={PIM_LEGAL_ENTITY.web}>{PIM_LEGAL_ENTITY.web.replace("https://", "")}</a>
       </p>
       <p>
         <strong>ALICI:</strong> Sipariş aşamasında verdiği ad-soyad, adres,
@@ -74,15 +75,28 @@ export default function MesafeliSatisPage() {
           yüklemesi gerekir; yüklenmezse sipariş tek taraflı iptal edilir.
         </li>
         <li>
-          Tahmini teslim süresi (Sefa 21 May v68 standart):
+          Tahmini teslim süresi (tasarım onayından sonra, iş günü):
           <ul>
             <li>
-              <strong>Etiket siparişleri</strong>: en geç{" "}
-              <strong>10 (on) iş günü</strong> içinde kargoya verilir.
+              <strong>Sticker siparişleri</strong>: en geç{" "}
+              <strong>
+                {PIM_PRODUCTION_BUSINESS_DAYS.sticker} (üç) iş günü
+              </strong>{" "}
+              içinde kargoya verilir.
             </li>
             <li>
-              <strong>Sticker siparişleri</strong>: en geç{" "}
-              <strong>5 (beş) iş günü</strong> içinde kargoya verilir.
+              <strong>Tabaka etiket siparişleri</strong>: en geç{" "}
+              <strong>
+                {PIM_PRODUCTION_BUSINESS_DAYS.tabaka} (üç) iş günü
+              </strong>{" "}
+              içinde kargoya verilir.
+            </li>
+            <li>
+              <strong>Rulo etiket siparişleri</strong>: en geç{" "}
+              <strong>
+                {PIM_PRODUCTION_BUSINESS_DAYS.rulo} (on) iş günü
+              </strong>{" "}
+              içinde kargoya verilir.
             </li>
           </ul>
           Kargo süresi şehre göre 1-3 iş günü sürer. Üretim süresi
