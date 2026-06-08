@@ -22,6 +22,7 @@ const PUBLIC_ROUTES: RouteEntry[] = [
   { path: "/malzemeler", changeFrequency: "monthly", priority: 0.8 },
   { path: "/yorumlar", changeFrequency: "weekly", priority: 0.7 },
   { path: "/hakkimizda", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/nasil-uretiyoruz", changeFrequency: "monthly", priority: 0.7 },
   { path: "/sss", changeFrequency: "monthly", priority: 0.7 },
   { path: "/terim-sozlugu", changeFrequency: "monthly", priority: 0.6 },
   { path: "/sablonlar", changeFrequency: "weekly", priority: 0.8 },
