@@ -49,6 +49,10 @@ export const PimEditorCommandSchema = z.discriminatedUnion("action", [
     mode: z.enum(["contain", "center", "cover"]).default("contain"),
   }),
   z.object({
+    action: z.literal("align"),
+    mode: z.literal("center"),
+  }),
+  z.object({
     action: z.literal("center_blade"),
   }),
   z.object({

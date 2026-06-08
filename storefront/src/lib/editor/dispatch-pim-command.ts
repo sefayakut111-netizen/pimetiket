@@ -183,6 +183,9 @@ export function dispatchPimCommand(
       postToPoc({ type });
       return true;
     }
+    case "align":
+      postToPoc({ type: "pim-fit-center" });
+      return true;
     case "center_blade":
       postToPoc({ type: "pim-fit-center" });
       return true;
