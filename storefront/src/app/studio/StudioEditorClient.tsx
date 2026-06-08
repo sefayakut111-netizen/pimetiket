@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * /studio — Aşama 2: görsel upload + gerçekçi önizleme + anlık fiyat.
+ * /studio — Aşama 3a: bıçak modu (poc.html iframe) + önizleme toggle.
  * Kapalı devre: ENABLE_STUDIO_EDITOR flag ile guard.
- * Reuse: StickerLivePreview, ProductPreviewShell, EditorUploadZone.
+ * Reuse: StickerLivePreview, ProductPreviewShell, EditorUploadZone,
+ * EditorShell iframe+postMessage pattern (poc.html motoru).
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ClampedNumberInput } from "@/components/ClampedNumberInput";
 import { EditorUploadZone } from "@/components/editor/EditorUploadZone";
 import { Icon } from "@/components/Icon";
@@ -17,6 +18,11 @@ import {
 } from "@/components/preview";
 import { FormSection, SelectableCard } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { buildEditorIframeSrc } from "@/lib/editor/build-editor-iframe-src";
+import type {
+  PocCutlineMeta,
+  PocEditorSavedPayload,
+} from "@/lib/editor/editor-handoff";
 import { quoteStickerFromConfig } from "@/lib/customer-pricing-from-config";
 import { formatPrice, formatUnitPrice } from "@/lib/format/price";
 import { getActiveMaterials } from "@/lib/pricing-materials";
@@ -39,8 +45,10 @@ import {
 // ============================================================
 
 export type StudioShape = "contour" | "square" | "circle" | "rounded";
+export type StudioMode = "onizleme" | "bicak";
 
 export interface StudioState {
+  mode: StudioMode;
   shape: StudioShape;
   width: number;
   height: number;
@@ -50,6 +58,9 @@ export interface StudioState {
   lockRatio: boolean;
   designUrl: string | null;
   designName?: string | null;
+  /** Aşama 3b hazırlık — cutline-ready / export sonrası dolar */
+  cutlineSvg: string | null;
+  cutlineMeta: PocCutlineMeta | null;
 }
 
 const MATERIAL_IDS = ["vinil", "transparan", "holo", "simli"] as const;
@@ -63,6 +74,7 @@ const SHAPE_OPTIONS: { id: StudioShape; label: string; icon: string }[] = [
 ];
 
 const DEFAULT_STATE: StudioState = {
+  mode: "onizleme",
   shape: "square",
   width: 75,
   height: 75,
@@ -72,7 +84,23 @@ const DEFAULT_STATE: StudioState = {
   lockRatio: true,
   designUrl: null,
   designName: null,
+  cutlineSvg: null,
+  cutlineMeta: null,
 };
+
+type PocCutMode = "contour" | "hull" | "rect" | "circle";
+
+function mapStudioShapeToPocMode(shape: StudioShape): PocCutMode {
+  switch (shape) {
+    case "contour":
+      return "contour";
+    case "circle":
+      return "circle";
+    case "square":
+    case "rounded":
+      return "rect";
+  }
+}
 
 function mapStudioShapeToPreview(shape: StudioShape): {
   shape: "die" | "square" | "circle";
@@ -149,6 +177,17 @@ export default function StudioEditorClient() {
   const [adminConfig, setAdminConfig] = useState<ProfileConfig | null>(null);
   const [customQty, setCustomQty] = useState(false);
   const [previewView, setPreviewView] = useState<PreviewView>("3d");
+  const [pocReady, setPocReady] = useState(false);
+  const [cutlineStatus, setCutlineStatus] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const stateRef = useRef(state);
+  const [iframeSrc] = useState(() =>
+    buildEditorIframeSrc({ material: DEFAULT_STATE.material, mode: "contour" })
+  );
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,14 +203,52 @@ export default function StudioEditorClient() {
     setState((prev) => patchStudioState(prev, patchValues));
   }, []);
 
+  const postToPoc = useCallback((payload: Record<string, unknown>) => {
+    iframeRef.current?.contentWindow?.postMessage(
+      payload,
+      window.location.origin
+    );
+  }, []);
+
+  const syncStudioToPoc = useCallback(() => {
+    const s = stateRef.current;
+    const pocMode = mapStudioShapeToPocMode(s.shape);
+    postToPoc({
+      type: "pim-editor-set-size",
+      widthMm: s.width,
+      heightMm: s.height,
+    });
+    postToPoc({
+      type: "pim-editor-set-shape",
+      shape: s.shape === "circle" ? "circle" : "rect",
+      mode: pocMode,
+      widthMm: s.width,
+      heightMm: s.height,
+      cornerRadiusMm:
+        s.shape === "rounded"
+          ? Math.round(Math.min(s.width, s.height) * 0.12)
+          : 0,
+    });
+    if (s.designUrl) {
+      postToPoc({
+        type: "pim-load-design",
+        url: s.designUrl,
+        fileName: s.designName ?? undefined,
+      });
+    }
+  }, [postToPoc]);
+
   const handleFileSelected = useCallback((file: File) => {
     setState((prev) => {
       revokeBlobUrl(prev.designUrl);
       return patchStudioState(prev, {
         designUrl: URL.createObjectURL(file),
         designName: file.name,
+        cutlineSvg: null,
+        cutlineMeta: null,
       });
     });
+    setCutlineStatus("Görsel yüklendi — bıçak hesaplanıyor…");
   }, []);
 
   const handleRemoveDesign = useCallback(() => {
@@ -180,9 +257,85 @@ export default function StudioEditorClient() {
       return patchStudioState(prev, {
         designUrl: null,
         designName: null,
+        cutlineSvg: null,
+        cutlineMeta: null,
       });
     });
+    setCutlineStatus(null);
   }, []);
+
+  useEffect(() => {
+    if (state.mode !== "bicak") {
+      setPocReady(false);
+      return;
+    }
+
+    const handler = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (iframeRef.current && e.source !== iframeRef.current.contentWindow) {
+        return;
+      }
+      const data = e.data as Record<string, unknown> | undefined;
+      if (!data || typeof data.type !== "string") return;
+
+      if (data.type === "pim-poc-ready") {
+        setPocReady(true);
+        setCutlineStatus("Görsel yükle — bıçak otomatik netleşir");
+        syncStudioToPoc();
+      } else if (data.type === "pim-poc-loaded") {
+        setCutlineStatus("Tasarım yüklendi — kontur hesaplanıyor…");
+        setState((prev) =>
+          prev.cutlineSvg || prev.cutlineMeta
+            ? { ...prev, cutlineSvg: null, cutlineMeta: null }
+            : prev
+        );
+      } else if (data.type === "pim-cutline-ready") {
+        const meta = (data.meta as PocCutlineMeta | undefined) ?? null;
+        setState((prev) => ({ ...prev, cutlineMeta: meta }));
+        setCutlineStatus("Bıçak hazır");
+        postToPoc({ type: "pim-request-export" });
+      } else if (data.type === "pim-editor-saved") {
+        const payload = data as unknown as PocEditorSavedPayload;
+        setState((prev) => ({
+          ...prev,
+          cutlineSvg: payload.svg,
+          cutlineMeta: payload.meta,
+        }));
+        setCutlineStatus("Bıçak SVG kaydedildi (3b hazır)");
+      } else if (
+        data.type === "pim-cutline-auto-failed" ||
+        data.type === "pim-poc-error"
+      ) {
+        setCutlineStatus(
+          `Bıçak hatası: ${String(data.error ?? "bilinmeyen")}`
+        );
+      }
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [state.mode, postToPoc, syncStudioToPoc]);
+
+  useEffect(() => {
+    if (state.mode !== "bicak" || !pocReady) return;
+    syncStudioToPoc();
+    setState((prev) =>
+      prev.cutlineSvg || prev.cutlineMeta
+        ? { ...prev, cutlineSvg: null, cutlineMeta: null }
+        : prev
+    );
+    setCutlineStatus("Ayarlar güncellendi — kontur yenileniyor…");
+  }, [
+    state.mode,
+    state.shape,
+    state.width,
+    state.height,
+    state.material,
+    state.designUrl,
+    state.designName,
+    pocReady,
+    syncStudioToPoc,
+  ]);
 
   useEffect(() => {
     return () => revokeBlobUrl(state.designUrl);
@@ -244,10 +397,10 @@ export default function StudioEditorClient() {
       <header className="shrink-0 border-b border-gri-200 bg-white px-4 py-3 flex items-center justify-between">
         <div>
           <h1 className="text-[15px] font-semibold text-lacivert">Studio</h1>
-          <p className="text-[12px] text-gri-500">Kapalı devre · Aşama 2</p>
+          <p className="text-[12px] text-gri-500">Kapalı devre · Aşama 3a</p>
         </div>
         <span className="text-[11px] font-medium text-gri-500 bg-gri-100 px-2 py-1 rounded-md">
-          Cutline & sepet — sonraki aşama
+          Cutline→önizleme & sepet — sonraki aşama
         </span>
       </header>
 
@@ -285,8 +438,8 @@ export default function StudioEditorClient() {
           ))}
         </aside>
 
-        {/* Orta — canlı önizleme */}
-        <section className="flex flex-col min-h-0 border-b lg:border-b-0 lg:border-r border-gri-200 overflow-y-auto">
+        {/* Orta — bıçak / önizleme modu */}
+        <section className="relative flex flex-col min-h-0 border-b lg:border-b-0 lg:border-r border-gri-200 overflow-hidden">
           <div className="lg:hidden p-4 border-b border-gri-200 bg-white space-y-2">
             <p className="text-[12px] font-medium text-lacivert">Tasarım</p>
             <EditorUploadZone
@@ -305,34 +458,87 @@ export default function StudioEditorClient() {
               </button>
             ) : null}
           </div>
-          <div className="flex-1 flex items-center justify-center p-4 md:p-6 min-h-[320px] lg:min-h-0">
-            <div className="w-full max-w-lg">
-              <ProductPreviewShell
-                width={state.width}
-                height={state.height}
-                view={previewView}
-                onViewChange={setPreviewView}
-                footnote={
-                  state.designUrl
-                    ? "Yüklediğin görsel canlı önizlemede"
-                    : "Görsel yüklemeden örnek sticker gösterilir"
-                }
-              >
-                <StickerLivePreview
-                  cutMode="diecut"
-                  shape={previewShape.shape}
-                  softCorners={previewShape.softCorners}
-                  material={state.material}
-                  finish={state.finish}
+
+          {/* Mod toggle — StickerApp Edit design / Preview */}
+          <div className="absolute top-3 right-3 z-20 flex rounded-lg bg-white/95 p-0.5 shadow-1 ring-1 ring-gri-200 backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={() => patch({ mode: "bicak" })}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors",
+                state.mode === "bicak"
+                  ? "bg-lacivert text-white"
+                  : "text-gri-600 hover:bg-gri-50"
+              )}
+            >
+              Bıçak
+            </button>
+            <button
+              type="button"
+              onClick={() => patch({ mode: "onizleme" })}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors",
+                state.mode === "onizleme"
+                  ? "bg-lacivert text-white"
+                  : "text-gri-600 hover:bg-gri-50"
+              )}
+            >
+              Önizleme
+            </button>
+          </div>
+
+          {state.mode === "bicak" ? (
+            <div className="flex flex-1 flex-col min-h-0 p-4 pt-12">
+              {cutlineStatus ? (
+                <p className="mb-2 text-[11px] text-gri-600 px-1">{cutlineStatus}</p>
+              ) : null}
+              {state.cutlineMeta ? (
+                <p className="mb-2 text-[10px] text-gri-500 px-1 tabular-nums">
+                  cutline-ready · {state.cutlineMeta.mode} ·{" "}
+                  {state.cutlineSvg ? "SVG kayıtlı" : "SVG bekleniyor"}
+                </p>
+              ) : null}
+              <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gri-200 bg-gri-100 shadow-sm">
+                <iframe
+                  ref={iframeRef}
+                  src={iframeSrc}
+                  title="Bıçak editörü"
+                  className="block h-full w-full min-h-[420px] border-0"
+                  scrolling="no"
+                  sandbox="allow-scripts allow-same-origin allow-downloads"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center p-4 md:p-6 min-h-[320px] lg:min-h-0 overflow-y-auto">
+              <div className="w-full max-w-lg">
+                <ProductPreviewShell
                   width={state.width}
                   height={state.height}
-                  qty={state.qty}
                   view={previewView}
-                  designUrl={state.designUrl}
-                />
-              </ProductPreviewShell>
+                  onViewChange={setPreviewView}
+                  footnote={
+                    state.designUrl
+                      ? "Yüklediğin görsel canlı önizlemede"
+                      : "Görsel yüklemeden örnek sticker gösterilir"
+                  }
+                >
+                  <StickerLivePreview
+                    cutMode="diecut"
+                    shape={previewShape.shape}
+                    softCorners={previewShape.softCorners}
+                    material={state.material}
+                    finish={state.finish}
+                    width={state.width}
+                    height={state.height}
+                    qty={state.qty}
+                    view={previewView}
+                    designUrl={state.designUrl}
+                  />
+                </ProductPreviewShell>
+              </div>
             </div>
-          </div>
+          )}
         </section>
 
         {/* Sağ — konfigürasyon paneli */}
