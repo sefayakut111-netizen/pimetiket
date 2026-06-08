@@ -622,7 +622,7 @@ export const SSS_FAQS_EN: Record<SssCategory, SssFaqItem[]> = {
       q: "What file formats do you accept?",
       summary: "PDF, PNG, JPEG, AI, PSD, SVG.",
       detail:
-        "PDF (X-1a) or AI recommended for best result. PNG and JPEG at 300 DPI. EPS not supported.",
+        "Pim Etiket accepts PDF, PNG, JPEG, AI, PSD, and SVG. PDF/X-1a or AI recommended for vector data and font outlines; PNG and JPEG raster at 300 DPI. EPS is not supported. Uploaded files go through automatic pre-check for format, resolution, and color profile.",
     },
     {
       q: "What resolution should my design be?",
