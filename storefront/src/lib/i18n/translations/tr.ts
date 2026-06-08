@@ -27,6 +27,7 @@ export const tr: TranslationDict = {
     blog: "Blog",
     dashboard: "Panelim",
     about: "Hakkımızda",
+    companyInfo: "Firma Bilgileri",
     howWeProduce: "Nasıl Üretiyoruz",
     contact: "İletişim",
     cart: "Sepet",

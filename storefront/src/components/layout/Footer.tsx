@@ -15,7 +15,6 @@ import { Icon } from "@/components/Icon";
 import { Input, Button, useToast } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { PaymentBadges } from "@/components/layout/PaymentBadges";
-import { formatLegalKunyeLine } from "@/lib/pim/site-facts";
 
 interface FooterLink {
   label: string;
@@ -101,6 +100,7 @@ export function Footer() {
       // Şirket → kurumsal yasal (KVKK / Gizlilik / Kullanım Şartları)
       links: [
         { label: t.nav.about, href: "/hakkimizda" },
+        { label: t.nav.companyInfo, href: "/firma-bilgileri" },
         { label: t.nav.howWeProduce, href: "/nasil-uretiyoruz" },
         { label: "Terim Sözlüğü", href: "/terim-sozlugu" },
         { label: t.nav.contact, href: "/iletisim" },
@@ -374,9 +374,6 @@ export function Footer() {
         <PaymentBadges
           copyrightText={`© ${new Date().getFullYear()} ${t.footer.copyright}`}
         />
-        <p className="mt-3 text-[10.5px] text-white/45 leading-relaxed max-w-[960px]">
-          {formatLegalKunyeLine()}
-        </p>
 
         {/* Sefa kararı 17 May v15: Şirket bilgisi bloğu (Sefa Yakut
             Kırtasiye Baskı Ticaret Ltd. Şti. + Mersis/Sicil + adres +

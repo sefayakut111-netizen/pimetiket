@@ -27,6 +27,7 @@ const PUBLIC_ROUTES: RouteEntry[] = [
   { path: "/terim-sozlugu", changeFrequency: "monthly", priority: 0.6 },
   { path: "/sablonlar", changeFrequency: "weekly", priority: 0.8 },
   { path: "/iletisim", changeFrequency: "monthly", priority: 0.6 },
+  { path: "/firma-bilgileri", changeFrequency: "yearly", priority: 0.3 },
 
   // Yasal
   { path: "/kvkk", changeFrequency: "yearly", priority: 0.3 },
