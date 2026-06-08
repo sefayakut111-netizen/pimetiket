@@ -53,6 +53,7 @@ export type TranslationDict = {
     blog: string;
     dashboard: string;
     about: string;
+    howWeProduce: string;
     contact: string;
     cart: string;
     login: string;
@@ -96,6 +97,16 @@ export type TranslationDict = {
     productFrom: string;
     howItWorksEyebrow: string;
     howItWorksTitle: string;
+    productionQualityTitle: string;
+    productionQuality1Title: string;
+    productionQuality1Desc: string;
+    productionQuality2Title: string;
+    productionQuality2Desc: string;
+    productionQuality3Title: string;
+    productionQuality3Desc: string;
+    productionQuality4Title: string;
+    productionQuality4Desc: string;
+    productionQualityCta: string;
     galleryEyebrow: string;
     galleryTitle: string;
     step1: string;

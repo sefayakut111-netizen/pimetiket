@@ -305,6 +305,59 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ============================== PRODUCTION QUALITY ============================== */}
+      <section className="py-16 md:py-20 bg-white">
+        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
+          <h2 className="text-center text-[28px] md:text-[36px] font-semibold tracking-tight leading-tight text-lacivert mb-10 md:mb-12">
+            {t.home.productionQualityTitle}
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            {[
+              {
+                icon: <Icon.Package size={22} />,
+                title: t.home.productionQuality1Title,
+                desc: t.home.productionQuality1Desc,
+              },
+              {
+                icon: <Icon.Sparkle size={22} />,
+                title: t.home.productionQuality2Title,
+                desc: t.home.productionQuality2Desc,
+              },
+              {
+                icon: <Icon.Shield size={22} />,
+                title: t.home.productionQuality3Title,
+                desc: t.home.productionQuality3Desc,
+              },
+              {
+                icon: <Icon.Check size={22} />,
+                title: t.home.productionQuality4Title,
+                desc: t.home.productionQuality4Desc,
+              },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="text-center px-2"
+              >
+                <span className="grid place-items-center w-14 h-14 rounded-full bg-pim-mercan-tint text-pim-mercan-koyu mx-auto mb-4">
+                  {item.icon}
+                </span>
+                <h3 className="text-lg font-semibold text-lacivert mb-1">
+                  {item.title}
+                </h3>
+                <p className="text-base text-gri-700 leading-relaxed">
+                  {item.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 text-center">
+            <Button variant="secondary" href="/nasil-uretiyoruz">
+              {t.home.productionQualityCta} <Icon.ChevR size={14} />
+            </Button>
+          </div>
+        </div>
+      </section>
+
       <HomeGallery locale={locale} />
 
       {/* ============================== REVIEWS ============================== */}
