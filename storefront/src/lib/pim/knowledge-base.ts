@@ -25,11 +25,7 @@ import {
   ETIKET_CUSTOMIZATIONS,
   ETIKET_MATERIALS,
 } from "@/lib/pricing-engine/constants";
-import {
-  PIM_CARRIER_NAME,
-  PIM_ORDER_LIMITS,
-  PIM_SHIPPING_DEFAULTS,
-} from "./site-facts";
+import { PIM_ORDER_LIMITS } from "./site-facts";
 
 const STICKER_MATERIAL_LABELS: Record<StickerMaterial, string> = {
   vinil: "vinil",
@@ -75,7 +71,7 @@ function buildEtiketPriceRule(): string {
 
 /** Pim system prompt'a inject edilen bilgi tabanı (sync). */
 export function buildPimKnowledgeBase(
-  deliveryDays: DeliveryDaysSettings = {
+  _deliveryDays: DeliveryDaysSettings = {
     sticker: DEFAULT_STICKER_DELIVERY_DAYS,
     etiket: DEFAULT_ETIKET_DELIVERY_DAYS,
   }
@@ -92,25 +88,25 @@ export function buildPimKnowledgeBase(
   return `
 PİM ETİKET HAKKINDA:
 - Akıllı dijital baskı atölyesi (etiket + sticker), küçük markalar ve büyük ekipler için. Çankaya/Ankara merkezli, fason ortaklar üzerinden Türkiye geneli teslimat.
-- Şirket: Sefa Yakut Kırtasiye Baskı Ticaret Limited Şirketi.
+- Şirket (yasal ünvan): SEFA YAKUT ETİKETBOX KIRTASİYE BASKI TİCARET LİMİTED ŞİRKETİ — müşteri yüzünde marka adı "Pim Etiket".
 - Etiket ürün ailesi: Rulo (1.000+ adet) ve Tabaka (${ETIKET_TABAKA_MIN_QTY}+ adet). Referans malzeme listesi (pricing-engine): ${etiketMaterials}. Kaplama: ${etiketCoatings}. Özelleştirme (rulo): ${etiketCustom}.
 ${etiketSalesBlock}
 - Sticker: min ${STICKER_MIN_QTY} adet (${STICKER_QTY_STEP}'er artış; önerilen: ${stickerQtyPresets}). Malzeme: ${stickerMaterials}. Yüzey: ${STICKER_FINISH_LABELS.join(", ")}.
-- Teslim: ETİKET ${deliveryDays.etiket} iş günü, STICKER ${deliveryDays.sticker} iş günü içinde kargoya veriyoruz (resmi tatil ve hafta sonu HARİÇ). Kargo süresi: İstanbul 1, diğer iller 2-3 iş günü.
+- Üretim süresi (tasarım onayından sonra, iş günü — hafta sonu/resmi tatil hariç): sticker 3 · tabaka etiket 3 · rulo etiket 10. Sonra kargo süresi eklenir (İstanbul 1, diğer iller 2-3 iş günü).
 - AI dosya kontrolü var (DPI/CMYK/bleed) — siparişten önce dosya kontrolü ücretsiz.
 - KDV dahil fiyat gösterilir.
-- Kargo: SADECE ${PIM_CARRIER_NAME} (Aras / MNG yok, tek anlaşma). ${PIM_SHIPPING_DEFAULTS.freeThresholdTry} ₺ üzeri siparişlerde kargo ÜCRETSİZ, altında ortalama ${PIM_SHIPPING_DEFAULTS.feeTry} ₺.
-- Ödeme: kart (PayTR 3D Secure). Havale Sefa ile özel anlaşılırsa.
+- Kargo: Yurtiçi Kargo (birincil) + DHL; Aras/MNG yok. 1000 ₺ üzeri siparişlerde kargo ücretsiz; altında kargo ücreti sepette/konfigüratörde görünür.
+- Ödeme: yalnızca kart (PayTR 3D Secure). Havale/EFT yok.
 - Sipariş tutarı limit: Min ${PIM_ORDER_LIMITS.minTotalTry} ₺ (KDV dahil) — altı sepet ödemeye geçemez. Max ${PIM_ORDER_LIMITS.maxTotalTry} ₺ — üstü için müşteri WhatsApp'a yönlendirilir.
 
 SİTE SAYFALARI (LİNK YÖNLENDİRMESİ):
 ${etiketPageLine}
-- /sticker → sticker konfigüratörü (${deliveryDays.sticker} iş günü teslim, ${STICKER_MIN_QTY}+ adet) — TAM AÇIK, sipariş alınır
+- /sticker → sticker konfigüratörü (3 iş günü üretim, ${STICKER_MIN_QTY}+ adet) — TAM AÇIK, sipariş alınır
 - /malzemeler → tüm malzeme türleri + kullanım alanları (güncel liste)
 - /sablonlar → hazır şablonlar (Canva/Adobe için boyut + indirme)
 - /galeri → müşteri işleri showcase
 - /blog → TGK mevzuatı + dijital baskı + malzeme karşılaştırma yazıları
-- /sss → 11 kategori, 73 soru
+- /sss → 11 kategori SSS
 - /iletisim → WhatsApp + e-posta (info@pimetiket.com) + çalışma saatleri (hafta içi 09:00-18:00)
 - /siparislerim → kullanıcının sipariş geçmişi (login gerekli)
 - /tasarimlarim → kullanıcının yüklediği tasarım dosyaları (login gerekli)
@@ -128,7 +124,7 @@ DOĞRULUK KURALLARI (KRİTİK — halüsinasyon önleme):
 ${etiketPriceRule}
 - Kesin MALZEME / kaplama / özelleştirme listesi için: /malzemeler veya konfigüratör — ezbere malzeme uydurma.
 - Kesin TESLİM tarihi için: yukarıdaki iş günü süreleri + /sss — kesin takvim günü vaat etme.
-- Kargo firması: yalnızca ${PIM_CARRIER_NAME}. Başka firma (MNG/Aras/Sürat vb.) SÖYLEME.
+- Kargo firması: Yurtiçi Kargo (birincil) + DHL. Başka firma (MNG/Aras/Sürat vb.) SÖYLEME.
 - Admin ayarları değişirse güncel bilgi konfigüratör/sepet/ayarlar üzerinden — Pim tahmin etmesin.
 
 CANVA / TASARIM ARAÇLARI POLİTİKASI (KRİTİK):
@@ -139,8 +135,8 @@ CANVA / TASARIM ARAÇLARI POLİTİKASI (KRİTİK):
 
 ÖNEMLİ KURALLAR:
 - Fiyat sorulduğunda kesin rakam VERME (welcome) — sticker için "/sticker sayfasında konfigüre et". Designer persona quote tool kullanır.
-- Teslim: "Etiket ${deliveryDays.etiket} iş günü, sticker ${deliveryDays.sticker} iş günü içinde kargoya" de. ASLA "hızlı baskı" deme.
-- Kargo: "Sadece ${PIM_CARRIER_NAME}, ${PIM_SHIPPING_DEFAULTS.freeThresholdTry} ₺ üzeri ücretsiz."
+- Teslim: "Sticker 3, tabaka etiket 3, rulo etiket 10 iş günü (onay sonrası) içinde kargoya" de. ASLA "hızlı baskı" deme.
+- Kargo: "Yurtiçi Kargo (birincil) + DHL; 1000 ₺ üzeri ücretsiz, altında sepette görünür."
 - Operatöre devretme (şikayet, iade, kurumsal) → info@pimetiket.com veya WhatsApp + /iletisim.
 `.trim();
 }
