@@ -103,6 +103,16 @@ export default function AdminYedeklerPage() {
           </p>
         </div>
 
+        <Card padding="p-5" className="mb-5 bg-gri-50 ring-gri-200">
+          <div className="flex items-start gap-3">
+            <Icon.Info size={16} className="text-gri-500 shrink-0 mt-0.5" />
+            <p className="text-[12.5px] text-gri-700 leading-relaxed">
+              <strong className="text-lacivert">Supabase Pro:</strong> otomatik
+              günlük yedek (7 gün) aktif — R2 haftalık off-site tamamlayıcı.
+            </p>
+          </div>
+        </Card>
+
         {/* Configuration warning */}
         {data && !data.configured && (
           <Card padding="p-5" className="mb-5 !bg-sari-soft !ring-sari/30">
