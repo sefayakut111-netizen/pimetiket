@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { getDefaultFrom, sendMail } from "@/lib/mail/resend";
+import { buildListUnsubscribeHeader } from "@/lib/mail/unsubscribe";
 import {
   MAIL_TEMPLATES,
   isMailTemplateKey,
@@ -108,6 +109,24 @@ export async function POST(req: Request) {
     );
   }
 
+  const commercialTemplates = new Set([
+    "abandoned-cart",
+    "review-request",
+    "newsletter-welcome",
+  ]);
+  let headers: Record<string, string> | undefined;
+  if (commercialTemplates.has(templateKey)) {
+    try {
+      const listUnsub = buildListUnsubscribeHeader(to, "marketing");
+      headers = {
+        "List-Unsubscribe": listUnsub.listUnsubscribe,
+        "List-Unsubscribe-Post": listUnsub.listUnsubscribePost,
+      };
+    } catch {
+      // UNSUBSCRIBE_SECRET yoksa test yine gider (header'sız)
+    }
+  }
+
   const result = await sendMail({
     to,
     subject: `[TEST] ${rendered.subject}`,
@@ -117,6 +136,7 @@ export async function POST(req: Request) {
       { name: "kind", value: "admin_template_test" },
       { name: "template", value: templateKey },
     ],
+    headers,
   });
 
   if (!result.ok) {

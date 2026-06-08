@@ -62,6 +62,8 @@ export interface SendMailParams {
   replyTo?: string;
   /** Tags — Resend dashboard filtreleme */
   tags?: Array<{ name: string; value: string }>;
+  /** RFC 2369 / 8058 — ticari ileti List-Unsubscribe */
+  headers?: Record<string, string>;
 }
 
 export interface SendMailResult {
@@ -117,6 +119,7 @@ export async function sendMail(
       text: params.text,
       replyTo: params.replyTo,
       tags: params.tags,
+      headers: params.headers,
     } as Parameters<typeof client.emails.send>[0]);
 
     if (error) {

@@ -26,7 +26,14 @@ import { MemberWelcomeEmail } from "./templates/member-welcome";
 import { ReviewRequestEmail } from "./templates/review-request";
 import { AbandonedCartEmail } from "./templates/abandoned-cart";
 import { NewsletterWelcomeEmail } from "./templates/newsletter-welcome";
+import { AdminNewOrderEmail } from "./templates/admin-new-order";
+import { AdminDailySummaryEmail } from "./templates/admin-daily-summary";
+import { AdminSupportTicketEmail } from "./templates/admin-support-ticket";
+import { AdminAutoRefundEmail } from "./templates/admin-auto-refund";
+import { FasonStatusEmail } from "./templates/fason-status";
+import { FasonCancelledEmail } from "./templates/fason-cancelled";
 import { buildUnsubscribeUrl } from "./unsubscribe";
+import { buildDailySummaryFallback } from "./generate-daily-summary";
 
 export const MAIL_TEMPLATES = [
   {
@@ -143,6 +150,26 @@ export const MAIL_TEMPLATES = [
     key: "newsletter-welcome",
     label: "Bülten Hoşgeldin",
     subject: "Pim Etiket bültenine hoş geldin",
+  },
+  {
+    key: "admin-new-order",
+    label: "Yeni Sipariş (Admin)",
+    subject: "Yeni sipariş geldi",
+  },
+  {
+    key: "admin-auto-refund",
+    label: "Otomatik İade (Admin)",
+    subject: "Otomatik iade yapıldı",
+  },
+  {
+    key: "fason-status",
+    label: "Fason İş Güncellemesi",
+    subject: "İş güncellemesi",
+  },
+  {
+    key: "fason-cancelled",
+    label: "Fason İş İptali",
+    subject: "İş ataması iptal edildi",
   },
 ] as const;
 
@@ -325,34 +352,38 @@ export async function previewMailTemplate(
       );
       return { subject: meta.subject, html, text: "" };
     }
-    case "admin-daily-summary":
-      return (
-        renderMailTemplate("admin_daily_summary", {
-          newOrders24h: 12,
-          revenue24h: 18450,
-          awaitingUpload: 3,
-          awaitingUploadStale: 1,
-          aiQcQueue: 5,
-          proofPending: 2,
-          inProduction: 8,
-          shipped24h: 6,
-          partnerCapacityWarn: 1,
-        }) ?? null
+    case "admin-daily-summary": {
+      const fallbackStats = buildDailySummaryFallback({
+        newOrders24h: 12,
+        revenue24h: 18450,
+        awaitingUpload: 3,
+        awaitingUploadStale: 1,
+        aiQcQueue: 5,
+        proofPending: 2,
+        inProduction: 8,
+        shipped24h: 6,
+        partnerCapacityWarn: 1,
+      });
+      const html = await render(
+        AdminDailySummaryEmail({
+          date: "7 Haziran 2026",
+          fallbackStats,
+        })
       );
-    case "admin-new-support-ticket":
-      return (
-        renderMailTemplate("admin_new_support_ticket", {
-          ticket_id: MOCK_TICKET_ID,
+      return { subject: meta.subject, html, text: fallbackStats };
+    }
+    case "admin-new-support-ticket": {
+      const html = await render(
+        AdminSupportTicketEmail({
+          ticketId: MOCK_TICKET_ID,
+          customerName: MOCK_NAME,
           subject: "Sipariş durumu hakkında",
-          category: "siparis",
-          message_preview:
-            "Merhaba, PE-2026-001234 numaralı siparişimin kargo durumunu öğrenmek istiyorum. Tahmini teslimat tarihi nedir?",
-          customer_email: "ayse@example.com",
-          customer_name: MOCK_NAME,
-          order_id: MOCK_ORDER_ID,
-          is_guest: false,
-        }) ?? null
+          messagePreview:
+            "Merhaba, PE-2026-001234 numaralı siparişimin kargo durumunu öğrenmek istiyorum.",
+        })
       );
+      return { subject: meta.subject, html, text: "" };
+    }
     case "customer-support-received":
       return (
         renderMailTemplate("customer_support_ticket_received", {
@@ -464,6 +495,55 @@ export async function previewMailTemplate(
         NewsletterWelcomeEmail({ unsubscribeUrl: unsub })
       );
       return { subject: meta.subject, html, text: "" };
+    }
+    case "admin-new-order": {
+      const html = await render(
+        AdminNewOrderEmail({
+          orderId: MOCK_ORDER_ID,
+          total: "939 ₺",
+          customerName: MOCK_NAME,
+          items: "1× Yuvarlak Etiket 5cm",
+          status: "Tasarım bekliyor",
+        })
+      );
+      return {
+        subject: `Yeni sipariş — ${MOCK_ORDER_ID}`,
+        html,
+        text: "",
+      };
+    }
+    case "admin-auto-refund": {
+      const html = await render(
+        AdminAutoRefundEmail({
+          orderId: MOCK_ORDER_ID,
+          refundAmount: "939 ₺",
+          customerName: MOCK_NAME,
+        })
+      );
+      return { subject: `Otomatik iade — ${MOCK_ORDER_ID}`, html, text: "" };
+    }
+    case "fason-status": {
+      const html = await render(
+        FasonStatusEmail({
+          orderId: MOCK_ORDER_ID,
+          statusText: "Üretime başlandı",
+          token: "demo_token_preview",
+        })
+      );
+      return { subject: `İş güncellemesi — ${MOCK_ORDER_ID}`, html, text: "" };
+    }
+    case "fason-cancelled": {
+      const html = await render(
+        FasonCancelledEmail({
+          orderId: MOCK_ORDER_ID,
+          token: "demo_token_preview",
+        })
+      );
+      return {
+        subject: `İş ataması iptal edildi — ${MOCK_ORDER_ID}`,
+        html,
+        text: "",
+      };
     }
     default:
       return null;
