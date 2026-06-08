@@ -94,6 +94,7 @@ ${etiketSalesBlock}
 - Sticker: min ${STICKER_MIN_QTY} adet (${STICKER_QTY_STEP}'er artış; önerilen: ${stickerQtyPresets}). Malzeme: ${stickerMaterials}. Yüzey: ${STICKER_FINISH_LABELS.join(", ")}.
 - Üretim süresi (tasarım onayından sonra, iş günü — hafta sonu/resmi tatil hariç): sticker 3 · tabaka etiket 3 · rulo etiket 10. Sonra kargo süresi eklenir (İstanbul 1, diğer iller 2-3 iş günü).
 - AI dosya kontrolü var (DPI/CMYK/bleed) — siparişten önce dosya kontrolü ücretsiz.
+- Tasarım dosyası formatları: PDF, PNG, JPEG, AI, PSD, SVG kabul; EPS desteklenmez.
 - KDV dahil fiyat gösterilir.
 - Kargo: Yurtiçi Kargo (birincil) + DHL; Aras/MNG yok. 1000 ₺ üzeri siparişlerde kargo ücretsiz; altında kargo ücreti sepette/konfigüratörde görünür.
 - Ödeme: yalnızca kart (PayTR 3D Secure). Havale/EFT yok.

@@ -98,7 +98,7 @@ export function EditorUploadZone({
         ref={inputRef}
         type="file"
         className="sr-only"
-        accept="image/png,image/jpeg,application/pdf,.ai,.pdf,.psd,image/vnd.adobe.photoshop"
+        accept="image/png,image/jpeg,image/svg+xml,application/pdf,.ai,.pdf,.psd,image/vnd.adobe.photoshop"
         onChange={(e) => {
           acceptFile(e.target.files?.[0]);
           e.target.value = "";
