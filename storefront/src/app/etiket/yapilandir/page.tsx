@@ -1875,17 +1875,6 @@ function EtiketPage() {
                     }}
                     padding={12}
                   >
-                    {/* Sefa 18 May v68: aspect-[2/1] SVG native oran +
-                        line-clamp-2 ile desc 2 satır sabit → kart eşit
-                        yükseklik */}
-                    {/* Sefa 18 May v68: aspect-[2/1] SVG native oran +
-                        line-clamp-2 ile desc 2 satır sabit → kart eşit
-                        yükseklik. Title min-h ile içerikler üstten başlar. */}
-                    <MaterialSwatch
-                      surface={c.surface}
-                      className="w-full aspect-[2/1] mb-2"
-                      label={adminText("coating", c.id, "name") ?? (locale === "en" ? c.name_en : c.name)}
-                    />
                     <div className="font-semibold text-sm inline-flex items-start gap-1.5 min-h-[2.6em] leading-tight">
                       <span>{adminText("coating", c.id, "name") ?? (locale === "en" ? c.name_en : c.name)}</span>
                       {c.tooltip ? <InfoTooltip text={c.tooltip} /> : null}

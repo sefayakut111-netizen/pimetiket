@@ -1453,12 +1453,6 @@ function StickerPage() {
                     }}
                     padding={12}
                   >
-                    {/* Sefa 18 May v68: aspect-[2/1] + line-clamp-2 + title min-h */}
-                    <MaterialSwatch
-                      surface={f.surface}
-                      className="w-full aspect-[2/1] mb-2"
-                      label={f.name}
-                    />
                     <div className="font-semibold text-sm min-h-[2.6em] leading-tight">
                       {f.name}
                     </div>
