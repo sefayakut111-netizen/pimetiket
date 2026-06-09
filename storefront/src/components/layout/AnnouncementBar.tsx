@@ -3,18 +3,21 @@
 /** HAZIRAN20 kampanyası — 30 Haziran 2026 23:59 TR sonrası gizlenir. */
 const CAMPAIGN_VALID_UNTIL = new Date("2026-06-30T23:59:59+03:00");
 
-const MESSAGE = (
+const MESSAGES = [
   <>
     <span aria-hidden>🎉</span> Açılışa özel — Haziran boyunca{" "}
     <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-white/15 font-bold tracking-wide">
       HAZIRAN20
     </span>{" "}
     koduyla %20 indirim
-  </>
-);
+  </>,
+  <>Sadece Avrupa malzeme — Avery, Orafol, Fasson</>,
+  <>AI dosya kontrolü — üretime gitmeden eksikleri söyler</>,
+  <>Sipariş onayınla basılır — provayı sen onaylarsın</>,
+] as const;
 
 /** Geniş ekranda track > viewport olması için yarı başına tekrar sayısı */
-const MESSAGE_REPEATS_PER_HALF = 4;
+const MESSAGE_REPEATS_PER_HALF = 2;
 
 function MarqueeHalf({ hidden }: { hidden?: boolean }) {
   return (
@@ -22,14 +25,16 @@ function MarqueeHalf({ hidden }: { hidden?: boolean }) {
       className="flex shrink-0 items-center"
       {...(hidden ? { "aria-hidden": true as const } : {})}
     >
-      {Array.from({ length: MESSAGE_REPEATS_PER_HALF }, (_, i) => (
-        <span
-          key={i}
-          className="shrink-0 pe-12 text-[13px] font-medium leading-none whitespace-nowrap"
-        >
-          {MESSAGE}
-        </span>
-      ))}
+      {Array.from({ length: MESSAGE_REPEATS_PER_HALF }, (_, repeatIdx) =>
+        MESSAGES.map((message, msgIdx) => (
+          <span
+            key={`${repeatIdx}-${msgIdx}`}
+            className="shrink-0 pe-12 text-[13px] font-medium leading-none whitespace-nowrap"
+          >
+            {message}
+          </span>
+        ))
+      )}
     </div>
   );
 }

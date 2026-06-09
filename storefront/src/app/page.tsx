@@ -14,6 +14,7 @@ import { Button, Eyebrow } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import { HomeReviews } from "@/components/reviews/HomeReviews";
 import { HomeGallery } from "@/components/home/HomeGallery";
+import { HomeInstagram } from "@/components/home/HomeInstagram";
 import { HomeBlogSection } from "@/components/blog/BlogPreview";
 import { Pim } from "@/components/Pim";
 import { useSiteImage } from "@/lib/site-images-client";
@@ -206,33 +207,11 @@ export default function HomePage() {
                 </Button>
               )}
             </div>
-            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-gri-500">
-              <span className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center text-gri-700">
-                  1
-                </span>
-                {locale === "en" ? "Configure" : "Ayarla"}
-              </span>
-              <span className="text-gri-300">→</span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center text-gri-700">
-                  2
-                </span>
-                {locale === "en" ? "See price" : "Fiyat gör"}
-              </span>
-              <span className="text-gri-300">→</span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-gri-100 text-[10px] font-bold grid place-items-center text-gri-700">
-                  3
-                </span>
-                {locale === "en" ? "Order" : "Sipariş ver"}
-              </span>
-            </div>
             {/* Sefa kuralı (16 May denetim #23): Oturum açıkken
                 "Hesap aç" mikrokopisi gizli — kullanıcı zaten girmiş. */}
             {!user && (
               <div className="mt-3 flex items-center gap-1.5 text-[13px] text-gri-700">
-                <Icon.User size={13} className="text-gri-500" />
+                <Icon.User size={13} className="text-gri-600" />
                 <span>
                   {locale === "en" ? "For your first order" : "İlk siparişin için"}
                 </span>
@@ -244,7 +223,7 @@ export default function HomePage() {
                     ? "create a free account"
                     : "ücretsiz hesap aç"}
                 </Link>
-                <span className="text-gri-500">
+                <span className="text-gri-600">
                   — {locale === "en" ? "30 seconds" : "30 saniye"}
                 </span>
               </div>
@@ -404,33 +383,7 @@ export default function HomePage() {
 
       <HomeBlogSection locale={locale} limit={3} />
 
-      {/* ============================== INSTAGRAM ============================== */}
-      <section className="py-12">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8 text-center">
-          <h3 className="text-lg font-semibold mb-2">
-            {locale === "en"
-              ? "Follow us on Instagram"
-              : "Bizi Instagram'da takip edin"}
-          </h3>
-          <p className="text-[13px] text-gri-700 mb-5">
-            {locale === "en"
-              ? "Inspirations, behind the scenes, customer projects"
-              : "İlham, üretim sahne arkası, müşteri projeleri"}
-          </p>
-          <a
-            href="https://instagram.com/pimetiket"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold text-[14px] transition-opacity hover:opacity-90"
-            style={{
-              background:
-                "linear-gradient(45deg, #405DE6, #5851DB, #833AB4, #C13584, #E1306C, #FD1D1D, #F56040, #F77737, #FCAF45)",
-            }}
-          >
-            <Icon.Instagram size={18} /> @pimetiket
-          </a>
-        </div>
-      </section>
+      <HomeInstagram locale={locale} />
 
       {/* ============================== MOBILE STICKY CTA ============================== */}
       <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-sm border-t border-gri-200 shadow-lg px-4 py-3 safe-area-bottom">

@@ -189,7 +189,7 @@ function ReviewCard({ review, onPhotoClick }: ReviewCardProps) {
       )}
 
       {/* Footer: name + product + date */}
-      <div className="mt-4 pt-4 border-t border-gri-100 flex items-center justify-between text-[12px] text-gri-500">
+      <div className="mt-4 pt-4 border-t border-gri-100 flex items-center justify-between text-[12px] text-gri-600">
         <div>
           <strong className="text-lacivert font-semibold">
             {review.display_name}
