@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
-import { Button, Eyebrow } from "@/components/ui";
+import { Button } from "@/components/ui";
 
 interface BlogPost {
   slug: string;
@@ -87,8 +87,7 @@ export function HomeBlogSection({
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
           <div>
-            <Eyebrow>{locale === "en" ? "Blog" : "Blog"}</Eyebrow>
-            <h2 className="mt-3 text-[24px] font-semibold tracking-tight">
+            <h2 className="text-[24px] font-semibold tracking-tight">
               {locale === "en" ? "Tips & guides" : "İpuçları ve rehberler"}
             </h2>
           </div>

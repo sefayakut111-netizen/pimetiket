@@ -60,7 +60,7 @@ export function Button(props: ButtonProps) {
   const classes = cn(
     "inline-flex items-center justify-center gap-2 rounded-full font-semibold whitespace-nowrap select-none",
     "transition-all duration-150 ease-out",
-    "active:translate-y-0 active:scale-[0.99]",
+    "active:translate-y-0 active:scale-[0.97]",
     "disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0",
     VARIANT_CLASS[variant],
     SIZE_CLASS[size],

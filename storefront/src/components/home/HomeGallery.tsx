@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { Icon } from "@/components/Icon";
-import { Button, Eyebrow } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
 import type { Locale } from "@/lib/i18n/types";
 import { createClient } from "@/lib/supabase/client";
@@ -149,8 +149,7 @@ export function HomeGallery({ locale }: HomeGalleryProps) {
     <section className="py-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
         <div className="text-center">
-          <Eyebrow>{t.home.galleryEyebrow}</Eyebrow>
-          <h2 className="mt-4 text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
+          <h2 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
             {t.home.galleryTitle}
           </h2>
         </div>

@@ -270,8 +270,7 @@ export default function HomePage() {
       <section className="py-20 bg-gri-50">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <div className="text-center mb-12">
-            <Eyebrow>{t.home.howItWorksEyebrow}</Eyebrow>
-            <h2 className="mt-4 text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight max-w-[640px] mx-auto">
+            <h2 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight max-w-[640px] mx-auto">
               {t.home.howItWorksTitle}
             </h2>
           </div>
@@ -367,8 +366,7 @@ export default function HomePage() {
       <section className="py-12">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-16 items-start">
           <div>
-            <Eyebrow>{t.home.faqEyebrow}</Eyebrow>
-            <h2 className="mt-4 text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
+            <h2 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
               {t.home.faqTitle}
             </h2>
             <p className="mt-6 text-base text-gri-700 mb-6 leading-relaxed">
