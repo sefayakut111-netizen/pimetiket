@@ -335,49 +335,35 @@ export function Footer() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-x-10 md:gap-y-6 md:flex-1 md:max-w-[680px] md:ml-auto">
-          {FOOTER_GROUPS.map((g) => {
-            const isAccount = g.t === t.footer.groupAccount;
-            return (
-              <div
-                key={g.t}
-                className={isAccount ? "flex flex-col items-end" : undefined}
-              >
-                <div
-                  className={
-                    isAccount ? "inline-flex flex-col items-start w-fit" : undefined
-                  }
-                >
-                  {/* Sefa 17 May v27: sütun başlıkları mercan rengine
-                      (PİM'İN DEFTERİ eyebrow ile uyumlu) */}
-                  <div
-                    className={`text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-pim-mercan-koyu text-center${isAccount ? " w-full" : ""}`}
-                  >
-                    {g.t}
-                  </div>
-                  <div className="flex flex-col gap-2 items-start">
-                    {g.links.map((l) => {
-                      const skipPrefetch =
-                        g.t === t.footer.groupCompany ||
-                        g.t === t.footer.groupSupport ||
-                        g.t === t.footer.groupAccount ||
-                        l.href.includes("/yapilandir") ||
-                        l.href.includes("tab=tasarim");
-                      return (
-                        <Link
-                          key={l.label}
-                          href={l.href}
-                          prefetch={!skipPrefetch}
-                          className="text-[13px] text-white/80 hover:text-white transition-colors"
-                        >
-                          {l.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
+          {FOOTER_GROUPS.map((g) => (
+            <div key={g.t}>
+              {/* Sefa 17 May v27: sütun başlıkları mercan rengine
+                  (PİM'İN DEFTERİ eyebrow ile uyumlu) */}
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-pim-mercan-koyu text-center">
+                {g.t}
               </div>
-            );
-          })}
+              <div className="flex flex-col gap-2">
+                {g.links.map((l) => {
+                  const skipPrefetch =
+                    g.t === t.footer.groupCompany ||
+                    g.t === t.footer.groupSupport ||
+                    g.t === t.footer.groupAccount ||
+                    l.href.includes("/yapilandir") ||
+                    l.href.includes("tab=tasarim");
+                  return (
+                    <Link
+                      key={l.label}
+                      href={l.href}
+                      prefetch={!skipPrefetch}
+                      className="text-[13px] text-white/80 hover:text-white transition-colors"
+                    >
+                      {l.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
           </div>
         </div>
 
