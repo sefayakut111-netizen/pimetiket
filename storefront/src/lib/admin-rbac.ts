@@ -61,6 +61,7 @@ export interface AdminNavItemDef {
 /** /admin path prefix → required module (view). Profil/2FA herkese açık. */
 export const ADMIN_PATH_MODULES: Array<{ prefix: string; module: AdminModule }> =
   [
+    { prefix: "/admin/sistem/performans", module: "settings" },
     { prefix: "/admin/sistem", module: "staff" },
     { prefix: "/admin/kuyruk", module: "orders" },
     { prefix: "/admin/trafik", module: "dashboard" },

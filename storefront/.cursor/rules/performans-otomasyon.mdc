@@ -1,0 +1,39 @@
+---
+description: Teknik performans hub, cron otomasyon, CWV baseline, sistem overview
+globs: src/lib/system-overview.ts,src/lib/perf-baseline.ts,src/lib/cron-registry.ts,src/lib/cron-health.ts,src/app/admin/sistem/performans/**,src/app/api/admin/system-overview/**,src/app/admin/sistem/cronlar/**
+alwaysApply: false
+---
+
+# Teknik Performans & Otomasyon
+
+## Hub
+
+- Sayfa: `/admin/sistem/performans`
+- API: `GET /api/admin/system-overview` (`settings` view)
+- Veri: `buildSystemOverview()` — cron, denetçi, kuyruk, mail, env flag'leri
+
+## İlgili sayfalar (dağınık — hub birleştirir)
+
+- `/admin/sistem/cronlar` — 28 cron + `cron_runs`
+- `/admin/denetciler` — 10 auditor (`app_health`, `seo` performans için kritik)
+- `/admin/kuyruk` — operasyon SLA
+- `/admin/mail-health` — Resend stub/live
+- `/admin/trafik` — GA4 (CWV değil)
+
+## CWV
+
+- Baseline: `src/lib/perf-baseline.ts` (PSI 4 Haz 2026)
+- Canlı: Vercel Speed Insights (`VercelInsights.tsx`, KVKK analytics gated)
+- Hedef: mobile LCP < 3.5s, perf 85+
+
+## Otomasyon aktivasyon sırası
+
+1. Resend (`RESEND_API_KEY`)
+2. Yurtıçi (`YURTICI_USERNAME` / `PASSWORD`)
+3. `partner_auto_assign_enabled` (Ayarlar, ilk 5 sipariş manuel sonrası)
+
+## Kurallar
+
+- `cron-registry.ts` ↔ `vercel.json` senkron tut
+- `instagram-sync` route deprecated — cron yok
+- Mail tablo adı: `fason_mail_outbox` (polymorphic outbox)

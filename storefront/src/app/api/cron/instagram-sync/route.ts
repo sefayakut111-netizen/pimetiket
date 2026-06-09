@@ -1,3 +1,7 @@
+/**
+ * @deprecated Marka kararı (PIM-KURUMSAL-KIMLIK) — Instagram otomasyon iptal.
+ * Cron registry'de yok; route sadece manuel test için bırakıldı.
+ */
 import { NextResponse } from "next/server";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { syncInstagramToSiteImageSlots } from "@/lib/instagram/sync-slots";

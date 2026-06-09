@@ -204,8 +204,10 @@ function AdminFinansPageInner() {
     // Önce kendi cache (hızlı), sonra admin tüm siparişler (RLS bypass)
     refreshCustomerOrders()
       .then((o) => setOrders(o))
-      .catch(() => {
-        /* silent */
+      .catch((err: unknown) => {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[admin/finans] refreshCustomerOrders:", err);
+        }
       })
       .finally(() => {
         // Admin için son kelime: tüm müşterilerin siparişleri

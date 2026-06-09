@@ -254,6 +254,37 @@
       "cursorRule": "i18n.mdc"
     },
     {
+      "id": "perf-ops",
+      "label": "Teknik Performans & Otomasyon",
+      "globs": [
+        "src/lib/system-overview.ts",
+        "src/lib/perf-baseline.ts",
+        "src/lib/cron-registry.ts",
+        "src/lib/cron-health.ts",
+        "src/app/admin/sistem/performans/**",
+        "src/app/admin/sistem/cronlar/**",
+        "src/app/api/admin/system-overview/**",
+        "src/app/api/admin/cron-status/**",
+        "src/app/api/cron/**"
+      ],
+      "keywords": ["performans", "otomasyon", "cron", "CWV", "LCP", "hub", "system-overview", "app_health"],
+      "docs": [
+        "docs/CANLIYA-ALIM-ANALIZ-RAPORU-04-HAZ-2026.md",
+        "CURSOR-PROMPT-PERF-LCP-PAKET.md",
+        "docs/YURTICI-KARGO-SETUP.md"
+      ],
+      "hubs": [
+        "src/lib/system-overview.ts",
+        "src/lib/cron-registry.ts",
+        "src/app/api/admin/system-overview/route.ts"
+      ],
+      "alsoLoads": ["agents", "integrations"],
+      "schemaMigrations": ["104_cron_runs.sql"],
+      "schemaTables": ["cron_runs", "fason_mail_outbox", "site_settings"],
+      "claudeAgents": ["muhendis", "devops", "seo-analitik"],
+      "cursorRule": "performans-otomasyon.mdc"
+    },
+    {
       "id": "agents",
       "label": "Auditor Agent Sistemi",
       "globs": [
@@ -261,7 +292,7 @@
         "src/app/api/admin/auditors/**",
         "src/app/admin/auditors/**"
       ],
-      "keywords": ["auditor", "agent", "denetim", "circuit-breaker", "openai", "api entegrasyon"],
+      "keywords": ["auditor", "agent", "denetim", "circuit-breaker", "openai", "api entegrasyon", "performans", "otomasyon"],
       "docs": [
         "docs/SISTEM-BAGIMLILIK-HARITASI.md",
         "docs/API-INTEGRATION-FIXES.md",

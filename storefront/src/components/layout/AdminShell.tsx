@@ -148,6 +148,7 @@ const PATH_TITLES: Record<string, string> = {
   "/admin/urunler": "Ürün kartları",
   "/admin/kargo": "Kargo yönetimi",
   "/admin/ayarlar": "Ayarlar",
+  "/admin/sistem/performans": "Teknik performans",
   "/admin/sistem/cronlar": "Cron izleme",
   "/admin/sistem/bakim": "Bakım modu",
   "/admin/mail-health": "Mail sağlığı",
@@ -588,6 +589,13 @@ function AdminShellInner({ children }: { children: ReactNode }) {
             badge: badges.auditorsPending,
             badgeAccent: badges.auditorsCritical > 0,
             module: "auditors",
+          },
+          {
+            href: "/admin/sistem/performans",
+            label: "Teknik performans",
+            icon: <Icon.Eye size={16} />,
+            module: "settings",
+            adminOnly: true,
           },
           {
             href: "/admin/sistem/cronlar",
