@@ -20,6 +20,7 @@ import type {
   RealtimeSummary,
   RealtimeNotConfigured,
 } from "@/lib/analytics/ga4-data-api";
+import type { GscPerformanceSummary } from "@/lib/seo/gsc-performance";
 
 type TrafficResponse = TrafficSummary | TrafficNotConfigured;
 type RealtimeResponse = RealtimeSummary | RealtimeNotConfigured;
@@ -406,6 +407,91 @@ function RealtimeCard() {
   );
 }
 
+function GscQueriesCard() {
+  const [data, setData] = useState<GscPerformanceSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/admin/traffic/gsc", {
+          credentials: "include",
+        });
+        if (!res.ok || cancelled) return;
+        const json = (await res.json()) as GscPerformanceSummary;
+        if (!cancelled) setData(json);
+      } catch {
+        if (!cancelled) setData(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <Card padding="p-0" className="overflow-hidden">
+      <div className="border-b border-gray-100 px-5 py-4">
+        <Eyebrow>Search Console — organik sorgular (28 gün)</Eyebrow>
+      </div>
+      <div className="overflow-x-auto">
+        {loading ? (
+          <p className="px-5 py-8 text-sm text-gray-500">GSC verisi yükleniyor…</p>
+        ) : !data?.configured ? (
+          <p className="px-5 py-8 text-sm text-gray-500">
+            {data?.detail ??
+              "GSC Performance API yapılandırılmamış. `GSC_SA_*` veya GA4 service account + Search Console erişimi gerekir."}
+          </p>
+        ) : !data.ok ? (
+          <p className="px-5 py-8 text-sm text-amber-800">{data.detail}</p>
+        ) : data.rows.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-gray-500">Sorgu verisi yok.</p>
+        ) : (
+          <table className="w-full min-w-[520px] text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50/80 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                <th className="px-5 py-3">Sorgu</th>
+                <th className="px-5 py-3 text-right">Tıklama</th>
+                <th className="px-5 py-3 text-right">Gösterim</th>
+                <th className="px-5 py-3 text-right">CTR</th>
+                <th className="px-5 py-3 text-right">Pozisyon</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.slice(0, 15).map((row) => (
+                <tr
+                  key={row.query}
+                  className="border-b border-gray-50 last:border-0"
+                >
+                  <td className="max-w-xs truncate px-5 py-3 text-gray-900">
+                    {row.query}
+                  </td>
+                  <td className="px-5 py-3 text-right tabular-nums">
+                    {formatCount(row.clicks)}
+                  </td>
+                  <td className="px-5 py-3 text-right tabular-nums">
+                    {formatCount(row.impressions)}
+                  </td>
+                  <td className="px-5 py-3 text-right tabular-nums">
+                    {formatPercent(row.ctr)}
+                  </td>
+                  <td className="px-5 py-3 text-right tabular-nums">
+                    {row.position.toFixed(1)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export function TrafficDashboard() {
   const [range, setRange] = useState<TrafficRange>("28d");
   const [data, setData] = useState<TrafficResponse | null>(null);
@@ -610,6 +696,7 @@ export function TrafficDashboard() {
     <div className="space-y-6">
       <RealtimeCard />
       {main}
+      <GscQueriesCard />
     </div>
   );
 }

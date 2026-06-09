@@ -1,11 +1,11 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
+import { legalPageMetadata } from "@/lib/seo/legal-metadata";
 
-export const metadata = {
-  title: "Gizlilik Politikası",
-  description:
-    "Pim Etiket'in gizlilik politikası ve kişisel veri işleme prensipleri.",
-  alternates: { canonical: "/gizlilik" },
-};
+export const metadata = legalPageMetadata(
+  "Gizlilik Politikası",
+  "Pim Etiket'in gizlilik politikası ve kişisel veri işleme prensipleri.",
+  "/gizlilik"
+);
 
 export default function GizlilikPage() {
   return (

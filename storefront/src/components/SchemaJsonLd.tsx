@@ -59,6 +59,7 @@ interface ProductSchemaInput {
   description: string;
   category: string;
   image?: string;
+  url?: string;
   priceFrom: number;
   priceCurrency?: string;
   brand?: string;
@@ -73,6 +74,7 @@ export function productSchema(input: ProductSchemaInput): JsonLdData {
     name: input.name,
     description: input.description,
     category: input.category,
+    url: input.url ? `${SITE_URL}${input.url}` : undefined,
     brand: {
       "@type": "Brand",
       name: input.brand ?? "Pim Etiket",
@@ -150,6 +152,31 @@ export function breadcrumbSchema(items: BreadcrumbItem[]): JsonLdData {
       position: i + 1,
       name: it.label,
       item: `${SITE_URL}${it.url}`,
+    })),
+  };
+}
+
+interface ItemListEntry {
+  name: string;
+  url: string;
+}
+
+export function itemListSchema(input: {
+  name: string;
+  description?: string;
+  items: ItemListEntry[];
+}): JsonLdData {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: input.name,
+    description: input.description,
+    numberOfItems: input.items.length,
+    itemListElement: input.items.map((it, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: it.name,
+      url: `${SITE_URL}${it.url}`,
     })),
   };
 }

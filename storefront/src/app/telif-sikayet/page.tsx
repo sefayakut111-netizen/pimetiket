@@ -11,13 +11,13 @@
 
 import type { Metadata } from "next";
 import { Eyebrow } from "@/components/ui";
+import { legalPageMetadata } from "@/lib/seo/legal-metadata";
 
-export const metadata: Metadata = {
-  title: "Telif Hakkı Şikayeti — Pim Etiket",
-  description:
-    "Pim Etiket telif hakkı veya marka ihlali bildirimi. FSEK + Sınai Mülkiyet Kanunu kapsamında takedown notice prosedürü.",
-  alternates: { canonical: "/telif-sikayet" },
-};
+export const metadata: Metadata = legalPageMetadata(
+  "Telif Hakkı Şikayeti — Pim Etiket",
+  "Pim Etiket telif hakkı veya marka ihlali bildirimi. FSEK + Sınai Mülkiyet Kanunu kapsamında takedown notice prosedürü.",
+  "/telif-sikayet"
+);
 
 export default function TelifSikayetPage() {
   return (

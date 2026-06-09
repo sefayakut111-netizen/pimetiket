@@ -1,10 +1,11 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
+import { legalPageMetadata } from "@/lib/seo/legal-metadata";
 
-export const metadata = {
-  title: "Kullanım Şartları",
-  description: "Pim Etiket platformunu kullanmaya ilişkin genel şartlar ve koşullar.",
-  alternates: { canonical: "/sartlar" },
-};
+export const metadata = legalPageMetadata(
+  "Kullanım Şartları",
+  "Pim Etiket platformunu kullanmaya ilişkin genel şartlar ve koşullar.",
+  "/sartlar"
+);
 
 export default function SartlarPage() {
   return (

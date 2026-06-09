@@ -1,11 +1,11 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
+import { legalPageMetadata } from "@/lib/seo/legal-metadata";
 
-export const metadata = {
-  title: "Ön Bilgilendirme Formu",
-  description:
-    "6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği uyarınca tüketiciye sunulan zorunlu ön bilgilendirme.",
-  alternates: { canonical: "/on-bilgilendirme" },
-};
+export const metadata = legalPageMetadata(
+  "Ön Bilgilendirme Formu",
+  "6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği uyarınca tüketiciye sunulan zorunlu ön bilgilendirme.",
+  "/on-bilgilendirme"
+);
 
 export default function OnBilgilendirmePage() {
   return (

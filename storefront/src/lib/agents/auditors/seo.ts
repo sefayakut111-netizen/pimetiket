@@ -15,6 +15,7 @@ import { MATERIAL_SLUGS } from "@/lib/seo/materials";
 import { pingAllSearchEngines } from "@/lib/seo/search-engine-ping";
 import { fetchGscTopQueries } from "@/lib/seo/gsc-performance";
 import { getSiteUrl } from "@/lib/site-url";
+import { getSiteImage } from "@/lib/site-images";
 
 const SITE_URL = () => getSiteUrl();
 
@@ -69,6 +70,14 @@ export class SeoAuditor extends AuditorBase {
     const gscPerf = await this.checkGscPerformance();
     findings.push(...gscPerf.findings);
     metrics.gscPerformance = gscPerf.metrics;
+
+    const ogDefault = await this.checkOgDefault();
+    findings.push(...ogDefault.findings);
+    metrics.ogDefault = ogDefault.metrics;
+
+    const pwaIcons = await this.checkPwaIcons();
+    findings.push(...pwaIcons.findings);
+    metrics.pwaIcons = pwaIcons.metrics;
 
     if (sitemap.metrics.reachable) {
       const ping = await this.pingSearchEngines();
@@ -416,6 +425,84 @@ export class SeoAuditor extends AuditorBase {
       findings,
       metrics: { configured: true, ok: true, rowCount: result.rows.length },
     };
+  }
+
+  private async checkOgDefault() {
+    const findings: AuditorFinding[] = [];
+    try {
+      const og = await getSiteImage("og_default");
+      if (og?.publicUrl) {
+        findings.push(
+          this.info(
+            "og_default_ok",
+            "og_default görseli yüklü",
+            "Anasayfa Open Graph admin panelinden özelleştirilmiş.",
+            { url: og.publicUrl }
+          )
+        );
+        return { findings, metrics: { configured: true } };
+      }
+      findings.push(
+        this.warning(
+          "og_default_missing",
+          "og_default görseli yok",
+          "Dinamik `opengraph-image.tsx` fallback kullanılıyor. `/admin/gorseller` → og_default slot yükleyin.",
+          {}
+        )
+      );
+      return { findings, metrics: { configured: false } };
+    } catch (err) {
+      findings.push(
+        this.warning(
+          "og_default_check_failed",
+          "og_default kontrolü başarısız",
+          err instanceof Error ? err.message : String(err),
+          {}
+        )
+      );
+      return { findings, metrics: { configured: false } };
+    }
+  }
+
+  private async checkPwaIcons() {
+    const findings: AuditorFinding[] = [];
+    const baseUrl = SITE_URL();
+    const paths = ["/icon-192.png", "/icon-512.png", "/apple-touch-icon.png", "/favicon.ico"];
+    const results: Array<{ path: string; ok: boolean; status: number }> = [];
+
+    for (const path of paths) {
+      try {
+        const res = await fetch(`${baseUrl}${path}`, {
+          method: "HEAD",
+          cache: "no-store",
+        });
+        results.push({ path, ok: res.ok, status: res.status });
+      } catch {
+        results.push({ path, ok: false, status: 0 });
+      }
+    }
+
+    const broken = results.filter((r) => !r.ok);
+    if (broken.length > 0) {
+      findings.push(
+        this.warning(
+          "pwa_icons_missing",
+          `${broken.length} PWA/favicon dosyası erişilemiyor`,
+          `Eksik: ${broken.map((b) => b.path).join(", ")}. \`node scripts/generate-icons.mjs\` çalıştırın.`,
+          { broken }
+        )
+      );
+    } else {
+      findings.push(
+        this.info(
+          "pwa_icons_ok",
+          "PWA ikonları erişilebilir",
+          "favicon.ico, apple-touch-icon, icon-192/512 ✓",
+          { count: paths.length }
+        )
+      );
+    }
+    return { findings, metrics: { total: paths.length, broken: broken.length } };
   }
 
   private async pingSearchEngines() {

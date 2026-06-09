@@ -1,18 +1,34 @@
-# Pim Etiket
-> Türkiye'de online etiket ve sticker baskı hizmeti — etiket baskıda uzman. Kuşe, şeffaf/transparan, kraft, metalik, holografik, vinil malzemelerde rulo ve tabaka etiket; die-cut, kiss-cut, bumper sticker. Küçük adetten, AI destekli: online yapılandır, tasarım yükle ya da şablon seç, baskıya gönder.
-
-## Ürünler
-- [Etiket baskı](https://pimetiket.com/etiket): rulo + tabaka; kuşe, şeffaf, kraft, metalik...
-- [Rulo etiket](https://pimetiket.com/etiket/rulo): yüksek adet, otomatik etiketleme
-- [Tabaka etiket](https://pimetiket.com/etiket/tabaka): düşük adet, butik üretim
-- [Sticker baskı](https://pimetiket.com/sticker): die-cut, kiss-cut, holografik, transparan, bumper
-- [Die-cut sticker](https://pimetiket.com/sticker/die-cut): özel kesim logo sticker
-- [Malzemeler](https://pimetiket.com/malzemeler): 8 malzeme + kaplama + özelleştirme
-- [Hazır kesim şablonları](https://pimetiket.com/sablonlar): 65 die-cut şablon
-
-## Bilgi / Rehber
-- [SSS](https://pimetiket.com/sss): malzeme, kesim, teslimat, ödeme soruları
-- [Blog](https://pimetiket.com/blog): etiket/sticker rehberleri ve karşılaştırmalar
-
-## İletişim
-- [İletişim](https://pimetiket.com/iletisim)
+# Pim Etiket
+> Türkiye'de online etiket ve sticker baskı hizmeti — etiket baskıda uzman. Kuşe, şeffaf/transparan, kraft, metalik, holografik, vinil malzemelerde rulo ve tabaka etiket; die-cut, kiss-cut, bumper sticker. Küçük adetten, AI destekli: online yapılandır, tasarım yükle ya da şablon seç, baskıya gönder.
+
+## Ürünler
+- [Etiket baskı](https://pimetiket.com/etiket): rulo + tabaka; kuşe, şeffaf, kraft, metalik...
+- [Rulo etiket](https://pimetiket.com/etiket/rulo): yüksek adet, otomatik etiketleme
+- [Tabaka etiket](https://pimetiket.com/etiket/tabaka): düşük adet, butik üretim
+- [Sticker baskı](https://pimetiket.com/sticker): die-cut, kiss-cut, holografik, transparan, bumper
+- [Die-cut sticker](https://pimetiket.com/sticker/die-cut): özel kesim logo sticker
+- [Kiss-cut sticker](https://pimetiket.com/sticker/kiss-cut): yarı kesim sticker
+- [Holografik sticker](https://pimetiket.com/sticker/holografik): parlak efekt sticker
+- [Transparan sticker](https://pimetiket.com/sticker/transparan): şeffaf vinil sticker
+- [Malzemeler](https://pimetiket.com/malzemeler): 8 malzeme + kaplama + özelleştirme
+- [Kraft etiket](https://pimetiket.com/malzeme/kraft): doğal kağıt etiket
+- [Kuşe etiket](https://pimetiket.com/malzeme/beyaz-semi-glos): beyaz semi-gloss etiket
+- [Şeffaf etiket](https://pimetiket.com/malzeme/ultra-clear): ultra clear etiket
+- [Metalik etiket](https://pimetiket.com/malzeme/metalik): metalik folyo etiket
+- [Vinil etiket](https://pimetiket.com/malzeme/vinil): suya dayanıklı vinil
+- [Holografik malzeme](https://pimetiket.com/malzeme/holografik): holografik baskı
+- [Simli sticker](https://pimetiket.com/malzeme/simli): glitter sticker malzemesi
+- [Hazır kesim şablonları](https://pimetiket.com/sablonlar): 65 die-cut şablon
+
+## Bilgi / Rehber
+- [SSS](https://pimetiket.com/sss): malzeme, kesim, teslimat, ödeme soruları
+- [Blog](https://pimetiket.com/blog): etiket/sticker rehberleri ve karşılaştırmalar
+- [Terim sözlüğü](https://pimetiket.com/terim-sozlugu): baskı ve kesim terimleri
+- [Nasıl üretiyoruz](https://pimetiket.com/nasil-uretiyoruz): üretim süreci
+- [Hakkımızda](https://pimetiket.com/hakkimizda): Pim Etiket markası
+- [Müşteri yorumları](https://pimetiket.com/yorumlar): doğrulanmış değerlendirmeler
+- [Galeri](https://pimetiket.com/galeri): örnek baskılar
+
+## İletişim
+- [İletişim](https://pimetiket.com/iletisim)
+- [Firma bilgileri](https://pimetiket.com/firma-bilgileri)

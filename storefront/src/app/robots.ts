@@ -16,6 +16,14 @@ const PRIVATE_DISALLOW = [
   "/sifre-sifirla",
   "/auth",
   "/fason/",
+  "/partner/",
+  "/onay/",
+  "/bildirim-tercihleri",
+  "/yorum-yaz/",
+  "/ayarlar/",
+  "/studio",
+  "/editor",
+  "/destek",
   "/api/",
 ] as const;
 

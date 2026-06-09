@@ -1,11 +1,11 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
+import { legalPageMetadata } from "@/lib/seo/legal-metadata";
 
-export const metadata = {
-  title: "KVKK Aydınlatma Metni",
-  description:
-    "6698 sayılı KVKK kapsamında Pim Etiket'in kişisel veri işleme aydınlatma metni.",
-  alternates: { canonical: "/kvkk" },
-};
+export const metadata = legalPageMetadata(
+  "KVKK Aydınlatma Metni",
+  "6698 sayılı KVKK kapsamında Pim Etiket'in kişisel veri işleme aydınlatma metni.",
+  "/kvkk"
+);
 
 export default function KvkkPage() {
   return (

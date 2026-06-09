@@ -41,6 +41,7 @@ export function TypeLandingPage({ landing, hubLabel, hubHref }: Props) {
           category:
             landing.productType === "etiket" ? "Print/Labels" : "Print/Stickers",
           priceFrom: landing.productType === "etiket" ? 350 : 200,
+          url: path,
         })}
       />
 

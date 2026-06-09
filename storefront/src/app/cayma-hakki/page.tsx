@@ -1,11 +1,11 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
+import { legalPageMetadata } from "@/lib/seo/legal-metadata";
 
-export const metadata = {
-  title: "Cayma Hakkı",
-  description:
-    "Pim Etiket'te dijital baskı ürünlerinde cayma hakkının kapsamı ve istisnaları.",
-  alternates: { canonical: "/cayma-hakki" },
-};
+export const metadata = legalPageMetadata(
+  "Cayma Hakkı",
+  "Pim Etiket'te dijital baskı ürünlerinde cayma hakkının kapsamı ve istisnaları.",
+  "/cayma-hakki"
+);
 
 export default function CaymaHakkiPage() {
   return (

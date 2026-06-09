@@ -9,6 +9,7 @@ import { VercelInsights } from "@/components/VercelInsights";
 import { CopyProtection } from "@/components/security/CopyProtection";
 import { getSiteImage } from "@/lib/site-images";
 import { getSiteUrl } from "@/lib/site-url";
+import { withTrHreflang } from "@/lib/seo/page-metadata";
 import { RootJsonLd } from "@/components/seo/RootJsonLd";
 import "./globals.css";
 
@@ -134,9 +135,7 @@ export async function generateMetadata(): Promise<Metadata> {
         "max-snippet": -1,
       },
     },
-    alternates: {
-      canonical: "/",
-    },
+    alternates: withTrHreflang("/"),
     category: "shopping",
     // Search engine verification — env'e ekleyince meta tag otomatik basılır
     // Google:  <meta name="google-site-verification" content="..." />
@@ -155,6 +154,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr" className={`${nunito.variable} h-full antialiased`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-white text-lacivert">
         <a
           href="#main"

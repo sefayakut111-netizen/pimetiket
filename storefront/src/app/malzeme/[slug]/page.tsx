@@ -62,6 +62,7 @@ export default async function MalzemeLandingPage({ params }: Props) {
           category:
             material.productType === "etiket" ? "Print/Labels" : "Print/Stickers",
           priceFrom: material.productType === "etiket" ? 500 : 200,
+          url: materialDetailPath(slug),
         })}
       />
       <SchemaJsonLd

@@ -11,13 +11,13 @@ import Link from "next/link";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Eyebrow } from "@/components/ui";
+import { legalPageMetadata } from "@/lib/seo/legal-metadata";
 
-export const metadata: Metadata = {
-  title: "İade ve değişim politikası",
-  description:
-    "Pim Etiket iade-değişim koşulları: kişiselleştirilmiş ürün, üretim hatası, kargo hasarı durumları.",
-  alternates: { canonical: "/iade-degisim-politikasi" },
-};
+export const metadata: Metadata = legalPageMetadata(
+  "İade ve değişim politikası",
+  "Pim Etiket iade-değişim koşulları: kişiselleştirilmiş ürün, üretim hatası, kargo hasarı durumları.",
+  "/iade-degisim-politikasi"
+);
 
 export default function IadeDegisimPolitikasiPage() {
   return (

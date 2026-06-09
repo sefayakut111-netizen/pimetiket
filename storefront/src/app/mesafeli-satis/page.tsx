@@ -4,13 +4,13 @@ import {
   PIM_PRODUCTION_BUSINESS_DAYS,
 } from "@/lib/pim/site-facts";
 import { DEFAULT_CONTACT_PHONE, formatPhoneDisplay } from "@/lib/site-settings-shared";
+import { legalPageMetadata } from "@/lib/seo/legal-metadata";
 
-export const metadata = {
-  title: "Mesafeli Satış Sözleşmesi",
-  description:
-    "Pim Etiket üzerinden verilen siparişler için Mesafeli Satış Sözleşmesi.",
-  alternates: { canonical: "/mesafeli-satis" },
-};
+export const metadata = legalPageMetadata(
+  "Mesafeli Satış Sözleşmesi",
+  "Pim Etiket üzerinden verilen siparişler için Mesafeli Satış Sözleşmesi.",
+  "/mesafeli-satis"
+);
 
 export default function MesafeliSatisPage() {
   return (

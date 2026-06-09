@@ -1,4 +1,20 @@
 import type { Metadata } from "next";
+import { getSiteUrl } from "@/lib/site-url";
+
+const SITE_URL = getSiteUrl();
+
+/** TR-only hreflang — /en prefix açılmadan yalnızca tr-TR + x-default */
+export function withTrHreflang(canonical: string): Metadata["alternates"] {
+  const path = canonical.startsWith("/") ? canonical : `/${canonical}`;
+  const absolute = `${SITE_URL}${path === "/" ? "" : path}`;
+  return {
+    canonical: path,
+    languages: {
+      "tr-TR": absolute,
+      "x-default": absolute,
+    },
+  };
+}
 
 /** Tutarlı Open Graph + Twitter (summary_large_image) */
 export function withSocialMetadata(input: {

@@ -9,7 +9,8 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { withSocialMetadata } from "@/lib/seo/page-metadata";
+import { SchemaJsonLd, itemListSchema } from "@/components/SchemaJsonLd";
+import { withSocialMetadata, withTrHreflang } from "@/lib/seo/page-metadata";
 import { Icon } from "@/components/Icon";
 import { Eyebrow, MaterialSwatch, type SurfaceId } from "@/components/ui";
 import {
@@ -23,12 +24,15 @@ const title =
   "Etiket & Sticker Malzemeleri — Kuşe, Kraft, Şeffaf, Holografik";
 const description =
   "Kuşe, kraft, şeffaf, holografik ve metalik etiket ile sticker malzemeleri. Kaplama (mat/parlak selefon, soft touch), dayanım ve kullanım alanları — konfigüratörden seçmeden önce detaylı incele.";
+const canonical = "/malzemeler";
+
+const ALL_MATERIALS = [...ETIKET_MATERIALS, ...STICKER_MATERIALS];
 
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "/malzemeler" },
-  ...withSocialMetadata({ title, description, canonical: "/malzemeler" }),
+  alternates: withTrHreflang(canonical),
+  ...withSocialMetadata({ title, description, canonical }),
 };
 
 const COATINGS: { name: string; desc: string; swatchSurface: SurfaceId }[] = [
@@ -112,6 +116,16 @@ function MaterialCard({ m }: { m: MaterialInfo }) {
 export default function MalzemelerPage() {
   return (
     <main className="bg-gri-50 animate-fade-up py-8 pb-20">
+      <SchemaJsonLd
+        data={itemListSchema({
+          name: "Etiket ve sticker malzemeleri",
+          description,
+          items: ALL_MATERIALS.map((m) => ({
+            name: m.name,
+            url: materialDetailPath(m.slug),
+          })),
+        })}
+      />
       <div className="mx-auto max-w-[1120px] px-6">
         <div className="mb-8">
           <Eyebrow>Tanıtım</Eyebrow>

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { SchemaJsonLd, productSchema, breadcrumbSchema } from "@/components/SchemaJsonLd";
-import { withSocialMetadata } from "@/lib/seo/page-metadata";
+import { withSocialMetadata, withTrHreflang } from "@/lib/seo/page-metadata";
 
 // Sefa 21 May v68 SEO Sprint: ISR — sayfa 1 saatte bir yeniden üretilir
 // (admin product_cards değiştirirse yenilenir). TTFB 1.2s → ~0.3s düşmesi
@@ -24,34 +23,10 @@ const canonical = "/etiket";
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical },
+  alternates: withTrHreflang(canonical),
   ...withSocialMetadata({ title, description, canonical }),
 };
 
-// Sefa 21 May v68 SEO Sprint: Schema.org Product + BreadcrumbList.
-// Google Rich Results "Product" göstermek için kritik (fiyat + yıldız).
-// priceFrom — 1.000 adet × ~50 kr ≈ 500 TL tahmin (mevcut tier'larından).
-// AggregateRating ileride DB'den çekilir; şimdilik omit.
-const ETIKET_SCHEMA = productSchema({
-  name: "Etiket — rulo ve tabaka etiket baskı",
-  description:
-    "Kozmetik, gıda, içecek ve parfüm için özel kesim etiket. Vinil, kuşe, şeffaf malzemeler. AI dosya kontrolü ile 10 iş günü içinde kargoda.",
-  category: "Print/Labels",
-  priceFrom: 500,
-  priceCurrency: "TRY",
-  brand: "Pim Etiket",
-});
-
-const ETIKET_BREADCRUMB = breadcrumbSchema([
-  { label: "Anasayfa", url: "/" },
-  { label: "Etiket", url: "/etiket" },
-]);
-
 export default function EtiketLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <SchemaJsonLd data={[ETIKET_SCHEMA, ETIKET_BREADCRUMB]} />
-      {children}
-    </>
-  );
+  return children;
 }

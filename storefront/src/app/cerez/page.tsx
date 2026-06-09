@@ -1,12 +1,12 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
 import { ManageCookiesButton } from "@/components/ManageCookiesButton";
+import { legalPageMetadata } from "@/lib/seo/legal-metadata";
 
-export const metadata = {
-  title: "Çerez Politikası",
-  description:
-    "Pim Etiket'te kullanılan çerezler, amaçları ve tarayıcı tercihleri.",
-  alternates: { canonical: "/cerez" },
-};
+export const metadata = legalPageMetadata(
+  "Çerez Politikası",
+  "Pim Etiket'te kullanılan çerezler, amaçları ve tarayıcı tercihleri.",
+  "/cerez"
+);
 
 export default function CerezPage() {
   return (
