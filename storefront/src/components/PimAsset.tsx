@@ -18,7 +18,8 @@
  *   variant="markText" bg="light" → mark-with-text (açık zemin)
  *   variant="markText" bg="dark"  → mark-with-text-light (Footer lacivert)
  *   variant="icon" bg="light" → mark-dark       (admin sidebar beyaz, light card)
- *   variant="icon" bg="dark"  → mark-light      (mercan/lacivert chat button)
+ *   variant="icon" bg="dark"  → mark-light      (lacivert zeminler)
+ *   Chat mercan buton → mark-dark (bg="light", ters renk yok)
  *
  * Backward compat: variant="detailed" → icon olarak alias'lanır (eski Pim
  * component'i kullanıyor; yeni set'te "detailed" karşılığı yok).

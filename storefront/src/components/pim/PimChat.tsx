@@ -384,8 +384,8 @@ export function PimChat() {
         }}
       >
         <span className="relative inline-flex items-center justify-center h-14 w-14 rounded-full bg-pim-mercan shadow-mercan-lg ring-4 ring-white hover:scale-105 transition-transform">
-          {/* Mercan koyu zemin → mark-light (krem icon) */}
-          <PimAsset variant="icon" bg="dark" size={36} bob={false} />
+          {/* Mercan zemin → mark-dark (ters renk yok) */}
+          <PimAsset variant="icon" bg="light" size={36} bob={false} />
           {unread > 0 && (
             <span
               aria-hidden
@@ -416,8 +416,8 @@ export function PimChat() {
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gri-200 bg-gradient-to-br from-pim-mercan-tint to-white">
           <span className="grid place-items-center h-10 w-10 rounded-full bg-pim-mercan ring-2 ring-white shadow-1">
-            {/* Chat header mercan koyu → mark-light */}
-            <PimAsset variant="icon" bg="dark" size={28} bob={false} />
+            {/* Chat header mercan → mark-dark (ters renk yok) */}
+            <PimAsset variant="icon" bg="light" size={28} bob={false} />
           </span>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-[15px] leading-tight text-lacivert">
@@ -1141,7 +1141,7 @@ function ChatConsentInline({
     <div className="space-y-3 animate-fade-up">
       <div className="flex gap-2.5 items-start">
         <span className="grid place-items-center h-8 w-8 rounded-full bg-pim-mercan shrink-0 mt-0.5">
-          <PimAsset variant="icon" bg="dark" size={20} bob={false} />
+          <PimAsset variant="icon" bg="light" size={20} bob={false} />
         </span>
         <div className="flex-1 min-w-0 rounded-xl rounded-tl-sm bg-white ring-1 ring-gri-200 p-3.5">
           <h3
