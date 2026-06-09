@@ -67,7 +67,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
   {
     id: "home_instagram_1",
     label: "Anasayfa Instagram 1",
-    description: "Anasayfa Instagram bölümünde 1. kare (küçük grid).",
+    description: "Anasayfa Instagram 1 — yalnızca gerçek IG gönderisi (cron sync veya post linki ile).",
     aspectRatio: "1:1",
     dimensions: { width: 600, height: 600 },
     category: "anasayfa",
@@ -76,7 +76,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
   {
     id: "home_instagram_2",
     label: "Anasayfa Instagram 2",
-    description: "Anasayfa Instagram bölümünde 2. kare (küçük grid).",
+    description: "Anasayfa Instagram 2 — yalnızca gerçek IG gönderisi (cron sync veya post linki ile).",
     aspectRatio: "1:1",
     dimensions: { width: 600, height: 600 },
     category: "anasayfa",
@@ -85,7 +85,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
   {
     id: "home_instagram_3",
     label: "Anasayfa Instagram 3",
-    description: "Anasayfa Instagram bölümünde 3. kare (küçük grid).",
+    description: "Anasayfa Instagram 3 — yalnızca gerçek IG gönderisi (cron sync veya post linki ile).",
     aspectRatio: "1:1",
     dimensions: { width: 600, height: 600 },
     category: "anasayfa",
@@ -94,7 +94,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
   {
     id: "home_instagram_4",
     label: "Anasayfa Instagram 4",
-    description: "Anasayfa Instagram bölümünde 4. kare (küçük grid).",
+    description: "Anasayfa Instagram 4 — yalnızca gerçek IG gönderisi (cron sync veya post linki ile).",
     aspectRatio: "1:1",
     dimensions: { width: 600, height: 600 },
     category: "anasayfa",
@@ -103,7 +103,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
   {
     id: "home_instagram_5",
     label: "Anasayfa Instagram 5",
-    description: "Anasayfa Instagram bölümünde 5. kare (küçük grid).",
+    description: "Anasayfa Instagram 5 — yalnızca gerçek IG gönderisi (cron sync veya post linki ile).",
     aspectRatio: "1:1",
     dimensions: { width: 600, height: 600 },
     category: "anasayfa",
@@ -112,7 +112,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
   {
     id: "home_instagram_6",
     label: "Anasayfa Instagram 6",
-    description: "Anasayfa Instagram bölümünde 6. kare (küçük grid).",
+    description: "Anasayfa Instagram 6 — yalnızca gerçek IG gönderisi (cron sync veya post linki ile).",
     aspectRatio: "1:1",
     dimensions: { width: 600, height: 600 },
     category: "anasayfa",

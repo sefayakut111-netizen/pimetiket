@@ -1,8 +1,7 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getSiteImages } from "@/lib/site-images";
 import { fetchInstagramMedia, mediaToFeedPost } from "./fetch-media";
 import type { InstagramFeedPost, InstagramFeedResponse } from "./types";
-import { INSTAGRAM_HANDLE, INSTAGRAM_PROFILE_URL } from "./types";
+import { INSTAGRAM_HANDLE } from "./types";
 
 const INSTAGRAM_SLOTS = [
   "home_instagram_1",
@@ -13,48 +12,34 @@ const INSTAGRAM_SLOTS = [
   "home_instagram_6",
 ] as const;
 
-function postsFromSlots(
-  images: Record<string, { publicUrl: string; altText: string | null; linkUrl: string | null }>
+/** Gerçek IG gönderisi linki mi? (profil URL'si değil) */
+function isInstagramPostUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /instagram\.com\/(p|reel|tv)\//i.test(url);
+}
+
+/** Cron sync veya admin'in IG postu olarak işaretlediği slot mu? */
+function isSyncedInstagramSlot(storagePath: string, linkUrl: string | null): boolean {
+  if (!storagePath.startsWith("site-images/home_instagram_")) return false;
+  return isInstagramPostUrl(linkUrl);
+}
+
+function postsFromSyncedSlots(
+  images: Record<string, { publicUrl: string; altText: string | null; linkUrl: string | null; storagePath: string }>
 ): InstagramFeedPost[] {
   return INSTAGRAM_SLOTS.flatMap((slot, index) => {
     const image = images[slot];
-    if (!image) return [];
+    if (!image || !isSyncedInstagramSlot(image.storagePath, image.linkUrl)) return [];
     return [
       {
         id: slot,
         imageUrl: image.publicUrl,
-        permalink: image.linkUrl ?? INSTAGRAM_PROFILE_URL,
+        permalink: image.linkUrl!,
         altText: image.altText ?? `Pim Etiket Instagram ${index + 1}`,
         caption: image.altText,
       },
     ];
   });
-}
-
-async function postsFromGallery(limit = 6): Promise<InstagramFeedPost[]> {
-  try {
-    const admin = createAdminClient();
-    const { data, error } = await admin
-      .from("gallery_items")
-      .select("id, image_path, title")
-      .eq("is_published", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (error || !data?.length) return [];
-
-    const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-    return data.map((item) => ({
-      id: item.id,
-      imageUrl: `${base}/storage/v1/object/public/public-assets/${item.image_path}`,
-      permalink: INSTAGRAM_PROFILE_URL,
-      altText: item.title ?? "Pim Etiket üretim örneği",
-      caption: item.title ?? null,
-    }));
-  } catch {
-    return [];
-  }
 }
 
 export async function getInstagramHomeFeed(
@@ -79,14 +64,9 @@ export async function getInstagramHomeFeed(
   }
 
   const slotImages = await getSiteImages([...INSTAGRAM_SLOTS]);
-  const slotPosts = postsFromSlots(slotImages);
+  const slotPosts = postsFromSyncedSlots(slotImages);
   if (slotPosts.length > 0) {
     return { posts: slotPosts.slice(0, limit), source: "slots", handle: INSTAGRAM_HANDLE };
-  }
-
-  const galleryPosts = await postsFromGallery(limit);
-  if (galleryPosts.length > 0) {
-    return { posts: galleryPosts, source: "gallery", handle: INSTAGRAM_HANDLE };
   }
 
   return { posts: [], source: "empty", handle: INSTAGRAM_HANDLE };
