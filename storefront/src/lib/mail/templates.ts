@@ -376,7 +376,7 @@ function renderLeadWelcome(input: MailTemplateInput): MailRendered {
     ${
       downloadUrl
         ? `<div style="margin: 24px 0; text-align: center;">
-            <a href="${downloadUrl}" style="display: inline-block; background: #ff6b5b; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">
+            <a href="${downloadUrl}" style="display: inline-block; background: #ef3e56; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">
               ✨ Şablon paketini indir
             </a>
           </div>`
@@ -443,7 +443,7 @@ function renderCustomerAbandonedCart(input: MailTemplateInput): MailRendered {
     ${
       couponCode
         ? `<div style="margin: 20px 0; padding: 16px; background: #fff1ee; border-radius: 12px; text-align: center;">
-            <div style="font-size: 12px; color: #ff6b5b; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Sana özel</div>
+            <div style="font-size: 12px; color: #ef3e56; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Sana özel</div>
             <div style="font-size: 24px; font-weight: 700; color: #1e293b; margin-top: 4px;">%10 indirim</div>
             <div style="font-size: 14px; color: #57534e; margin-top: 4px;">Kupon: <strong style="font-family: monospace;">${couponCode}</strong></div>
             <div style="font-size: 11px; color: #78716c; margin-top: 6px;">7 gün geçerli</div>
@@ -457,7 +457,7 @@ function renderCustomerAbandonedCart(input: MailTemplateInput): MailRendered {
     </p>
 
     <div style="margin: 24px 0; text-align: center;">
-      <a href="${SITE_URL}/sepet" style="display: inline-block; background: #ff6b5b; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">
+      <a href="${SITE_URL}/sepet" style="display: inline-block; background: #ef3e56; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">
         Sepete dön & tamamla →
       </a>
     </div>
@@ -507,7 +507,7 @@ function renderCustomerReviewRequest(input: MailTemplateInput): MailRendered {
     </p>
 
     <div style="margin: 24px 0; text-align: center;">
-      <a href="${reviewLink}" style="display: inline-block; background: #ff6b5b; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">
+      <a href="${reviewLink}" style="display: inline-block; background: #ef3e56; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">
         ⭐ Yorum yaz · 30 saniye
       </a>
     </div>
@@ -552,7 +552,7 @@ function renderAdminNewOrder(input: MailTemplateInput): MailRendered {
   const subject = `🛒 Yeni sipariş ${orderId} — ${total}`;
 
   const body = `
-    <h1 style="font-size: 18px; margin: 0 0 12px; color: #FF6B5B;">🛒 Yeni sipariş geldi</h1>
+    <h1 style="font-size: 18px; margin: 0 0 12px; color: #ef3e56;">🛒 Yeni sipariş geldi</h1>
     <p style="font-size: 14px; line-height: 1.6; color: #292524; margin: 0 0 16px;">
       <strong>${customerName}</strong> az önce sipariş verdi.
       ${hasDesign ? "Tasarım yüklü." : "<strong>Tasarım sonra yüklenecek</strong> (awaiting_upload)."}
@@ -566,7 +566,7 @@ function renderAdminNewOrder(input: MailTemplateInput): MailRendered {
     </table>
 
     <div style="margin: 24px 0;">
-      <a href="${adminLink}" style="display: inline-block; background: #FF6B5B; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+      <a href="${adminLink}" style="display: inline-block; background: #ef3e56; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
         Sipariş detayını aç →
       </a>
     </div>
@@ -606,7 +606,7 @@ function renderAdminNewSupportTicket(input: MailTemplateInput): MailRendered {
     : "";
 
   const body = `
-    <h1 style="font-size: 18px; margin: 0 0 12px; color: #FF6B5B;">🎫 Yeni destek talebi geldi</h1>
+    <h1 style="font-size: 18px; margin: 0 0 12px; color: #ef3e56;">🎫 Yeni destek talebi geldi</h1>
     <p style="font-size: 14px; line-height: 1.6; color: #292524; margin: 0 0 16px;">
       Müşteri panelinden yeni bir destek talebi oluşturuldu.
     </p>
@@ -622,7 +622,7 @@ function renderAdminNewSupportTicket(input: MailTemplateInput): MailRendered {
     </table>
 
     <div style="margin: 24px 0;">
-      <a href="${adminLink}" style="display: inline-block; background: #FF6B5B; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+      <a href="${adminLink}" style="display: inline-block; background: #ef3e56; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
         Destek talebini aç →
       </a>
     </div>
@@ -654,7 +654,7 @@ function renderAdminCriticalAlert(input: MailTemplateInput): MailRendered {
     <h1 style="font-size: 18px; margin: 0 0 12px; color: #dc2626;">🚨 ${title}</h1>
     <p style="font-size: 14px; line-height: 1.6; color: #292524; margin: 0 0 16px; white-space: pre-wrap;">${bodyText}</p>
     <div style="margin: 24px 0;">
-      <a href="${adminLink}" style="display: inline-block; background: #FF6B5B; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+      <a href="${adminLink}" style="display: inline-block; background: #ef3e56; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
         Admin paneli →
       </a>
     </div>
@@ -743,14 +743,14 @@ function renderAdminDailySummary(input: MailTemplateInput): MailRendered {
 
     ${alertBanner}
 
-    <h2 style="font-size: 14px; color: #FF6B5B; margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">💰 Sipariş & Ciro</h2>
+    <h2 style="font-size: 14px; color: #ef3e56; margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">💰 Sipariş & Ciro</h2>
     <table role="presentation" style="width: 100%; font-size: 13px; margin-bottom: 12px;">
       <tr><td style="padding: 4px 0; color: #57534e;">Yeni sipariş</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${newOrders}</td></tr>
       <tr><td style="padding: 4px 0; color: #57534e;">Ciro (24sa)</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${revenue} ₺</td></tr>
       <tr><td style="padding: 4px 0; color: #57534e;">Kargolanan (24sa)</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${shipped}</td></tr>
     </table>
 
-    <h2 style="font-size: 14px; color: #FF6B5B; margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">📦 Aktif Kuyruklar</h2>
+    <h2 style="font-size: 14px; color: #ef3e56; margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">📦 Aktif Kuyruklar</h2>
     <table role="presentation" style="width: 100%; font-size: 13px;">
       <tr><td style="padding: 4px 0; color: #57534e;">Tasarım bekleyen</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${awaitingUpload}${awaitingUploadStale > 0 ? ` <span style="color:#f59e0b;">(${awaitingUploadStale} stale)</span>` : ""}</td></tr>
       <tr><td style="padding: 4px 0; color: #57534e;">AI QC kuyruğu</td><td style="padding: 4px 0; font-weight: 600; text-align: right;">${aiQc}</td></tr>
@@ -759,7 +759,7 @@ function renderAdminDailySummary(input: MailTemplateInput): MailRendered {
     </table>
 
     <div style="margin: 28px 0;">
-      <a href="${adminLink}" style="display: inline-block; background: #FF6B5B; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+      <a href="${adminLink}" style="display: inline-block; background: #ef3e56; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
         Admin paneline git →
       </a>
     </div>
@@ -867,7 +867,7 @@ function renderAdminFasonStatus(input: MailTemplateInput): MailRendered {
     </p>
     ${issueText}
     <div style="margin: 24px 0;">
-      <a href="${adminLink}" style="display: inline-block; background: #FF6B5B; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+      <a href="${adminLink}" style="display: inline-block; background: #ef3e56; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
         Partner panelini aç →
       </a>
     </div>

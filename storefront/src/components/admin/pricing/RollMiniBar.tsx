@@ -4,7 +4,7 @@
  * sticker-fiyatlama.html v0.3 → roll-mini visualization port'u.
  *
  * Her tabaka bir segment:
- *   - used: dolu (mercan #FF6B5B)
+ *   - used: dolu (mercan #ef3e56)
  *   - fire: son rulodaki kullanılmamış slot (cream zigzag)
  *   - empty: yeni rulonun kullanılmayan slotu (gri)
  */

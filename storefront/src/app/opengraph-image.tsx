@@ -20,7 +20,7 @@ export const contentType = "image/png";
 
 const C = {
   lacivert: "#1A2335",
-  mercan: "#FF6B5B",
+  mercan: "#ef3e56",
   krem: "#FFF5EB",
   beyaz: "#FFFFFF",
 };

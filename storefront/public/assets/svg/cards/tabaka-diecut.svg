@@ -6,8 +6,8 @@
       <stop offset="100%" stop-color="#F4F1E6"/>
     </linearGradient>
     <linearGradient id="tabaka-d-sticker" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#FF8585"/>
-      <stop offset="100%" stop-color="#FF6B5B"/>
+      <stop offset="0%" stop-color="#f46d82"/>
+      <stop offset="100%" stop-color="#ef3e56"/>
     </linearGradient>
     <filter id="tabaka-d-shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feGaussianBlur in="SourceAlpha" stdDeviation="2.5"/>
@@ -44,9 +44,9 @@
 
     <!-- 2 sütun × 3 satır = 6 Pim silueti
          Her Pim: 28×22 boyutta (use ile scale).
-         Renk: brand mercan (#FF6B5B).
+         Renk: brand mercan (#ef3e56).
          Dashed cut line: kontur kesim ipucu. -->
-    <g color="#FF6B5B">
+    <g color="#ef3e56">
       <use href="#pim-silhouette" x="78" y="20" width="28" height="22"/>
       <use href="#pim-silhouette" x="114" y="20" width="28" height="22"/>
       <use href="#pim-silhouette" x="78" y="52" width="28" height="22"/>

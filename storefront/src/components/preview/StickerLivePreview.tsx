@@ -204,7 +204,7 @@ export function StickerLivePreview({
             width: stickerWidthPx,
             height: stickerHeightPx,
             borderRadius: radius,
-            background: isSketch ? "rgba(255, 107, 91, 0.18)" : undefined,
+            background: isSketch ? "rgba(239, 62, 86, 0.18)" : undefined,
           }}
         >
           {/* Layer 1 — 3D: Material zemin · Sketch: mercan dolgu (yukarıda) */}
@@ -523,7 +523,7 @@ export function StickerLivePreview({
                       ? "none"
                       : "0 1px 3px rgba(0,0,0,0.08)",
                     background: isSketch
-                      ? "rgba(255, 107, 91, 0.18)"
+                      ? "rgba(239, 62, 86, 0.18)"
                       : undefined,
                   }}
                 >

@@ -285,12 +285,12 @@ const pMuted: React.CSSProperties = {
 };
 
 const a: React.CSSProperties = {
-  color: "#FF6B5B",
+  color: "#ef3e56",
   textDecoration: "underline",
 };
 
 const btnPrimary: React.CSSProperties = {
-  background: "#FF6B5B",
+  background: "#ef3e56",
   color: "#FFFFFF",
   border: "none",
   padding: "12px 24px",

@@ -92,11 +92,11 @@ function GradientDefs({ id }: { id: string }) {
   return (
     <defs>
       <linearGradient id={`sticker-primary-${id}`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#FF8585" />
-        <stop offset="100%" stopColor="#FF6B5B" />
+        <stop offset="0%" stopColor="#f46d82" />
+        <stop offset="100%" stopColor="#ef3e56" />
       </linearGradient>
       <linearGradient id={`sticker-secondary-${id}`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#FFB5A8" />
+        <stop offset="0%" stopColor="#f8b4be" />
         <stop offset="100%" stopColor="#FF9988" />
       </linearGradient>
       <filter id={`sticker-shadow-${id}`} x="-20%" y="-20%" width="140%" height="140%">
@@ -223,7 +223,7 @@ function KissCutIcon() {
         <path
           d="M 80 50 q 8 -12 20 -8 q 12 -8 18 4 q 14 -2 16 14 q 12 4 -2 16 q 4 14 -12 12 q -8 12 -22 -2 q -18 4 -16 -10 q -14 -6 -4 -16 q -4 -10 2 -10 z"
           fill="none"
-          stroke="#FF6B5B"
+          stroke="#ef3e56"
           strokeWidth="1.2"
           strokeDasharray="3 2"
         />
@@ -308,8 +308,8 @@ function GlitterIcon() {
     <svg viewBox="0 0 200 130" className="w-full h-32" aria-hidden="true">
       <defs>
         <linearGradient id="glitter-base" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FFB5A8" />
-          <stop offset="100%" stopColor="#FF6B5B" />
+          <stop offset="0%" stopColor="#f8b4be" />
+          <stop offset="100%" stopColor="#ef3e56" />
         </linearGradient>
         <filter id="sticker-shadow-glitter" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur in="SourceAlpha" stdDeviation="2" />

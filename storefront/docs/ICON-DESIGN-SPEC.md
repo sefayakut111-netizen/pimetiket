@@ -55,7 +55,7 @@ Pim Etiket'in imzası: **kontur kesim (die-cut) ipucu mercan kesikli çizgiyle**
 Ürün/üretim bağlamındaki ikonlarda (sticker tabakası, kesim tipi, etiket bandı) bu aksan kullanılabilir:
 
 ```tsx
-stroke="#FF6B5B" strokeWidth="1.6" strokeDasharray="2.5 1.6"
+stroke="#ef3e56" strokeWidth="1.6" strokeDasharray="2.5 1.6"
 ```
 
 Mercan, ikonun **vurgu** unsurudur — gövdenin tamamı değil. UI ikonlarında renk
@@ -66,7 +66,7 @@ Mercan, ikonun **vurgu** unsurudur — gövdenin tamamı değil. UI ikonlarında
 | Rol | Hex | Token |
 |---|---|---|
 | Mürekkep (ana çizgi) | `#1F1B2D` | `text-pim-ink` |
-| Mercan (aksan/CTA) | `#FF6B5B` | `text-pim-mercan` |
+| Mercan (aksan/CTA) | `#ef3e56` | `text-pim-mercan` |
 | Kırmızı koyu ton | `#E04B3C` / `#C73A2D` | — |
 | Amber | `#F0B22F` | — |
 | Krem/bej zemin | `#FAF4E8` / `#EFE9DA` | — |

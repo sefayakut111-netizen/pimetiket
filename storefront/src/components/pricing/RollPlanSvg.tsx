@@ -58,11 +58,11 @@ function RollPatternDefs() {
           y1="10"
           x2="20"
           y2="10"
-          stroke="#FF6B5B"
+          stroke="#ef3e56"
           strokeWidth="0.5"
           strokeDasharray="2,2"
         />
-        <circle cx="10" cy="10" r="1.5" fill="#FF6B5B" />
+        <circle cx="10" cy="10" r="1.5" fill="#ef3e56" />
       </pattern>
       <pattern
         id="start-pat"
@@ -153,7 +153,7 @@ function DiecutRollPlanSvg({
             height={sh - 4}
             rx="4"
             fill="#FFF8F2"
-            stroke="#FF6B5B"
+            stroke="#ef3e56"
             strokeWidth="2"
           />
         );
@@ -168,7 +168,7 @@ function DiecutRollPlanSvg({
           width={EN}
           height={H}
           fill="white"
-          stroke="#1F2937"
+          stroke="#141524"
           strokeWidth="2.5"
           rx="4"
         />
@@ -271,7 +271,7 @@ function DiecutRollPlanSvg({
           textAnchor="middle"
           fontFamily="JetBrains Mono, monospace"
           fontSize="22"
-          fill="#1F2937"
+          fill="#141524"
           fontWeight="700"
         >
           1500 mm EN (sabit)
@@ -285,7 +285,7 @@ function DiecutRollPlanSvg({
           textAnchor="middle"
           fontFamily="Plus Jakarta Sans, sans-serif"
           fontSize="22"
-          fill="#1F2937"
+          fill="#141524"
           fontWeight="600"
         >
           + {N - maxRollsToShow} rulo tabaka daha (toplam {N})
@@ -398,7 +398,7 @@ export function RollPlanSvg({
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
         fontSize="22"
-        fill="#1F2937"
+        fill="#141524"
         fontWeight="700"
       >
         1520 mm BOY
@@ -412,7 +412,7 @@ export function RollPlanSvg({
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
         fontSize="22"
-        fill="#1F2937"
+        fill="#141524"
         fontWeight="700"
         transform="rotate(90)"
       >
@@ -452,7 +452,7 @@ export function RollPlanSvg({
         textAnchor="middle"
         fontFamily="Plus Jakarta Sans, sans-serif"
         fontSize="22"
-        fill="#1F2937"
+        fill="#141524"
         fontWeight="600"
       >
         + {roll.rollsNeeded - maxRollsToShow} rulo daha (toplam{" "}
@@ -663,7 +663,7 @@ function RollGroup({
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
         fontSize={annotFont}
-        fill="#1F2937"
+        fill="#141524"
         fontWeight="700"
         transform={`rotate(-90 ${padX + ROLL_START_MARGIN / 2} ${rollY + effectiveRollW / 2})`}
       >
@@ -711,7 +711,7 @@ function RollGroup({
         width={ROLL_L}
         height={effectiveRollW}
         fill="white"
-        stroke="#1F2937"
+        stroke="#141524"
         strokeWidth="2.5"
         rx="4"
       />
@@ -778,7 +778,7 @@ function SheetRect({
         width={width}
         height={height}
         fill="#FFF8F2"
-        stroke="#FF6B5B"
+        stroke="#ef3e56"
         strokeWidth="3"
         rx="6"
       />
@@ -787,7 +787,7 @@ function SheetRect({
         y={y + 12}
         width={width - 24}
         height={height - 24}
-        fill="rgba(255, 107, 91, 0.08)"
+        fill="rgba(239, 62, 86, 0.08)"
         rx="3"
       />
       <text
@@ -797,7 +797,7 @@ function SheetRect({
         fontFamily="Plus Jakarta Sans, sans-serif"
         fontSize={qtySize}
         fontWeight="800"
-        fill="#1F2937"
+        fill="#141524"
       >
         {qty}
       </text>
@@ -817,7 +817,7 @@ function SheetRect({
         y={y + labelSize + 6}
         fontFamily="JetBrains Mono, monospace"
         fontSize={labelSize}
-        fill="#FF6B5B"
+        fill="#ef3e56"
         fontWeight="700"
       >
         {label}

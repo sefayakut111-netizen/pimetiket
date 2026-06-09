@@ -209,7 +209,7 @@ export function EtiketLivePreview({
           : material === "metalik"
             ? "0 6px 16px rgba(0,0,0,0.18), inset 0 0 0 1px rgba(255,255,255,0.6)"
             : "0 4px 12px rgba(0,0,0,0.12)",
-        background: isSketch ? "rgba(255, 107, 91, 0.18)" : undefined,
+        background: isSketch ? "rgba(239, 62, 86, 0.18)" : undefined,
         ...extraStyle,
       }}
     >
@@ -422,7 +422,7 @@ export function EtiketLivePreview({
                     borderRadius: shapeRadius,
                     boxShadow: isSketch ? "none" : "0 1px 3px rgba(0,0,0,0.08)",
                     background: isSketch
-                      ? "rgba(255, 107, 91, 0.18)"
+                      ? "rgba(239, 62, 86, 0.18)"
                       : undefined,
                   }}
                 >

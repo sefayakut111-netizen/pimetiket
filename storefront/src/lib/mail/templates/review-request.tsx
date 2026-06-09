@@ -40,7 +40,7 @@ export function ReviewRequestEmail({
 
       <Text style={mailStyles.pSecondary}>
         Bir sorun varsa{" "}
-        <a href="mailto:info@pimetiket.com" style={{ color: "#FF6B5B" }}>
+        <a href="mailto:info@pimetiket.com" style={{ color: "#ef3e56" }}>
           info@pimetiket.com
         </a>{" "}
         adresine yaz — düzeltmek için elimizden geleni yaparız.

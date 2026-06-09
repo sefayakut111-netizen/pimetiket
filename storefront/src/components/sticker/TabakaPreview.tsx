@@ -141,8 +141,8 @@ export function TabakaPreview({ width, height, cut, qty }: Props) {
               y={s.y}
               width={stickerRenderW}
               height={stickerRenderH}
-              fill="rgba(255, 107, 91, 0.18)"
-              stroke="#FF6B5B"
+              fill="rgba(239, 62, 86, 0.18)"
+              stroke="#ef3e56"
               strokeWidth={1}
               rx={Math.min(stickerRenderW, stickerRenderH) * 0.08}
             />

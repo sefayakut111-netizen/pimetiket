@@ -113,7 +113,7 @@ export function DeliveryHistogram({ data }: { data: DeliveryDay[] }) {
                   y={barY - 4}
                   textAnchor="middle"
                   fontSize={10}
-                  fill="#374151"
+                  fill="#2c2d3e"
                   fontWeight="600"
                 >
                   {d.count}

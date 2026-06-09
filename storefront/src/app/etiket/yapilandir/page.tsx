@@ -3091,7 +3091,7 @@ function WindingIcon({ n }: { n: number }) {
           width={stripW}
           height={stripTop + cells * labelH - rollCy + 4}
           fill="#FFFFFF"
-          stroke="#1F2937"
+          stroke="#141524"
           strokeWidth="1.4"
         />
       )}
@@ -3103,7 +3103,7 @@ function WindingIcon({ n }: { n: number }) {
           rx={rollRx}
           ry={rollRy}
           fill={`url(#roll-grad-${n})`}
-          stroke="#1F2937"
+          stroke="#141524"
           strokeWidth="1.4"
         />
         <rect
@@ -3118,7 +3118,7 @@ function WindingIcon({ n }: { n: number }) {
           y1={rollCy - 7}
           x2={rollCx - rollRx}
           y2={rollCy + 2}
-          stroke="#1F2937"
+          stroke="#141524"
           strokeWidth="1.4"
         />
         <line
@@ -3126,7 +3126,7 @@ function WindingIcon({ n }: { n: number }) {
           y1={rollCy - 7}
           x2={rollCx + rollRx}
           y2={rollCy + 2}
-          stroke="#1F2937"
+          stroke="#141524"
           strokeWidth="1.4"
         />
         <ellipse
@@ -3135,10 +3135,10 @@ function WindingIcon({ n }: { n: number }) {
           rx={rollRx}
           ry={rollRy}
           fill={`url(#roll-grad-${n})`}
-          stroke="#1F2937"
+          stroke="#141524"
           strokeWidth="1.4"
         />
-        <ellipse cx={rollCx} cy={rollCy + 2} rx="8" ry="2" fill="#1F2937" opacity="0.6" />
+        <ellipse cx={rollCx} cy={rollCy + 2} rx="8" ry="2" fill="#141524" opacity="0.6" />
       </g>
 
       {!isInner && (
@@ -3146,7 +3146,7 @@ function WindingIcon({ n }: { n: number }) {
           <path
             d={`M ${stripX} ${rollCy + 2} Q ${stripX} ${stripTop - 4} ${stripX} ${stripTop} L ${stripX + stripW} ${stripTop} Q ${stripX + stripW} ${stripTop - 4} ${stripX + stripW} ${rollCy + 2}`}
             fill="#FFFFFF"
-            stroke="#1F2937"
+            stroke="#141524"
             strokeWidth="1.4"
           />
           <rect
@@ -3155,7 +3155,7 @@ function WindingIcon({ n }: { n: number }) {
             width={stripW}
             height={cells * labelH}
             fill="#FFFFFF"
-            stroke="#1F2937"
+            stroke="#141524"
             strokeWidth="1.4"
           />
         </g>
@@ -3168,7 +3168,7 @@ function WindingIcon({ n }: { n: number }) {
           y1={stripTop + i * labelH}
           x2={stripX + stripW}
           y2={stripTop + i * labelH}
-          stroke="#1F2937"
+          stroke="#141524"
           strokeWidth="0.8"
           opacity="0.4"
         />
@@ -3189,7 +3189,7 @@ function WindingIcon({ n }: { n: number }) {
               fontFamily="Nunito, sans-serif"
               fontWeight="800"
               fontSize="13"
-              fill="#1F2937"
+              fill="#141524"
               letterSpacing="0.5"
             >
               ABC
@@ -3360,7 +3360,7 @@ function PreviewCanvas({
               className="w-[60px] h-[80px] -ml-2.5"
               style={{
                 background:
-                  "radial-gradient(ellipse, #1F2937 0%, #4B5563 100%)",
+                  "radial-gradient(ellipse, #141524 0%, #4B5563 100%)",
                 borderRadius: "50%",
               }}
             />
@@ -3368,7 +3368,7 @@ function PreviewCanvas({
               className="w-[60px] h-[80px] -mr-2.5"
               style={{
                 background:
-                  "radial-gradient(ellipse, #1F2937 0%, #4B5563 100%)",
+                  "radial-gradient(ellipse, #141524 0%, #4B5563 100%)",
                 borderRadius: "50%",
               }}
             />
@@ -3418,7 +3418,7 @@ function PreviewCanvas({
                     color:
                       custom === "yaldiz"
                         ? "transparent"
-                        : "#1F2937",
+                        : "#141524",
                     WebkitBackgroundClip:
                       custom === "yaldiz" ? "text" : "initial",
                     backgroundClip: custom === "yaldiz" ? "text" : "initial",
@@ -3435,7 +3435,7 @@ function PreviewCanvas({
                 <div
                   style={{
                     fontSize: 9,
-                    color: "#FF6B5B",
+                    color: "#ef3e56",
                     fontWeight: 600,
                     marginTop: 2,
                     letterSpacing: "0.1em",

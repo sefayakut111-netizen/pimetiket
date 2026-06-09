@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 const BOX = 46;
 const PAD = 5;
-const ACCENT = "#FF6B5B";
+const ACCENT = "#ef3e56";
 const SHEET_FILL = "#FFF8F2";
 
 // 24×24 kutuda merkezlenmiş Material ikon path'leri

@@ -20,6 +20,6 @@
 
   <!-- Etiket bandı — rulodan çıkan flap (kontur kesim ipucu, mercan dashed) -->
   <rect x="22" y="42" width="13" height="13" rx="1.5"
-        stroke="#FF6B5B" stroke-width="1.6"
+        stroke="#ef3e56" stroke-width="1.6"
         fill="#FFFFFF" stroke-dasharray="2.5 1.6"/>
 </svg>

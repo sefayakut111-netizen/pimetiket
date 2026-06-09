@@ -49,9 +49,9 @@ export function CopyProtection() {
 
     if (!alreadyShown) {
       const bigStyle =
-        "color:#FF6B5B;font-size:48px;font-weight:900;text-shadow:2px 2px 0 #1F2937;";
+        "color:#ef3e56;font-size:48px;font-weight:900;text-shadow:2px 2px 0 #141524;";
       const warnStyle =
-        "color:#1F2937;font-size:16px;font-weight:600;line-height:1.6;";
+        "color:#141524;font-size:16px;font-weight:600;line-height:1.6;";
       const noteStyle = "color:#6B7280;font-size:13px;font-style:italic;";
 
       console.info("%c⚠️  DURDUR!", bigStyle);
@@ -67,7 +67,7 @@ export function CopyProtection() {
           "FSEK (5846 sayılı kanun) kapsamında kopyalama yasaktır.\n\n" +
           "Güvenlik bildirimi: info@pimetiket.com",
         warnStyle,
-        "color:#FF6B5B;font-weight:700;",
+        "color:#ef3e56;font-weight:700;",
         warnStyle
       );
       console.info(

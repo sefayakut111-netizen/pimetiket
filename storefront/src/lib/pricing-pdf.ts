@@ -91,7 +91,7 @@ function drawPage1Header(pdf: jsPDF, input: WorkOrderInput): void {
   const roll = geometry.roll;
 
   // Top mercan stripe + lacivert header bar
-  pdf.setFillColor(255, 107, 91);
+  pdf.setFillColor(239, 62, 86);
   pdf.rect(0, 0, A4_W, 8, "F");
   pdf.setFillColor(31, 41, 55);
   pdf.rect(0, 8, A4_W, 35, "F");
@@ -106,7 +106,7 @@ function drawPage1Header(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.text("Dijital Baskı · İş Emri", M, 32);
 
   // Lot box (sağ üst, mercan)
-  pdf.setFillColor(255, 107, 91);
+  pdf.setFillColor(239, 62, 86);
   pdf.roundedRect(A4_W - 60, 16, 45, 14, 2, 2, "F");
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(14);
@@ -134,7 +134,7 @@ function drawPage1Header(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.setFont("helvetica", "bold");
   let y = 60;
   pdf.text("İŞ KÜNYESİ", M, y);
-  pdf.setDrawColor(255, 107, 91);
+  pdf.setDrawColor(239, 62, 86);
   pdf.setLineWidth(0.6);
   pdf.line(M, y + 2, M + 35, y + 2);
 
@@ -311,7 +311,7 @@ function drawPage2Production(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.setFontSize(11);
   pdf.setFont("helvetica", "bold");
   pdf.text("RULO PLANI", M, y);
-  pdf.setDrawColor(255, 107, 91);
+  pdf.setDrawColor(239, 62, 86);
   pdf.setLineWidth(0.6);
   pdf.line(M, y + 2, M + 30, y + 2);
 
@@ -372,7 +372,7 @@ function drawPage2Production(pdf: jsPDF, input: WorkOrderInput): void {
       const sx = M + ROLL_START_MARGIN * scaleX + xx * sheetXpx;
       const sy = y + sidePadPx + yy * sheetYpx;
       pdf.setFillColor(255, 248, 242);
-      pdf.setDrawColor(255, 107, 91);
+      pdf.setDrawColor(239, 62, 86);
       pdf.setLineWidth(0.4);
       pdf.rect(sx + 0.5, sy + 0.5, sheetXpx - 1, sheetYpx - 1, "FD");
       pdf.setTextColor(31, 41, 55);
@@ -460,7 +460,7 @@ function drawPage2Production(pdf: jsPDF, input: WorkOrderInput): void {
       if (filled) {
         const accent = (row + col) % 2 === 0;
         if (accent) {
-          pdf.setFillColor(255, 107, 91);
+          pdf.setFillColor(239, 62, 86);
         } else {
           pdf.setFillColor(255, 168, 158);
         }
@@ -516,7 +516,7 @@ function drawPage3Cost(pdf: jsPDF, input: WorkOrderInput): void {
   pdf.setFontSize(11);
   pdf.setFont("helvetica", "bold");
   pdf.text("① ÜRETİM", M, y);
-  pdf.setDrawColor(255, 107, 91);
+  pdf.setDrawColor(239, 62, 86);
   pdf.setLineWidth(0.6);
   pdf.line(M, y + 2, M + 22, y + 2);
 
@@ -622,7 +622,7 @@ function drawPage3Cost(pdf: jsPDF, input: WorkOrderInput): void {
   y += 4;
 
   // Müşteri Toplam Fiyatı (mercan blok)
-  pdf.setFillColor(255, 107, 91);
+  pdf.setFillColor(239, 62, 86);
   pdf.roundedRect(M - 2, y - 6, A4_W - 2 * M + 4, 14, 2, 2, "F");
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(13);

@@ -143,11 +143,11 @@ export function ShipmentTrendChart({ data }: { data: TrendPoint[] }) {
         {/* Legend */}
         <g transform={`translate(${padding.left}, ${height - 8})`}>
           <rect x={0} y={-6} width={8} height={8} fill="#3b82f6" rx={1} />
-          <text x={12} y={1} fontSize={10} fill="#374151">
+          <text x={12} y={1} fontSize={10} fill="#2c2d3e">
             Kargolanan
           </text>
           <rect x={80} y={-6} width={8} height={8} fill="#22c55e" rx={1} />
-          <text x={92} y={1} fontSize={10} fill="#374151">
+          <text x={92} y={1} fontSize={10} fill="#2c2d3e">
             Teslim edilen
           </text>
         </g>

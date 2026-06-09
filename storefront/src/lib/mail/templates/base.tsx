@@ -32,8 +32,8 @@ const SITE_URL =
 export const COLORS = {
   // --- Mevcut (KORUNUR — 13 şablon referans alıyor) ---
   lacivert: "#1A2335",
-  pimMercan: "#FF6B5B",
-  brand: "#FF6B5B", // alias
+  pimMercan: "#ef3e56",
+  brand: "#ef3e56", // alias
   krem: "#FFF5EB",
   gri700: "#5C6877",
   gri200: "#E5E7EB",
@@ -53,8 +53,8 @@ export const COLORS = {
   kremKart: "#FAF4E8", // header şeridi + detay kutusu
   footerLacivert: "#1A2335", // dark footer zemini
   zemin: "#ECE8E0", // sayfa arka planı
-  gradientStart: "#FF8585", // buton gradient üst
-  gradientEnd: "#FF6B5B", // buton gradient alt
+  gradientStart: "#f46d82", // buton gradient üst (mercan türevi)
+  gradientEnd: "#ef3e56", // buton gradient alt
 };
 
 /** E-posta türü — footer koşullu satırını belirler (EPOSTA-MIMARI §3). */

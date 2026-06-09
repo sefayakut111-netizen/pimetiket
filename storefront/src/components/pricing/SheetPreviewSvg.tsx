@@ -88,7 +88,7 @@ function DiecutCloseUpPreview({
           width={W}
           height={H}
           rx="2"
-          fill={isAccent ? "#FF6B5B" : "#FFA89E"}
+          fill={isAccent ? "#ef3e56" : "#f58a96"}
         />
       );
     }
@@ -112,7 +112,7 @@ function DiecutCloseUpPreview({
         width={usedWidth + 16}
         height={usedHeight + 16}
         fill="white"
-        stroke="#1F2937"
+        stroke="#141524"
         strokeWidth="2"
         rx="3"
       />
@@ -135,7 +135,7 @@ function DiecutCloseUpPreview({
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
         fontSize={dimFontSize}
-        fill="#1F2937"
+        fill="#141524"
         fontWeight="700"
       >
         {labelLine1}
@@ -241,7 +241,7 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
           width={W}
           height={H}
           rx="2"
-          fill={isFilled ? (isAccent ? "#FF6B5B" : "#FFA89E") : "none"}
+          fill={isFilled ? (isAccent ? "#ef3e56" : "#f58a96") : "none"}
           stroke={isFilled ? "none" : "#C4B091"}
           strokeWidth={isFilled ? 0 : 1}
           strokeDasharray={isFilled ? undefined : "3,2"}
@@ -270,7 +270,7 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
         width={cutW}
         height={cutH}
         fill="white"
-        stroke="#1F2937"
+        stroke="#141524"
         strokeWidth="2"
         rx="3"
       />
@@ -329,7 +329,7 @@ export function SheetPreviewSvg({ geometry }: SheetPreviewSvgProps) {
         textAnchor="middle"
         fontFamily="JetBrains Mono, monospace"
         fontSize={dimFontSize}
-        fill="#1F2937"
+        fill="#141524"
         fontWeight="700"
       >
         {labelLine1}

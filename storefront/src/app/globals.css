@@ -7,16 +7,16 @@
 
 @theme inline {
   /* ---------- Brand ---------- */
-  --color-pim-mercan: #ff6b5b;
-  --color-pim-mercan-soft: #ffa89e;
-  --color-pim-mercan-tint: #fff1ee;
-  --color-pim-mercan-koyu: #c8443a; /* WCAG AA 4.5:1+ on white/krem (small text) */
-  --color-pim-mercan-deep: #a8302a; /* primary button hover — higher contrast */
+  --color-pim-mercan: #ef3e56;
+  --color-pim-mercan-soft: #f58a96;
+  --color-pim-mercan-tint: #fdeef1;
+  --color-pim-mercan-koyu: #ba3e56; /* WCAG AA 4.5:1+ on white (5.37) + krem (4.54) */
+  --color-pim-mercan-deep: #9a2e42; /* primary button hover — higher contrast */
   --color-krem: #f5ebd9;
   --color-krem-soft: #faf4e8;
-  --color-lacivert: #1f2937;
-  --color-lacivert-soft: #374151;
-  --color-lacivert-koyu: #111827;
+  --color-lacivert: #141524;
+  --color-lacivert-soft: #2c2d3e;
+  --color-lacivert-koyu: #0c0d18;
   --color-turuncu: #ff9933;
 
   /* ---------- Neutrals (gri scale) ---------- */
@@ -55,8 +55,8 @@
   /* ---------- Shadow ---------- */
   --shadow-1: 0 1px 2px rgba(31, 41, 55, 0.04), 0 4px 12px rgba(31, 41, 55, 0.06);
   --shadow-2: 0 2px 4px rgba(31, 41, 55, 0.04), 0 12px 24px rgba(31, 41, 55, 0.08);
-  --shadow-mercan: 0 6px 14px rgba(200, 68, 58, 0.28);
-  --shadow-mercan-lg: 0 8px 20px rgba(200, 68, 58, 0.2);
+  --shadow-mercan: 0 6px 14px rgba(154, 46, 66, 0.28);
+  --shadow-mercan-lg: 0 8px 20px rgba(154, 46, 66, 0.2);
 
   /* ---------- Animation ---------- */
   --animate-fade-up: fade-up 320ms ease-out both;
@@ -162,11 +162,11 @@
 @keyframes step-pulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(255, 107, 91, 0);
+    box-shadow: 0 0 0 0 rgba(239, 62, 86, 0);
   }
   50% {
     transform: scale(1.08);
-    box-shadow: 0 0 0 8px rgba(255, 107, 91, 0.12);
+    box-shadow: 0 0 0 8px rgba(239, 62, 86, 0.12);
   }
 }
 .step-circle-anim {
@@ -180,10 +180,10 @@
 /* Konfigüratör — eksik zorunlu adım vurgusu (sticker + etiket) */
 @keyframes configurator-step-attention {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(255, 107, 91, 0);
+    box-shadow: 0 0 0 0 rgba(239, 62, 86, 0);
   }
   50% {
-    box-shadow: 0 0 0 4px rgba(255, 107, 91, 0.35);
+    box-shadow: 0 0 0 4px rgba(239, 62, 86, 0.35);
   }
 }
 .configurator-step-attention {

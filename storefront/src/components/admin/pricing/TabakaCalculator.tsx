@@ -610,7 +610,7 @@ function SheetPreview({
           width={cellW}
           height={cellH}
           fill="#FFC9C2"
-          stroke="#FF6B5B"
+          stroke="#ef3e56"
           strokeWidth={1}
           rx={2}
         />
