@@ -21,6 +21,9 @@
     },
     "src/app/api/cron/paytr-reconciler/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/cron/instagram-sync/route.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -135,6 +138,10 @@
     {
       "path": "/api/cron/app-health",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-sync",
+      "schedule": "0 7 * * *"
     }
   ]
 }
