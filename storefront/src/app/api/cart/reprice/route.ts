@@ -27,17 +27,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "items_required" }, { status: 400 });
   }
 
-  const { items: repriced, changed, removed, refreshedIds } =
-    await repriceCartItems(items, { forceAll: body.forceAll === true }).catch(
-      (e: unknown) => {
-        if (e instanceof PricingConfigUnavailableError) {
-          return null;
-        }
-        throw e;
-      }
-    );
+  const repriceResult = await repriceCartItems(items, {
+    forceAll: body.forceAll === true,
+  }).catch((e: unknown) => {
+    if (e instanceof PricingConfigUnavailableError) {
+      return null;
+    }
+    throw e;
+  });
 
-  if (!repriced) {
+  if (!repriceResult) {
     return NextResponse.json(
       {
         error: "pricing_config_unavailable",
@@ -46,6 +45,8 @@ export async function POST(req: Request) {
       { status: 503 }
     );
   }
+
+  const { items: repriced, changed, removed, refreshedIds } = repriceResult;
 
   try {
     const supabase = await createServerClient();

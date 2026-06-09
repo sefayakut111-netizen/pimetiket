@@ -238,6 +238,7 @@ function AdminAiQcPageInner() {
   const [orderHistory, setOrderHistory] = useState<HistoryItem[]>([]);
   const [orderHistoryLoading, setOrderHistoryLoading] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkCountdown, setBulkCountdown] = useState(BULK_CONFIRM_SECONDS);
   const [queueTruncated, setQueueTruncated] = useState(false);
   const [queueLimit, setQueueLimit] = useState(50);
 

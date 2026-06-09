@@ -40,5 +40,5 @@ export async function assertActivePartnerAssignment<
     return { ok: false };
   }
 
-  return { ok: true, assignment: asgRow as T };
+  return { ok: true, assignment: asgRow as unknown as T };
 }

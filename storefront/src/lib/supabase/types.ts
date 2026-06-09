@@ -4443,6 +4443,18 @@ export type Database = {
           new_score: number
         }[]
       }
+      fn_release_coupon_reservation: {
+        Args: { p_payment_intent_id: string }
+        Returns: undefined
+      }
+      fn_reserve_coupon_for_payment: {
+        Args: {
+          p_code: string
+          p_payment_intent_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       fn_renew_design_retention: {
         Args: { p_source_order_id: string }
         Returns: number

@@ -63,6 +63,7 @@ interface IntentRow {
     shipping: number;
     total: number;
     couponCode: string | null;
+    couponDiscount?: number | null;
   };
   status: string;
   order_id: string | null;

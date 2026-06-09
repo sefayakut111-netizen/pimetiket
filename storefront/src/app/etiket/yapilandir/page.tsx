@@ -3228,6 +3228,8 @@ const MAT_BG: Record<MaterialId, string> = {
     "linear-gradient(180deg, rgba(220,240,250,0.6) 0%, rgba(255,255,255,0.4) 100%)",
   metalik:
     "linear-gradient(180deg, #E5E9EE 0%, #B7BFC9 50%, #DDE2E8 100%)",
+  folyo:
+    "linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 50%, #F1F5F9 100%)",
 };
 
 const SHEEN: Record<CoatingId, number> = {

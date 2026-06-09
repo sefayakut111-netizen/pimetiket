@@ -1,4 +1,4 @@
-import type { InstagramMediaItem } from "./types";
+import type { InstagramFeedPost, InstagramMediaItem } from "./types";
 
 const GRAPH_VERSION = "v21.0";
 const FIELDS = [
@@ -30,7 +30,9 @@ export async function fetchInstagramMedia(
   return (json.data ?? []).filter((item) => Boolean(item.permalink));
 }
 
-export function mediaToFeedPost(item: InstagramMediaItem) {
+export function mediaToFeedPost(
+  item: InstagramMediaItem
+): InstagramFeedPost | null {
   const imageUrl =
     item.media_type === "VIDEO"
       ? item.thumbnail_url ?? item.media_url

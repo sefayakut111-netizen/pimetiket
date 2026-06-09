@@ -459,7 +459,12 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    const reserve = reserveData as { ok?: boolean; reason?: string } | null;
+    const reserve =
+      reserveData &&
+      typeof reserveData === "object" &&
+      !Array.isArray(reserveData)
+        ? (reserveData as { ok?: boolean; reason?: string })
+        : null;
     if (!reserve?.ok) {
       await admin.from("payment_intents").delete().eq("id", merchantOid);
       return NextResponse.json(

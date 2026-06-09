@@ -100,13 +100,8 @@ const nextConfig: NextConfig = {
       process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "",
   },
 
-  // Next.js 16 generated validator.ts'te non-ASCII path karakterleriyle
-  // (Türkçe ı/ğ vb.) codegen bug'ı var; build başarıyla derleniyor ama
-  // post-build TS check yanlış @ts-ignore üretiyor. Production build için
-  // skip — gerçek TS hataları `npm run lint` ve IDE'de yine yakalanır.
-  // Cloudflare Pages build runner'ı Linux olduğu için orada zaten görünmez.
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
   // Modern formats — Next 16 default zaten içeriyor, explicit yapıldı.

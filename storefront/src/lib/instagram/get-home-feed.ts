@@ -52,7 +52,7 @@ export async function getInstagramHomeFeed(
       const media = await fetchInstagramMedia(token, limit);
       const posts = media
         .map(mediaToFeedPost)
-        .filter((post): post is InstagramFeedPost => post !== null)
+        .filter((post): post is NonNullable<typeof post> => post !== null)
         .slice(0, limit);
 
       if (posts.length > 0) {

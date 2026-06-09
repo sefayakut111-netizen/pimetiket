@@ -72,6 +72,7 @@ export interface ValidationFailDetail {
     | "sanity_total_inconsistent"
     | "sanity_subtotal_too_low"
     | "qty_above_max"
+    | "qty_below_min"
     | "recalc_required"
     | "pricing_config_unavailable";
   expected?: number;

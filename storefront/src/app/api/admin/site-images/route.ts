@@ -154,7 +154,7 @@ export async function POST(req: Request) {
   }
 
   // Magic-byte check (SVG dışında — SVG için XML scan zaten var)
-  let buffer: ArrayBuffer;
+  let buffer: ArrayBufferLike;
   try {
     buffer = maybeSanitizeUploadBytes(
       await file.arrayBuffer(),

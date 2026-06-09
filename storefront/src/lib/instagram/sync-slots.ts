@@ -46,7 +46,13 @@ export async function syncInstagramToSiteImageSlots(limit = 6) {
     if (!imageRes.ok) continue;
 
     const bytes = Buffer.from(await imageRes.arrayBuffer());
-    const mime = detectMimeFromMagicBytes(bytes) ?? "image/jpeg";
+    const header = new Uint8Array(
+      bytes.buffer,
+      bytes.byteOffset,
+      Math.min(bytes.length, 512)
+    );
+    const magic = detectMimeFromMagicBytes(header, "image/jpeg");
+    const mime = magic.detected ?? "image/jpeg";
     const ext = extForMime(mime);
     const storagePath = `site-images/${slot}/${post.id}.${ext}`;
 

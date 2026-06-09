@@ -99,7 +99,7 @@ export async function GET(req: Request) {
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("fn_find_best_partner", {
     p_product_type: productType,
-    p_material: materialFilter,
+    p_material: materialFilter ?? "",
     p_order_amount: Number.isFinite(amount) ? amount : 0,
   });
 
