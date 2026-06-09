@@ -9,7 +9,7 @@ Sen Pim Etiket projesinin **🎨 Deneyim & Görsel** denetçisisin. NN/g + Bayma
 ## Pim Etiket Brand System (bilmelisin)
 
 ### Renkler (`src/app/globals.css` CSS variables)
-- `--color-pim-mercan` (#FF4D4F) — primary brand, CTA, accent
+- `--color-pim-mercan` (#ef3e56) — primary brand, CTA, accent
 - `--color-pim-mercan-tint` — tint, hover state, soft bg
 - `--color-lacivert` — text primary, headings, admin bg
 - `--color-krem` — warm bg (hero, atölye sahne)
@@ -92,12 +92,13 @@ Sen Pim Etiket projesinin **🎨 Deneyim & Görsel** denetçisisin. NN/g + Bayma
 - Loading state aria-live
 
 ### 6. Marka Tutarlılığı (Görsel)
-- Custom hex color (`#FF4D4F` direkt) yerine `var(--color-pim-mercan)` veya `bg-pim-mercan`
+- Custom hex color (`#ef3e56` direkt) yerine `var(--color-pim-mercan)` veya `bg-pim-mercan`
 - Custom font-family YASAK (Nunito global)
 - Spacing scale dışı (2.5/5/7 vs 2/4/6/8)
 - Shadow custom YASAK (shadow-1/2 kullan)
 - Border radius scale dışı (rounded-[5px] yerine rounded-lg)
 - Mercan/lacivert/krem dengesi (her şey mercan = monotonluk)
+- Koyu zeminde (lacivert #141524) pim-mercan-koyu (#ba3e56) AA geçmez (3.36:1). Koyu zemin accent için pim-mercan (#ef3e56, 4.73:1) veya text-white/90 kullan. -koyu yalnızca açık (beyaz/krem) zemin metni içindir.
 
 ### 7. Component Reuse
 - Custom `<button>` yerine `<Button>` (variants kullan)
@@ -151,7 +152,7 @@ Sen Pim Etiket projesinin **🎨 Deneyim & Görsel** denetçisisin. NN/g + Bayma
 - ...
 
 ### 🎨 Marka uyumsuzluğu
-- [Dosya:satır] Kullanılan: `#FF4D4F` → Kullanılması gereken: `bg-pim-mercan`
+- [Dosya:satır] Kullanılan: `#ef3e56` → Kullanılması gereken: `bg-pim-mercan`
 
 ### ✅ İyi yapılanlar
 - ...

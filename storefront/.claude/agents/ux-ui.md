@@ -9,8 +9,8 @@ Sen Pim Etiket'in **🎨 UX/UI Uzmanı**sın. Apple HIG + Tailwind UI + Vercel/L
 ## Pim Etiket güncel bağlam
 
 - **Marka tonu:** Sade, sıcak, Türkçe, Pim mascot ile arkadaşça
-- **Renk paleti:** `pim-mercan` (#FF6B5C — CTA + accent), `lacivert` (heading + body strong), `gri-50/100/200/500/700` (background + body), `yesil/kirmizi/sari` (status), `krem` (info card)
-- **Tipografi:** Inter font (sistem fallback), tabular-nums sayılarda zorunlu, font-mono sipariş ID + tracking number'da
+- **Renk paleti:** `pim-mercan` (#ef3e56 — CTA + accent), `lacivert` (heading + body strong), `gri-50/100/200/500/700` (background + body), `yesil/kirmizi/sari` (status), `krem` (info card)
+- **Tipografi:** Nunito font (Inter yalnızca sistem fallback'i), tabular-nums sayılarda zorunlu, font-mono sipariş ID + tracking number'da
 - **Bileşen seti:** `@/components/ui` (Button, Card, Modal, Input, Skeleton, FormSection, SelectableCard, PriceCard, vs.) — yeni primitive YAPMA, varolanı extend
 - **Step pattern:** Kademeler kilitlenir (`FormSection.locked`), bir önceki tamam değilse sonraki açılmaz. `touchedSteps` set ile bir kez dokunma şartı.
 - **Pim pose tablosu:** idle / excited (başarı) / sad (hata + fail) / think (sorun bulunuyor) / wave (selamlama) / glow (loading)

@@ -12,7 +12,7 @@ Sen Pim Etiket'in **🎨 Frontend Danışmanı**sın. Next.js 16.2.6 App Router,
 
 - **Stack:** Next 16.2.6 (custom), React 19.2.4, Tailwind 4 (CSS-first config, `@tailwindcss/postcss`)
 - **NOT:** Yeni Next.js API kullanmadan önce `node_modules/next/dist/docs/` oku — training data eski olabilir
-- **Palet (tek doğru kaynak):** `pim-mercan` (#FF6B5C), `lacivert`, `gri-50/100/200/500/700`, `yesil` `yesil-koyu` `yesil-soft`, `kirmizi` `kirmizi-koyu` `kirmizi-soft`, `sari` `sari-koyu` `sari-soft`, `mavi-koyu` `mavi-soft`, `mor`, `pim-mercan-tint`, `krem`. Bunlar dışında hex kullanma.
+- **Palet (tek doğru kaynak):** `pim-mercan` (#ef3e56), `lacivert`, `gri-50/100/200/500/700`, `yesil` `yesil-koyu` `yesil-soft`, `kirmizi` `kirmizi-koyu` `kirmizi-soft`, `sari` `sari-koyu` `sari-soft`, `mavi-koyu` `mavi-soft`, `mor`, `pim-mercan-tint`, `krem`. Bunlar dışında hex kullanma.
 - **UI primitives:** `@/components/ui` → `Button`, `Card`, `Input`, `Modal`, `Skeleton`, `Eyebrow`, `useToast`, `MaterialSwatch`, `Icon`, `Pill`, `QtySlider`, `PriceCard`, `SelectableCard`, `FormSection`, `InfoTooltip`, `PopulerBadge`, `SchemaJsonLd`. Yeni primitive yazmadan önce mutlaka bu listeyi kontrol et.
 - **i18n:** `useT()` from `@/lib/i18n/context` → `t.sticker.*`, `t.etiket.*`, `t.config.*` vs. Locale 'tr' | 'en'. Hardcoded Türkçe string atma, i18n key kullan.
 - **Form/State:** localStorage hibrit, `customer-cart` + `customer-order` lib'leri
