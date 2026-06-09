@@ -104,9 +104,6 @@ export function Footer() {
         { label: t.nav.howWeProduce, href: "/nasil-uretiyoruz" },
         { label: "Terim Sözlüğü", href: "/terim-sozlugu" },
         { label: t.nav.contact, href: "/iletisim" },
-        { label: "KVKK", href: "/kvkk" },
-        { label: "Gizlilik", href: "/gizlilik" },
-        { label: "Kullanım Şartları", href: "/sartlar" },
       ],
     },
     {
@@ -118,10 +115,6 @@ export function Footer() {
         { label: "Destek talebi oluştur", href: "/destek" },
         { label: "İade talebi oluştur", href: "/iade-talep" },
         { label: "İade-değişim politikası", href: "/iade-degisim-politikasi" },
-        { label: "Çerez Politikası", href: "/cerez" },
-        { label: "Ön Bilgilendirme", href: "/on-bilgilendirme" },
-        { label: "Mesafeli Satış", href: "/mesafeli-satis" },
-        { label: "Cayma Hakkı", href: "/cayma-hakki" },
       ],
     },
     {
@@ -135,8 +128,15 @@ export function Footer() {
     },
   ];
 
-  // LEGAL_LINKS kaldırıldı (Sefa 17 May v16) — tüm linkler artık
-  // FOOTER_GROUPS içindeki Şirket + Destek sütunlarında.
+  const LEGAL_LINKS: FooterLink[] = [
+    { label: "KVKK", href: "/kvkk" },
+    { label: "Gizlilik", href: "/gizlilik" },
+    { label: "Kullanım Şartları", href: "/sartlar" },
+    { label: "Çerez Politikası", href: "/cerez" },
+    { label: "Ön Bilgilendirme", href: "/on-bilgilendirme" },
+    { label: "Mesafeli Satış", href: "/mesafeli-satis" },
+    { label: "Cayma Hakkı", href: "/cayma-hakki" },
+  ];
 
   const onSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -335,37 +335,73 @@ export function Footer() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-x-10 md:gap-y-6 md:flex-1 md:max-w-[680px] md:ml-auto">
-          {FOOTER_GROUPS.map((g) => (
-            <div key={g.t}>
-              {/* Sefa 17 May v27: sütun başlıkları mercan rengine
-                  (PİM'İN DEFTERİ eyebrow ile uyumlu) */}
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-pim-mercan-koyu">
-                {g.t}
-              </div>
-              <div className="flex flex-col gap-2">
-                {g.links.map((l) => {
-                  const skipPrefetch =
-                    g.t === t.footer.groupCompany ||
-                    g.t === t.footer.groupSupport ||
-                    g.t === t.footer.groupAccount ||
-                    l.href.includes("/yapilandir") ||
-                    l.href.includes("tab=tasarim");
-                  return (
-                  <Link
-                    key={l.label}
-                    href={l.href}
-                    prefetch={!skipPrefetch}
-                    className="text-[13px] text-white/80 hover:text-white transition-colors"
+          {FOOTER_GROUPS.map((g) => {
+            const isAccount = g.t === t.footer.groupAccount;
+            return (
+              <div
+                key={g.t}
+                className={isAccount ? "flex flex-col items-end" : undefined}
+              >
+                <div
+                  className={
+                    isAccount ? "inline-flex flex-col items-start w-fit" : undefined
+                  }
+                >
+                  {/* Sefa 17 May v27: sütun başlıkları mercan rengine
+                      (PİM'İN DEFTERİ eyebrow ile uyumlu) */}
+                  <div
+                    className={`text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-pim-mercan-koyu text-center${isAccount ? " w-full" : ""}`}
                   >
-                    {l.label}
-                  </Link>
-                  );
-                })}
+                    {g.t}
+                  </div>
+                  <div className="flex flex-col gap-2 items-start">
+                    {g.links.map((l) => {
+                      const skipPrefetch =
+                        g.t === t.footer.groupCompany ||
+                        g.t === t.footer.groupSupport ||
+                        g.t === t.footer.groupAccount ||
+                        l.href.includes("/yapilandir") ||
+                        l.href.includes("tab=tasarim");
+                      return (
+                        <Link
+                          key={l.label}
+                          href={l.href}
+                          prefetch={!skipPrefetch}
+                          className="text-[13px] text-white/80 hover:text-white transition-colors"
+                        >
+                          {l.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           </div>
         </div>
+
+        <nav
+          aria-label="Yasal bağlantılar"
+          className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 text-[11.5px] text-white/55 mb-4 pt-5 border-t border-white/10"
+        >
+          {LEGAL_LINKS.map((link, i) => (
+            <span key={link.href} className="inline-flex items-center gap-x-4">
+              {i > 0 ? (
+                <span className="text-white/25" aria-hidden>
+                  ·
+                </span>
+              ) : null}
+              <Link
+                href={link.href}
+                prefetch={false}
+                className="text-white/55 hover:text-white transition-colors"
+              >
+                {link.label}
+              </Link>
+            </span>
+          ))}
+        </nav>
 
         {/* Trust strip — copyright (sol) + security badges (sağ)
             Sefa 17 May v17: Kart ikonları kaldırıldı, yerine ©.
