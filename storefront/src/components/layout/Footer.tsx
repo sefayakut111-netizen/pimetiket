@@ -10,7 +10,6 @@ import {
   phoneToWaHref,
 } from "@/lib/site-settings-shared";
 import { usePathname } from "next/navigation";
-import { PimAsset } from "@/components/PimAsset";
 import { Icon } from "@/components/Icon";
 import { Input, Button, useToast } from "@/components/ui";
 import { useT } from "@/lib/i18n/context";
@@ -262,25 +261,13 @@ export function Footer() {
 
         {/* Brand (sol) + 4 nav kolonu (sağ hiza) */}
         <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between mb-10">
-          {/* Brand column */}
-          <div className="md:max-w-[280px] shrink-0">
-            <Link
-              href="/"
-              className="inline-flex items-center mb-3"
-              aria-label="Pim Etiket — Anasayfa"
-            >
-              {/* Footer lacivert zemin → mark-with-text-light (krem mark + yazı) */}
-              <PimAsset variant="markText" bg="dark" size={140} bob={false} />
-            </Link>
-            <p className="text-[12.5px] text-white/55 leading-relaxed max-w-[260px]">
-              {t.footer.tagline}
-            </p>
-            {/* Sefa 5 Haz: WhatsApp + Telefon — tagline altında, sosyal ikonların üstünde */}
+          {/* İletişim kolonu (logo + tagline kaldırıldı) */}
+          <div className="md:max-w-[240px] shrink-0 flex flex-col gap-2.5">
             <a
               href={phoneToWaHref(contactWhatsapp)}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-flex max-w-full items-center gap-2 rounded-full bg-yesil/15 hover:bg-yesil/25 px-3 py-1.5 transition-colors group"
+              className="inline-flex max-w-full items-center gap-2 rounded-full bg-yesil/15 hover:bg-yesil/25 px-3 py-1.5 transition-colors group"
               aria-label={`WhatsApp destek hattı: ${formatPhoneDisplay(contactWhatsapp)}`}
             >
               <svg
@@ -299,7 +286,7 @@ export function Footer() {
             </a>
             <a
               href={phoneToTelHref(contactPhone)}
-              className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-3 py-1.5 transition-colors group"
+              className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-3 py-1.5 transition-colors group"
               aria-label={`Telefon: ${formatPhoneDisplay(contactPhone)}`}
             >
               <Icon.Phone size={16} className="shrink-0 text-white/80" />
@@ -309,7 +296,7 @@ export function Footer() {
             </a>
             {/* Sosyal medya — Sefa 4 Haz: Instagram + X + Pinterest + YouTube.
                 Yeni hesap (ör. TikTok) açılınca SOCIALS dizisine eklenir. */}
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-1 flex items-center gap-2">
               {SOCIALS.map((s) => (
                 <a
                   key={s.label}

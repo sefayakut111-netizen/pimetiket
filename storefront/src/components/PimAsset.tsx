@@ -9,14 +9,11 @@
  *   /pim/pim-etiket-mark-light.svg    → sadece karga sembolü (krem, koyu zeminler)
  *   /pim/pim-etiket-lockup-light-bg.svg → mascot + "pim etiket" wordmark (açık zemin)
  *   /pim/pim-etiket-lockup-dark-bg.svg  → mascot + "pim etiket" wordmark (koyu zemin)
- *   /pim/pim-etiket-mark-with-text.svg       → kare mark + "Pim Etiket" (koyu, açık zemin)
- *   /pim/pim-etiket-mark-with-text-light.svg → kare mark + "Pim Etiket" (krem, koyu zemin)
+ *   /pim/pim-etiket-mark-with-text.svg    → kare mark + "Pim Etiket" (MaskotPlaceholder)
  *
  * Variant + bg matrisi:
  *   variant="logo" bg="light" → lockup-light-bg (TopBar, açık sidebar)
  *   variant="logo" bg="dark"  → lockup-dark-bg  (dark overlay)
- *   variant="markText" bg="light" → mark-with-text (açık zemin)
- *   variant="markText" bg="dark"  → mark-with-text-light (Footer lacivert)
  *   variant="icon" bg="light" → mark-dark       (admin sidebar beyaz, light card)
  *   variant="icon" bg="dark"  → mark-light      (lacivert zeminler)
  *   Chat mercan buton → mark-dark (bg="light", ters renk yok)
@@ -28,7 +25,7 @@
 import Image from "next/image";
 import { cn } from "@/lib/cn";
 
-export type PimVariant = "detailed" | "icon" | "logo" | "markText";
+export type PimVariant = "detailed" | "icon" | "logo";
 export type PimBg = "light" | "dark";
 
 type AssetEntry = { src: string; aspect: number };
@@ -44,10 +41,6 @@ const ASSETS: Record<PimVariant, Record<PimBg, AssetEntry>> = {
     // Açık zemin → koyu mark · Koyu zemin → açık mark
     light: { src: "/pim/pim-etiket-mark-dark.svg", aspect: 1 },
     dark: { src: "/pim/pim-etiket-mark-light.svg", aspect: 1 },
-  },
-  markText: {
-    light: { src: "/pim/pim-etiket-mark-with-text.svg", aspect: 1 },
-    dark: { src: "/pim/pim-etiket-mark-with-text-light.svg", aspect: 1 },
   },
   // detailed → icon alias'ı (eski Pim component'i için backward compat)
   detailed: {
