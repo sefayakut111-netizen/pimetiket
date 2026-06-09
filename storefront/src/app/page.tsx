@@ -348,7 +348,25 @@ export default function HomePage() {
         <div className="mx-auto max-w-[1280px] px-4 md:px-8 grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-16 items-start">
           <div>
             <h2 className="text-[28px] md:text-[40px] font-semibold tracking-tight leading-tight">
-              {t.home.faqTitle}
+              {homeLocale === "en" ? (
+                <>
+                  Answer is usually &ldquo;
+                  <span className="inline-flex items-center gap-1.5 align-middle mx-0.5">
+                    <Pim pose="wave" size={48} bob={false} className="shrink-0" />
+                    yes
+                  </span>
+                  , we got you&rdquo;.
+                </>
+              ) : (
+                <>
+                  Cevap genelde &ldquo;
+                  <span className="inline-flex items-center gap-1.5 align-middle mx-0.5">
+                    <Pim pose="wave" size={48} bob={false} className="shrink-0" />
+                    evet
+                  </span>
+                  , hallederiz&rdquo;.
+                </>
+              )}
             </h2>
             <p className="mt-6 text-base text-gri-700 mb-6 leading-relaxed">
               {t.home.faqHelp}
@@ -356,9 +374,6 @@ export default function HomePage() {
             <Button variant="secondary" href="/sss">
               {t.home.faqAll} <Icon.ChevR size={14} />
             </Button>
-            <div className="mt-8 hidden md:block">
-              <Pim pose="wave" size={100} />
-            </div>
           </div>
           <div className="flex flex-col gap-4">
             {FAQS.map((f, i) => (
