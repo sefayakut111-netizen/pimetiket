@@ -307,10 +307,10 @@ export default function HomePage() {
       {/* ============================== PRODUCTION QUALITY ============================== */}
       <section className="py-16 md:py-20 bg-white">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-          <h2 className="text-center text-[28px] md:text-[36px] font-semibold tracking-tight leading-tight text-lacivert mb-10 md:mb-12">
+          <h2 className="text-[28px] md:text-[36px] font-semibold tracking-tight leading-tight text-lacivert mb-10 md:mb-12 max-w-[560px]">
             {t.home.productionQualityTitle}
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
             {[
               {
                 icon: <Icon.Package size={22} />,
@@ -335,21 +335,23 @@ export default function HomePage() {
             ].map((item) => (
               <div
                 key={item.title}
-                className="text-center px-2"
+                className="flex items-start gap-4 rounded-2xl bg-pim-mercan-tint/60 ring-1 ring-pim-mercan/10 p-6 md:p-7"
               >
-                <span className="grid place-items-center w-14 h-14 rounded-full bg-pim-mercan-tint text-pim-mercan-koyu mx-auto mb-4">
+                <span className="grid shrink-0 place-items-center w-14 h-14 rounded-full bg-white text-pim-mercan-koyu shadow-1 ring-1 ring-pim-mercan/15">
                   {item.icon}
                 </span>
-                <h3 className="text-lg font-semibold text-lacivert mb-1">
-                  {item.title}
-                </h3>
-                <p className="text-base text-gri-700 leading-relaxed">
-                  {item.desc}
-                </p>
+                <div className="min-w-0 pt-0.5">
+                  <h3 className="text-lg font-semibold text-lacivert mb-1">
+                    {item.title}
+                  </h3>
+                  <p className="text-base text-gri-700 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
-          <div className="mt-10 text-center">
+          <div className="mt-10">
             <Button variant="secondary" href="/nasil-uretiyoruz">
               {t.home.productionQualityCta} <Icon.ChevR size={14} />
             </Button>
