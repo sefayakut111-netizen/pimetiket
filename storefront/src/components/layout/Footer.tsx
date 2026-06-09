@@ -187,181 +187,160 @@ export function Footer() {
   return (
     <footer className="bg-lacivert text-white/85 pt-14 pb-6 mt-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-        {/* Newsletter — compact strip
-            Sefa 17 May Dalga 3 #19: /odeme'de gizli */}
-        {!isCheckout && (
-        <div className="mb-10 pb-8 border-b border-white/10 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-end">
-          {/* Sefa 17 May v20: items-start → items-end — her iki blok
-              da alt çizgiden referans alarak hizalanır. Sol bloğun
-              desc satırı sağ bloğun checkbox satırıyla aynı baseline'da
-              biter, alttaki border-bottom çizgisine ikisi de yakın. */}
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pim-mercan-koyu mb-1.5">
-              {t.footer.newsletterEyebrow}
-            </div>
-            <h3 className="text-xl md:text-2xl font-semibold tracking-tight leading-tight mb-1">
-              {t.footer.newsletterTitle}
-            </h3>
-            {/* Sefa 17 May v18: "Ücretsiz şablon paketi da yolda —
-                spam yok, sadece iş." satırı kaldırıldı (duplicate;
-                newsletterDesc'te zaten "spam yok" geçiyor). */}
-            <p className="text-[13px] text-white/60 leading-relaxed">
-              {t.footer.newsletterDesc}
-            </p>
-          </div>
-          {subscribed ? (
-            <div className="inline-flex items-center gap-2.5 bg-yesil-soft/15 ring-1 ring-yesil/30 rounded-full px-4 h-11 text-yesil-soft text-[13px] font-semibold">
-              📩 {t.footer.newsletterSuccess}
-            </div>
-          ) : (
-            <form onSubmit={onSubscribe} className="flex flex-col gap-2 min-w-[280px] md:min-w-[380px]">
-              <div className="flex gap-2">
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t.footer.newsletterPlaceholder}
-                  aria-label={t.footer.newsletterTitle}
-                  disabled={loading}
-                  className="!bg-white/15 !text-white placeholder:!text-white/60 !ring-white/25 focus:!ring-pim-mercan flex-1"
-                />
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={loading || !email || !consent}
-                >
-                  {loading ? "..." : t.footer.newsletterSubscribe}
-                </Button>
+        {/* Orta satır: sol 4 nav kolonu + sağ iletişim/newsletter rayı */}
+        <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-10 mb-10">
+          {/* 4 nav kolonu — sol baştan */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-x-10 md:gap-y-6 md:flex-1 order-1">
+            {FOOTER_GROUPS.map((g) => (
+              <div key={g.t}>
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-pim-mercan text-left">
+                  {g.t}
+                </div>
+                <div className="flex flex-col gap-2">
+                  {g.links.map((l) => {
+                    const skipPrefetch =
+                      g.t === t.footer.groupCompany ||
+                      g.t === t.footer.groupSupport ||
+                      g.t === t.footer.groupAccount ||
+                      l.href.includes("/yapilandir") ||
+                      l.href.includes("tab=tasarim");
+                    return (
+                      <Link
+                        key={l.label}
+                        href={l.href}
+                        prefetch={!skipPrefetch}
+                        className="text-[13px] text-white/80 hover:text-white transition-colors"
+                      >
+                        {l.label}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-              <label className="flex items-start gap-2 text-[11.5px] text-white/65 leading-relaxed cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(e) => setConsent(e.target.checked)}
-                  className="mt-0.5 shrink-0 accent-pim-mercan"
-                  required
-                />
-                <span>
-                  E-postamın yeni şablon ve duyurular için saklanmasına izin
-                  veriyorum (
-                  <Link
-                    href="/kvkk"
-                    prefetch={false}
-                    className="text-pim-mercan-koyu font-semibold hover:underline"
-                  >
-                    KVKK aydınlatma
-                  </Link>
-                  ). Üyelikten her an çıkabilirim.
-                </span>
-              </label>
-            </form>
-          )}
-        </div>
-        )}
+            ))}
+          </div>
 
-        {/* Brand (sol) + 4 nav kolonu (sağ hiza) */}
-        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between mb-10">
-          {/* İletişim kolonu (logo + tagline kaldırıldı) */}
-          <div className="md:max-w-[240px] shrink-0 flex flex-col gap-2.5">
-            <a
-              href={phoneToWaHref(contactWhatsapp)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex max-w-full items-center gap-2 rounded-full bg-yesil/15 hover:bg-yesil/25 px-3 py-1.5 transition-colors group"
-              aria-label={`WhatsApp destek hattı: ${formatPhoneDisplay(contactWhatsapp)}`}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="shrink-0 text-yesil"
-                aria-hidden
+          {/* Sağ ray: iletişim → ayraç → kompakt newsletter */}
+          <div className="md:w-[300px] shrink-0 flex flex-col order-2">
+            <div className="flex flex-col gap-2.5">
+              <a
+                href={phoneToWaHref(contactWhatsapp)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex max-w-full min-h-10 items-center gap-2 rounded-full bg-yesil/15 hover:bg-yesil/25 px-3 py-2 transition-colors group"
+                aria-label={`WhatsApp destek hattı: ${formatPhoneDisplay(contactWhatsapp)}`}
               >
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-              </svg>
-              <span className="text-[12.5px] font-semibold text-white/90 group-hover:text-white whitespace-nowrap">
-                WhatsApp · {formatPhoneDisplay(contactWhatsapp)}
-              </span>
-            </a>
-            <a
-              href={phoneToTelHref(contactPhone)}
-              className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-3 py-1.5 transition-colors group"
-              aria-label={`Telefon: ${formatPhoneDisplay(contactPhone)}`}
-            >
-              <Icon.Phone size={16} className="shrink-0 text-white/80" />
-              <span className="text-[12.5px] font-semibold text-white/90 group-hover:text-white whitespace-nowrap">
-                Telefon · {formatPhoneDisplay(contactPhone)}
-              </span>
-            </a>
-            {/* Sosyal medya — Sefa 4 Haz: Instagram + X + Pinterest + YouTube.
-                Yeni hesap (ör. TikTok) açılınca SOCIALS dizisine eklenir. */}
-            <div className="mt-1 flex items-center gap-2">
-              {SOCIALS.map((s) => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Pim Etiket ${s.label}`}
-                  title={s.label}
-                  className="grid place-items-center w-9 h-9 rounded-full bg-white/10 hover:bg-pim-mercan transition-colors text-white"
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="shrink-0 text-yesil"
+                  aria-hidden
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    aria-hidden
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+                <span className="text-[12.5px] font-semibold text-white/90 group-hover:text-white whitespace-nowrap">
+                  WhatsApp · {formatPhoneDisplay(contactWhatsapp)}
+                </span>
+              </a>
+              <a
+                href={phoneToTelHref(contactPhone)}
+                className="inline-flex max-w-full min-h-10 items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-3 py-2 transition-colors group"
+                aria-label={`Telefon: ${formatPhoneDisplay(contactPhone)}`}
+              >
+                <Icon.Phone size={16} className="shrink-0 text-white/80" />
+                <span className="text-[12.5px] font-semibold text-white/90 group-hover:text-white whitespace-nowrap">
+                  Telefon · {formatPhoneDisplay(contactPhone)}
+                </span>
+              </a>
+              <div className="mt-1 flex items-center gap-2">
+                {SOCIALS.map((s) => (
+                  <a
+                    key={s.label}
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Pim Etiket ${s.label}`}
+                    title={s.label}
+                    className="grid place-items-center w-10 h-10 rounded-full bg-white/10 hover:bg-pim-mercan transition-colors text-white"
                   >
-                    <path d={s.path} />
-                  </svg>
-                </a>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-x-10 md:gap-y-6 md:flex-1 md:max-w-[680px] md:ml-auto">
-          {FOOTER_GROUPS.map((g) => (
-            <div key={g.t}>
-              {/* Sefa 17 May v27: sütun başlıkları mercan rengine
-                  (PİM'İN DEFTERİ eyebrow ile uyumlu) */}
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] mb-3 text-pim-mercan-koyu text-center">
-                {g.t}
-              </div>
-              <div className="flex flex-col gap-2">
-                {g.links.map((l) => {
-                  const skipPrefetch =
-                    g.t === t.footer.groupCompany ||
-                    g.t === t.footer.groupSupport ||
-                    g.t === t.footer.groupAccount ||
-                    l.href.includes("/yapilandir") ||
-                    l.href.includes("tab=tasarim");
-                  return (
-                    <Link
-                      key={l.label}
-                      href={l.href}
-                      prefetch={!skipPrefetch}
-                      className="text-[13px] text-white/80 hover:text-white transition-colors"
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden
                     >
-                      {l.label}
-                    </Link>
-                  );
-                })}
+                      <path d={s.path} />
+                    </svg>
+                  </a>
+                ))}
               </div>
             </div>
-          ))}
+
+            <div className="border-t border-white/10 my-4" />
+
+            {subscribed ? (
+              <div className="inline-flex items-center gap-2.5 bg-yesil-soft/15 ring-1 ring-yesil/30 rounded-full px-4 min-h-10 text-yesil-soft text-[13px] font-semibold">
+                📩 {t.footer.newsletterSuccess}
+              </div>
+            ) : (
+              <form onSubmit={onSubscribe} className="flex flex-col gap-2">
+                <h3 className="text-base lg:text-lg font-semibold tracking-tight leading-tight">
+                  📩 {t.footer.newsletterTitle}
+                </h3>
+                <div className="flex gap-2">
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t.footer.newsletterPlaceholder}
+                    aria-label={t.footer.newsletterTitle}
+                    disabled={loading}
+                    className="!bg-white/15 !text-white placeholder:!text-white/60 !ring-white/25 focus:!ring-pim-mercan flex-1 min-h-10"
+                  />
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={loading || !email || !consent}
+                    className="min-h-10 shrink-0"
+                  >
+                    {loading ? "..." : t.footer.newsletterSubscribe}
+                  </Button>
+                </div>
+                <label className="flex items-center gap-2 text-[11.5px] text-white/65 leading-snug cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(e) => setConsent(e.target.checked)}
+                    className="shrink-0 accent-pim-mercan w-4 h-4"
+                    required
+                  />
+                  <span>
+                    <Link
+                      href="/kvkk"
+                      prefetch={false}
+                      className="text-pim-mercan font-semibold hover:underline"
+                    >
+                      KVKK aydınlatma metnini
+                    </Link>{" "}
+                    onaylıyorum
+                  </span>
+                </label>
+              </form>
+            )}
           </div>
         </div>
 
         <nav
           aria-label="Yasal bağlantılar"
-          className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 text-[11.5px] text-white/55 mb-4 pt-5 border-t border-white/10"
+          className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1.5 text-[11.5px] text-white/55 mb-4 pt-5 border-t border-white/10"
         >
           {LEGAL_LINKS.map((link, i) => (
             <span key={link.href} className="inline-flex items-center gap-x-4">
               {i > 0 ? (
-                <span className="text-white/25" aria-hidden>
+                <span className="text-white/35" aria-hidden>
                   ·
                 </span>
               ) : null}
