@@ -7,16 +7,8 @@
 - `pim-etiket-lockup-dark-bg.svg` — yatay lockup (karga + yazı, koyu zemin)
 
 ## Renkler
-- Gövde / yazı: `#1F2937`
-- Göz: `#FF6B5B`
-- Beyaz versiyon: `#F5F2EC`
+- Gövde / yazı: `#161624`
+- Aksan (göz vb.): `#ef4056`
+- Krem: `#FAF4E8`
 
-## Tipografi
-**Bricolage Grotesque** — Google Fonts
-- `Pim` → Bold (700)
-- `Etiket` → Medium (500)
-- Tracking: -2.5%
-
-> Lockup SVG'leri Google Fonts'tan yazı tipini otomatik yükler.
-> Print/profesyonel kullanım için yazıyı outline'a çevirmen önerilir
-> (Illustrator: `Type > Create Outlines` | Figma: `Outline stroke`).
+> Lockup SVG'lerindeki yazılar outline path'tir (font bağımlılığı yok).

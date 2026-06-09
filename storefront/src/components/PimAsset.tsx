@@ -1,7 +1,8 @@
 /**
  * PimAsset — mascot/logo wrapper.
  *
- * Sefa 17 May v24: Yeni logo seti (Bricolage Grotesque + mark/lockup).
+ * Sefa 17 May v24: Yeni logo seti (outline path wordmark + mark/lockup).
+ * Renkler: ink #161624, kırmızı #ef4056, krem #FAF4E8 (font yok — yazılar outline path).
  *
  * Kaynak dosyalar:
  *   /pim/pim-etiket-mark-dark.svg     → sadece karga sembolü (koyu, açık zeminler)
@@ -28,11 +29,11 @@ export type PimBg = "light" | "dark";
 type AssetEntry = { src: string; aspect: number };
 
 /** variant × bg → asset.
- *  - aspect: width/height. logo = 690/240 ≈ 2.875, icon = 1 (kare). */
+ *  - aspect: width/height. logo = 396.85/105.25, icon = 1 (kare). */
 const ASSETS: Record<PimVariant, Record<PimBg, AssetEntry>> = {
   logo: {
-    light: { src: "/pim/pim-etiket-lockup-light-bg.svg", aspect: 690 / 240 },
-    dark: { src: "/pim/pim-etiket-lockup-dark-bg.svg", aspect: 690 / 240 },
+    light: { src: "/pim/pim-etiket-lockup-light-bg.svg", aspect: 396.85 / 105.25 },
+    dark: { src: "/pim/pim-etiket-lockup-dark-bg.svg", aspect: 396.85 / 105.25 },
   },
   icon: {
     // Açık zemin → koyu mark · Koyu zemin → açık mark

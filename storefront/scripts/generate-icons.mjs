@@ -22,7 +22,7 @@ async function svgToPng(size, outName, opts = {}) {
   const svg = readFileSync(SRC);
   let img = sharp(svg, { density: 300 }).resize(size, size, {
     fit: "contain",
-    background: opts.maskable ? BG : { r: 0, g: 0, b: 0, alpha: 0 },
+    background: BG,
   });
   if (opts.maskable) {
     // Safe zone: logo merkez %80 — kenarda %10 padding
@@ -47,7 +47,7 @@ async function buildFavicon() {
   const buffers = await Promise.all(
     sizes.map((s) =>
       sharp(readFileSync(SRC), { density: 300 })
-        .resize(s, s, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .resize(s, s, { fit: "contain", background: BG })
         .png({ compressionLevel: 9 })
         .toBuffer()
     )

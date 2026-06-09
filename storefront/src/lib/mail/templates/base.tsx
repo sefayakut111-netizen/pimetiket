@@ -246,7 +246,7 @@ export function BaseLayout({
               <Column style={{ width: 34, verticalAlign: "middle" }}>
                 <Link href={SITE_URL}>
                   <Img
-                    src={`${SITE_URL}/icon.svg`}
+                    src={`${SITE_URL}/icon-192.png`}
                     width={34}
                     height={34}
                     alt="Pim Etiket"
