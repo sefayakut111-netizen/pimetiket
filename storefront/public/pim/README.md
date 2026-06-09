@@ -5,6 +5,8 @@
 - `pim-etiket-mark-light.svg` — sadece karga sembolü (krem, koyu zeminler için)
 - `pim-etiket-lockup-light-bg.svg` — yatay lockup (karga + yazı, açık zemin)
 - `pim-etiket-lockup-dark-bg.svg` — yatay lockup (karga + yazı, koyu zemin)
+- `pim-etiket-mark-with-text.svg` — kare mark + "Pim Etiket" (koyu, açık zemin / Footer dışı)
+- `pim-etiket-mark-with-text-light.svg` — kare mark + "Pim Etiket" (krem, koyu zemin / Footer)
 
 ## Renkler
 - Gövde / yazı: `#161624`

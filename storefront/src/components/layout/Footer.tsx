@@ -269,8 +269,8 @@ export function Footer() {
               className="inline-flex items-center mb-3"
               aria-label="Pim Etiket — Anasayfa"
             >
-              {/* Footer lacivert zemin → dark-bg lockup (krem logo) */}
-              <PimAsset variant="logo" bg="dark" size={160} bob={false} />
+              {/* Footer lacivert zemin → mark-with-text-light (krem mark + yazı) */}
+              <PimAsset variant="markText" bg="dark" size={140} bob={false} />
             </Link>
             <p className="text-[12.5px] text-white/55 leading-relaxed max-w-[260px]">
               {t.footer.tagline}
