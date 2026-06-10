@@ -29,6 +29,7 @@ import { canAccessModule } from "@/lib/admin-rbac";
 import { getAdminStatusMeta } from "@/lib/admin-status";
 import { isAdminTestOrderPayment } from "@/lib/admin-test-order";
 import { mapOrderItemToCapability } from "@/components/admin/fason/fason-capabilities";
+import { ProductionDownloadBar } from "@/components/partner/ProductionDownloadBar";
 
 const ALL_STATUSES: OrderStatus[] = [...ADMIN_MANUAL_SET_STATUSES];
 
@@ -468,6 +469,20 @@ export default function AdminOrderDetailPage({
                         {item.qty.toLocaleString("tr-TR")} adet ·{" "}
                         {formatCurrency(item.unit)}/adet
                       </div>
+                      {(order.status === "proof_approved" ||
+                        order.status === "ready_to_ship" ||
+                        order.status === "fason_assigned" ||
+                        order.status === "in_production") && (
+                        <div className="mt-2">
+                          <ProductionDownloadBar
+                            orderId={order.id}
+                            itemId={item.id}
+                            hasCutline
+                            compact
+                            onError={(msg) => toast.error(msg)}
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <div className="font-bold tabular-nums">

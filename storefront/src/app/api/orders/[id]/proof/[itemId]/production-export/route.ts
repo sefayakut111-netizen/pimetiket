@@ -1,5 +1,5 @@
 /**
- * GET /api/orders/[id]/proof/[itemId]/production-export?type=cutline|design|composite
+ * GET /api/orders/[id]/proof/[itemId]/production-export?type=cutline|design|composite|pdf
  *
  * Partner + admin/staff üretim indirmesi. Müşteri (sipariş sahibi dahil) → 403.
  */
@@ -20,7 +20,12 @@ import {
 
 export const runtime = "nodejs";
 
-const ALLOWED_TYPES = new Set(["cutline", "design", "composite"]);
+import {
+  getOrBuildProductionPrintPdf,
+  getProductionPrintPdfSignedUrl,
+} from "@/lib/print/production-pdf";
+
+const ALLOWED_TYPES = new Set(["cutline", "design", "composite", "pdf"]);
 
 export async function GET(
   req: Request,
@@ -35,7 +40,7 @@ export async function GET(
   const type = url.searchParams.get("type") ?? "";
   if (!ALLOWED_TYPES.has(type)) {
     return NextResponse.json(
-      { error: "type=cutline|design|composite gerekli" },
+      { error: "type=cutline|design|composite|pdf gerekli" },
       { status: 400 }
     );
   }
@@ -56,6 +61,44 @@ export async function GET(
       { error: access.status === 401 ? "Giriş gerekli" : "Yetkisiz" },
       { status: access.status }
     );
+  }
+
+  if (type === "pdf") {
+    const built = await getOrBuildProductionPrintPdf({
+      admin,
+      orderId,
+      itemId,
+      userId: user?.id ?? "",
+      designFileId,
+    });
+    if (!built.ok) {
+      return NextResponse.json({ error: built.error }, { status: built.status });
+    }
+
+    const wantsUrl = url.searchParams.get("format") === "url";
+    if (wantsUrl) {
+      const signedUrl = await getProductionPrintPdfSignedUrl(
+        built.cacheKey,
+        orderId,
+        itemId
+      );
+      return NextResponse.json({
+        ok: true,
+        url: signedUrl,
+        cached: built.cached,
+        cacheKey: built.cacheKey,
+      });
+    }
+
+    return new NextResponse(Buffer.from(built.pdfBytes), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="pim-print-ready-${orderId.slice(-6)}-${itemId.slice(-6)}.pdf"`,
+        "Cache-Control": "private, max-age=3600",
+        "X-Pim-Print-Cached": built.cached ? "1" : "0",
+      },
+    });
   }
 
   if (type === "design") {

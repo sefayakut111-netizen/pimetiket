@@ -388,6 +388,10 @@ export const r2KeyBuilders = {
    */
   printReadyPdf: (orderId: string, itemId: string) =>
     `customer-proofs/${orderId}/${itemId}/print-ready.pdf`,
+
+  /** Print-ready PDF (CutContour spot) — print/{orderId}/{itemId}.pdf */
+  printPdf: (orderId: string, itemId: string) =>
+    `print/${orderId}/${itemId}.pdf`,
 };
 
 /** Filename sanitize — path traversal + special char prevention */

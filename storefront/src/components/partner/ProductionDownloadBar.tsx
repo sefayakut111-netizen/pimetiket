@@ -3,18 +3,24 @@
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 
-export type ProductionExportType = "design" | "cutline" | "composite";
+export type ProductionExportType =
+  | "design"
+  | "cutline"
+  | "composite"
+  | "pdf";
 
 const EXPORT_LABELS: Record<ProductionExportType, string> = {
   design: "Görüntü",
   cutline: "Bıçak",
   composite: "Görüntü + Bıçak",
+  pdf: "Print-ready PDF",
 };
 
 const EXPORT_ICONS: Record<ProductionExportType, string> = {
   design: "🖼",
   cutline: "✂️",
   composite: "📦",
+  pdf: "📄",
 };
 
 export async function downloadProductionExport(
@@ -31,7 +37,14 @@ export async function downloadProductionExport(
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
-  const ext = type === "cutline" ? "svg" : type === "composite" ? "png" : "bin";
+  const ext =
+    type === "cutline"
+      ? "svg"
+      : type === "composite"
+        ? "png"
+        : type === "pdf"
+          ? "pdf"
+          : "bin";
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `pim-${type}-${orderId.slice(-6)}.${ext}`;
@@ -61,7 +74,7 @@ export function ProductionDownloadBar({
   const [loading, setLoading] = useState<ProductionExportType | null>(null);
 
   const types: ProductionExportType[] = hasCutline
-    ? ["design", "cutline", "composite"]
+    ? ["design", "cutline", "composite", "pdf"]
     : ["design"];
 
   const handleDownload = async (type: ProductionExportType) => {

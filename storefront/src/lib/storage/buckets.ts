@@ -84,6 +84,11 @@ export function r2EditorDraftPreviewKey(
   return `editor-drafts/${userId}/${tempDesignId}/${timestamp}-preview.png`;
 }
 
+/** Print-ready PDF cache — fason RIP hattı */
+export function r2PrintPdfKey(orderId: string, itemId: string): string {
+  return `print/${orderId}/${itemId}.pdf`;
+}
+
 /** Upload API zinciri (statik doğrulama / dokümantasyon) */
 export const UPLOAD_CHAIN_ENDPOINTS = {
   preview: "POST /api/cart/upload-preview",
