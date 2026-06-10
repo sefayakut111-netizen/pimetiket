@@ -48,6 +48,11 @@ import {
 } from "@/lib/editor/offset-label";
 import { cn } from "@/lib/cn";
 import { dispatchPimCommand } from "@/lib/editor/dispatch-pim-command";
+import { validateEditorUploadFile } from "@/lib/editor/file-limits";
+import {
+  humanizePocError,
+  isKnownPocErrorCode,
+} from "@/lib/editor/poc-error-messages";
 import type { PimEditorCommand } from "@/lib/editor/pim-command-schema";
 
 type PocStatusState = "loading" | "ready" | "loaded" | "error" | "timeout";
@@ -526,15 +531,31 @@ export default function EditorShell() {
         setRemovingBg(true);
       } else if (data.type === "pim-bg-remove-done") {
         setRemovingBg(false);
+      } else if (data.type === "pim-poc-status") {
+        const msg = String(data.msg ?? "");
+        const level = String(data.level ?? "warn");
+        if (!msg) return;
+        if (level === "err") {
+          setPocStatus({ state: "error", message: msg });
+          toast.error(msg);
+        } else if (level === "ok") {
+          setPocStatus({ state: "loaded", message: msg });
+          window.setTimeout(() => setPocStatus(null), 2500);
+        } else {
+          setPocStatus({ state: "ready", message: msg });
+        }
       } else if (data.type === "pim-poc-error") {
         const errMsg = String(data.error ?? "(boş)");
-        if (designLoadedRef.current) {
+        console.error("[editor] poc error:", errMsg);
+        const humanMsg = humanizePocError(errMsg);
+        if (designLoadedRef.current && !isKnownPocErrorCode(errMsg)) {
           reportCutlineFailure(`${CUTLINE_FAIL_MESSAGE} (${errMsg})`);
         } else {
           setPocStatus({
             state: "error",
-            message: `Editör hatası: ${errMsg}`,
+            message: humanMsg,
           });
+          toast.error(humanMsg);
         }
       } else if (data.type === "pim-cutline-auto-failed") {
         const errMsg = String(data.error ?? "kontur_uretilemedi");
@@ -584,7 +605,7 @@ export default function EditorShell() {
       window.removeEventListener("message", handler);
       if (timeoutHandle) window.clearTimeout(timeoutHandle);
     };
-  }, [applyPendingSablon, applyCoordinatedScale, setBaseFromSize, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm, imageScalePct, cutMode, cutSource, markCutlinePending, reportCutlineFailure]);
+  }, [applyPendingSablon, applyCoordinatedScale, setBaseFromSize, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm, imageScalePct, cutMode, cutSource, markCutlinePending, reportCutlineFailure, toast]);
 
   useEffect(() => {
     if (!designLoaded || cutlineReady || cutlineError) return;
@@ -1137,10 +1158,21 @@ export default function EditorShell() {
                     canRemoveBg={canRemoveBg}
                     removingBg={removingBg}
                     disabled={pocStatus?.state === "loading"}
+                    onValidationError={(message) => {
+                      setPocStatus({ state: "error", message });
+                    }}
                     onFileSelected={(file) => {
                       setEnhanceDismissed(false);
                       setShowEnhancePrompt(false);
-                      void uploadFileToPoc(file);
+                      void (async () => {
+                        const err = await validateEditorUploadFile(file);
+                        if (err) {
+                          setPocStatus({ state: "error", message: err });
+                          toast.error(err);
+                          return;
+                        }
+                        await uploadFileToPoc(file);
+                      })();
                     }}
                     onRemoveBg={handleRemoveBg}
                   />

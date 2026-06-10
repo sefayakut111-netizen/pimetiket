@@ -1,8 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Button } from "@/components/ui";
+import { Button, useToast } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import {
+  EDITOR_FILE_LIMIT_HINT,
+  rejectFileBySize,
+  validateEditorUploadFile,
+} from "@/lib/editor/file-limits";
 
 interface EditorUploadZoneProps {
   designLoaded: boolean;
@@ -12,6 +17,7 @@ interface EditorUploadZoneProps {
   disabled?: boolean;
   onFileSelected: (file: File) => void;
   onRemoveBg: () => void;
+  onValidationError?: (message: string) => void;
 }
 
 export function EditorUploadZone({
@@ -22,17 +28,42 @@ export function EditorUploadZone({
   disabled,
   onFileSelected,
   onRemoveBg,
+  onValidationError,
 }: EditorUploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const toast = useToast();
 
   const pickFile = () => {
-    if (!disabled) inputRef.current?.click();
+    if (!disabled || validating) inputRef.current?.click();
   };
 
-  const acceptFile = (file: File | undefined) => {
-    if (!file || disabled) return;
-    onFileSelected(file);
+  const reportValidationError = (message: string) => {
+    onValidationError?.(message);
+    toast.error(message);
+  };
+
+  const acceptFile = async (file: File | undefined) => {
+    if (!file || disabled || validating) return;
+
+    const sizeErr = rejectFileBySize(file);
+    if (sizeErr) {
+      reportValidationError(sizeErr);
+      return;
+    }
+
+    setValidating(true);
+    try {
+      const err = await validateEditorUploadFile(file);
+      if (err) {
+        reportValidationError(err);
+        return;
+      }
+      onFileSelected(file);
+    } finally {
+      setValidating(false);
+    }
   };
 
   return (
@@ -56,14 +87,14 @@ export function EditorUploadZone({
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          acceptFile(e.dataTransfer.files?.[0]);
+          void acceptFile(e.dataTransfer.files?.[0]);
         }}
         className={cn(
           "flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors",
           dragging
             ? "border-pim-mercan bg-pim-mercan-tint/40"
             : "border-gri-300 bg-gri-50/50 hover:border-pim-mercan/60 hover:bg-pim-mercan-tint/20",
-          disabled && "pointer-events-none opacity-50"
+          (disabled || validating) && "pointer-events-none opacity-50"
         )}
       >
         <span
@@ -88,6 +119,9 @@ export function EditorUploadZone({
         <span className="mt-1 text-[11px] text-gri-600 leading-snug">
           PNG · JPG · PDF · AI · PSD
         </span>
+        <span className="mt-1 text-[10px] text-gri-500 leading-snug">
+          {EDITOR_FILE_LIMIT_HINT}
+        </span>
         {designLoaded ? (
           <span className="mt-2 text-[10px] text-gri-500">
             Yeni dosya seçmek için tıkla veya sürükle
@@ -100,7 +134,7 @@ export function EditorUploadZone({
         className="sr-only"
         accept="image/png,image/jpeg,image/svg+xml,application/pdf,.ai,.pdf,.psd,image/vnd.adobe.photoshop"
         onChange={(e) => {
-          acceptFile(e.target.files?.[0]);
+          void acceptFile(e.target.files?.[0]);
           e.target.value = "";
         }}
       />

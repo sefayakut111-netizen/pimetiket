@@ -1861,6 +1861,10 @@
 let cvReady = false;
 let pdfJsReady = false;
 let psdReady = false;
+const PIM_MAX_FILE_BYTES = 30 * 1024 * 1024;
+const PIM_MAX_MEGAPIXELS = 40_000_000;
+const PIM_LIB_LOAD_TIMEOUT_MS = 30_000;
+const PIM_BG_MODULE_TIMEOUT_MS = 30_000;
 let currentMat = null;       // OpenCV.js Mat — orijinal resim
 let currentPaths = [];       // Bıçak path'leri (canvas koordinatlarında)
 let bleedPaths = [];         // Bleed path'leri (offset +bleed)
@@ -2577,6 +2581,45 @@ var Module = {
 // ============================================================
 // DOSYA YÜKLEME
 // ============================================================
+function pimFormatFileMb(bytes) {
+  return (bytes / (1024 * 1024)).toFixed(1);
+}
+
+function pimRejectFileSize(file) {
+  if (file.size > PIM_MAX_FILE_BYTES) {
+    showStatus(
+      'Dosyan çok büyük (' + pimFormatFileMb(file.size) + ' MB). 30 MB altına sıkıştırıp tekrar dene.',
+      'err'
+    );
+    return true;
+  }
+  return false;
+}
+
+function pimRejectRasterMegapixels(width, height) {
+  const mp = width * height;
+  if (mp > PIM_MAX_MEGAPIXELS) {
+    showStatus(
+      'Görsel çözünürlüğü çok yüksek (' + (mp / 1_000_000).toFixed(1) + ' MP). En fazla 40 megapiksel destekleniyor — küçültüp tekrar dene.',
+      'err'
+    );
+    return true;
+  }
+  return false;
+}
+
+function pimIsUnsupportedRasterFormat(file, ext) {
+  const type = (file.type || '').toLowerCase();
+  return (
+    ext === 'webp' ||
+    ext === 'heic' ||
+    ext === 'heif' ||
+    type === 'image/webp' ||
+    type.includes('heic') ||
+    type.includes('heif')
+  );
+}
+
 const uploadZone = document.getElementById('uploadZone');
 const fileInput = document.getElementById('fileInput');
 
@@ -2611,6 +2654,10 @@ function handleFile(file) {
   if (PIM_PARAMS.editorShell || PIM_PARAMS.standalone) {
     pimPostToParent({ type: 'pim-poc-loading' });
   }
+  if (pimRejectFileSize(file)) {
+    hideLoading();
+    return;
+  }
   if (!cvReady) {
     showStatus('OpenCV henüz hazır değil, lütfen bekleyin...', 'warn');
     return;
@@ -2622,6 +2669,11 @@ function handleFile(file) {
   const isAi = ext === 'ai';
   const isPsd = ext === 'psd' || file.type === 'image/vnd.adobe.photoshop';
   const isImage = file.type.startsWith('image/') && !isPsd;
+
+  if (pimIsUnsupportedRasterFormat(file, ext)) {
+    showStatus('Bu formatı desteklemiyoruz — PNG veya JPG olarak kaydedip tekrar dene.', 'err');
+    return;
+  }
 
   if (!isPdf && !isAi && !isPsd && !isImage) {
     showStatus('Desteklenmeyen dosya tipi. PNG, JPG, PDF, AI veya PSD yükleyin.', 'err');
@@ -2655,6 +2707,10 @@ function handleFile(file) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
+      if (pimRejectRasterMegapixels(img.width, img.height)) {
+        hideLoading();
+        return;
+      }
       currentFileSource = 'raster';
       currentFile = file;
       processImage(img, file);
@@ -3008,6 +3064,19 @@ function drawOrderDimReference(ctx) {
   ctx.strokeRect(x, y, fw, fh);
   ctx.setLineDash([]);
   ctx.restore();
+}
+
+function downscaleImageSource(img, maxSize) {
+  const srcW = img.width;
+  const srcH = img.height;
+  const scale = Math.min(1, maxSize / Math.max(srcW, srcH));
+  const w = Math.round(srcW * scale);
+  const h = Math.round(srcH * scale);
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  c.getContext('2d').drawImage(img, 0, 0, w, h);
+  return { canvas: c, w, h, scale };
 }
 
 function trimTransparentBounds(img) {
@@ -3510,17 +3579,16 @@ async function pimDownloadProductionExport(type) {
 }
 
 function processImage(img, file) {
-  // Alpha trim — full-bleed PNG'de içerik bbox'u bul
-  const trimmed = trimTransparentBounds(img);
+  // Önce downscale (800px cap), sonra alpha trim — tam çözünürlükte piksel döngüsü donmayı önler
+  const maxSize = 800;
+  const scaled = downscaleImageSource(img, maxSize);
+  const trimmed = trimTransparentBounds(scaled.canvas);
   const srcCanvas = trimmed.canvas;
   const srcW = trimmed.w;
   const srcH = trimmed.h;
-
-  // Resize for performance (max 800px)
-  const maxSize = 800;
-  const scale = Math.min(1, maxSize / Math.max(srcW, srcH));
-  const w = Math.round(srcW * scale);
-  const h = Math.round(srcH * scale);
+  const w = srcW;
+  const h = srcH;
+  const scale = w / img.width;
 
   const padding = 80;
   const paddedW = w + 2 * padding;
@@ -4731,7 +4799,15 @@ async function performBackgroundRemoval() {
   try {
     // Lazy load — ilk tıklamada modülü indir
     if (!bgRemovalModule) {
-      bgRemovalModule = await import('https://esm.run/@imgly/background-removal@1.5.5');
+      bgRemovalModule = await Promise.race([
+        import('https://esm.run/@imgly/background-removal@1.5.5'),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error('BG_MODULE_TIMEOUT')),
+            PIM_BG_MODULE_TIMEOUT_MS
+          )
+        ),
+      ]);
     }
     const { removeBackground } = bgRemovalModule;
 
@@ -4776,7 +4852,11 @@ async function performBackgroundRemoval() {
       pimPostToParent({ type: 'pim-bg-remove-done', error: true });
     }
     console.error('BG removal hatası:', err);
-    showStatus('Arka plan kaldırılamadı: ' + (err.message || 'Bilinmeyen hata. İnternet bağlantını kontrol et.'), 'err');
+    const bgMsg =
+      err && err.message === 'BG_MODULE_TIMEOUT'
+        ? 'AI arka plan modeli yüklenemedi — internet bağlantını kontrol edip tekrar dene.'
+        : 'Arka plan kaldırılamadı: ' + (err.message || 'Bilinmeyen hata. İnternet bağlantını kontrol et.');
+    showStatus(bgMsg, 'err');
   }
 }
 
@@ -5431,7 +5511,10 @@ function hideLoading() {
 }
 
 function showStatus(msg, level = 'warn') {
-  // Geçici bildirim için statusBox kullan
+  if (PIM_PARAMS.editorShell) {
+    pimPostToParent({ type: 'pim-poc-status', msg: String(msg), level });
+  }
+  // Standalone / embed — geçici bildirim için statusBox
   const box = document.getElementById('statusBox');
   if (box) {
     box.innerHTML = `<div class="status ${level === 'err' ? 'err' : level === 'ok' ? 'ok' : 'warn'}">${msg}</div>`;
@@ -5440,37 +5523,61 @@ function showStatus(msg, level = 'warn') {
 }
 </script>
 
-<!-- PDF.js — PDF/AI dosyaları için -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<!-- ag-psd — PSD dosyaları için (window.agPsd olarak global'e gelir) -->
-<script src="https://cdn.jsdelivr.net/npm/ag-psd@28.0.0/dist/bundle.js"></script>
+<!-- PDF.js — PDF/AI dosyaları için (local vendor) -->
+<script src="/vendor/pdf.min.js"></script>
+<!-- ag-psd — PSD dosyaları için (local vendor, window.agPsd) -->
+<script src="/vendor/ag-psd.bundle.js"></script>
 <script>
-  // PDF.js worker konfigürasyonu
-  if (typeof pdfjsLib !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pimLibLoadStartedAt = Date.now();
+
+  function pimMarkPdfJsReady() {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.js';
     pdfJsReady = true;
     updateLibStatus();
+  }
+
+  function pimMarkPsdReady() {
+    psdReady = true;
+    updateLibStatus();
+  }
+
+  function pimLibLoadTimedOut() {
+    return Date.now() - pimLibLoadStartedAt > PIM_LIB_LOAD_TIMEOUT_MS;
+  }
+
+  function pimReportLibLoadFailure(libName) {
+    showStatus(
+      libName + ' motoru yüklenemedi — sayfayı yenileyip tekrar dene.',
+      'err'
+    );
+  }
+
+  // PDF.js worker konfigürasyonu
+  if (typeof pdfjsLib !== 'undefined') {
+    pimMarkPdfJsReady();
   } else {
     const checkPdfJs = setInterval(() => {
       if (typeof pdfjsLib !== 'undefined') {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        pdfJsReady = true;
-        updateLibStatus();
+        pimMarkPdfJsReady();
         clearInterval(checkPdfJs);
+      } else if (pimLibLoadTimedOut()) {
+        clearInterval(checkPdfJs);
+        pimReportLibLoadFailure('PDF');
       }
     }, 200);
   }
 
   // ag-psd hazır mı kontrol et
   if (typeof agPsd !== 'undefined') {
-    psdReady = true;
-    updateLibStatus();
+    pimMarkPsdReady();
   } else {
     const checkAgPsd = setInterval(() => {
       if (typeof agPsd !== 'undefined') {
-        psdReady = true;
-        updateLibStatus();
+        pimMarkPsdReady();
         clearInterval(checkAgPsd);
+      } else if (pimLibLoadTimedOut()) {
+        clearInterval(checkAgPsd);
+        pimReportLibLoadFailure('PSD');
       }
     }, 200);
   }
