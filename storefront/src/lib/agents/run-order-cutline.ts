@@ -108,7 +108,10 @@ export async function runOrderCutlineGeneration(
       );
 
       if (detected.found && detected.valid !== false && detected.svgPath) {
-        const svg = buildEmbeddedCutlineSvg(detected.svgPath);
+        const svg = buildEmbeddedCutlineSvg(detected.svgPath, {
+          widthMm: item.width,
+          heightMm: item.height,
+        });
         const saveResult = await saveCutlineEdit(admin, {
           orderId,
           itemId: item.id,

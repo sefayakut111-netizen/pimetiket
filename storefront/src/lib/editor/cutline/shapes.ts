@@ -123,3 +123,24 @@ export function pathRingToSvgD(ring: PathRing): string {
   }
   return `${d} Z`;
 }
+
+/** px/mm uzayında yuvarlak köşeli dikdörtgen — 4 köşe SVG arc */
+export function roundedRectSvgD(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radius: number
+): string {
+  const cr = Math.min(Math.max(0, radius), w / 2, h / 2);
+  if (cr <= 0) {
+    return `M ${x} ${y} H ${x + w} V ${y + h} H ${x} Z`;
+  }
+  const x2 = x + w;
+  const y2 = y + h;
+  return (
+    `M ${x + cr} ${y} H ${x2 - cr} A ${cr} ${cr} 0 0 1 ${x2} ${y + cr} ` +
+    `V ${y2 - cr} A ${cr} ${cr} 0 0 1 ${x2 - cr} ${y2} H ${x + cr} ` +
+    `A ${cr} ${cr} 0 0 1 ${x} ${y2 - cr} V ${y + cr} A ${cr} ${cr} 0 0 1 ${x + cr} ${y} Z`
+  );
+}

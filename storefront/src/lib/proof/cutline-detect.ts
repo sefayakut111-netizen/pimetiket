@@ -100,11 +100,156 @@ function findMagentaStrokePath(svgText: string): string | null {
   return null;
 }
 
+function extendBBox(
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+  x: number,
+  y: number
+): [number, number, number, number] {
+  return [
+    Math.min(minX, x),
+    Math.min(minY, y),
+    Math.max(maxX, x),
+    Math.max(maxY, y),
+  ];
+}
+
+/** SVG path d → kaynak uzay bbox (PDF pt / PSD px korunur) */
+export function computePathBBox(pathD: string): {
+  minX: number;
+  minY: number;
+  width: number;
+  height: number;
+} | null {
+  const trimmed = pathD.trim();
+  if (!trimmed) return null;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let cx = 0;
+  let cy = 0;
+  let sx = 0;
+  let sy = 0;
+
+  const tokens = trimmed.match(/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g);
+  if (!tokens?.length) return null;
+
+  let i = 0;
+  let cmd = "";
+  const readNum = () => parseFloat(tokens[i++] ?? "NaN");
+
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (/^[a-zA-Z]$/.test(t)) {
+      cmd = t;
+      i++;
+    } else if (!cmd) {
+      i++;
+      continue;
+    }
+
+    const rel = cmd === cmd.toLowerCase();
+    const upper = cmd.toUpperCase();
+
+    if (upper === "M") {
+      const x = readNum();
+      const y = readNum();
+      if (!Number.isFinite(x) || !Number.isFinite(y)) break;
+      cx = rel ? cx + x : x;
+      cy = rel ? cy + y : y;
+      sx = cx;
+      sy = cy;
+      [minX, minY, maxX, maxY] = extendBBox(minX, minY, maxX, maxY, cx, cy);
+      cmd = rel ? "l" : "L";
+    } else if (upper === "L") {
+      const x = readNum();
+      const y = readNum();
+      if (!Number.isFinite(x) || !Number.isFinite(y)) break;
+      cx = rel ? cx + x : x;
+      cy = rel ? cy + y : y;
+      [minX, minY, maxX, maxY] = extendBBox(minX, minY, maxX, maxY, cx, cy);
+    } else if (upper === "H") {
+      const x = readNum();
+      if (!Number.isFinite(x)) break;
+      cx = rel ? cx + x : x;
+      [minX, minY, maxX, maxY] = extendBBox(minX, minY, maxX, maxY, cx, cy);
+    } else if (upper === "V") {
+      const y = readNum();
+      if (!Number.isFinite(y)) break;
+      cy = rel ? cy + y : y;
+      [minX, minY, maxX, maxY] = extendBBox(minX, minY, maxX, maxY, cx, cy);
+    } else if (upper === "C") {
+      for (let k = 0; k < 3; k++) {
+        const x = readNum();
+        const y = readNum();
+        if (!Number.isFinite(x) || !Number.isFinite(y)) break;
+        const px = rel ? cx + x : x;
+        const py = rel ? cy + y : y;
+        [minX, minY, maxX, maxY] = extendBBox(minX, minY, maxX, maxY, px, py);
+        if (k === 2) {
+          cx = px;
+          cy = py;
+        }
+      }
+    } else if (upper === "Q") {
+      for (let k = 0; k < 2; k++) {
+        const x = readNum();
+        const y = readNum();
+        if (!Number.isFinite(x) || !Number.isFinite(y)) break;
+        const px = rel ? cx + x : x;
+        const py = rel ? cy + y : y;
+        [minX, minY, maxX, maxY] = extendBBox(minX, minY, maxX, maxY, px, py);
+        if (k === 1) {
+          cx = px;
+          cy = py;
+        }
+      }
+    } else if (upper === "A") {
+      const rx = readNum();
+      const ry = readNum();
+      readNum(); // x-axis-rotation
+      readNum(); // large-arc
+      readNum(); // sweep
+      const x = readNum();
+      const y = readNum();
+      if (!Number.isFinite(x) || !Number.isFinite(y)) break;
+      cx = rel ? cx + x : x;
+      cy = rel ? cy + y : y;
+      const rMax = Math.max(Math.abs(rx), Math.abs(ry));
+      [minX, minY, maxX, maxY] = extendBBox(minX, minY, maxX, maxY, cx - rMax, cy - rMax);
+      [minX, minY, maxX, maxY] = extendBBox(minX, minY, maxX, maxY, cx + rMax, cy + rMax);
+    } else if (upper === "Z") {
+      cx = sx;
+      cy = sy;
+    } else {
+      break;
+    }
+  }
+
+  if (!Number.isFinite(minX) || maxX <= minX || maxY <= minY) return null;
+  return { minX, minY, width: maxX - minX, height: maxY - minY };
+}
+
 /** Gömülü path d → CutContour SVG (POC/depolama uyumlu) */
-export function buildEmbeddedCutlineSvg(pathD: string): string {
+export function buildEmbeddedCutlineSvg(
+  pathD: string,
+  opts?: { widthMm?: number; heightMm?: number }
+): string {
   const safeD = pathD.replace(/"/g, "'");
+  const bbox = computePathBBox(pathD);
+  const viewBox = bbox
+    ? `${bbox.minX} ${bbox.minY} ${bbox.width} ${bbox.height}`
+    : "0 0 100 100";
+  const widthAttr =
+    opts?.widthMm != null ? ` width="${opts.widthMm}mm"` : "";
+  const heightAttr =
+    opts?.heightMm != null ? ` height="${opts.heightMm}mm"` : "";
   return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<svg xmlns="http://www.w3.org/2000/svg"${widthAttr}${heightAttr} viewBox="${viewBox}">
   <g id="CutContour" data-pim-cutline="true" data-pim-embedded="true">
     <path d="${safeD}" fill="none" stroke="#FF0080" stroke-width="0.5"/>
   </g>
