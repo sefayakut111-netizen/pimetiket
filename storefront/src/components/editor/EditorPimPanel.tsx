@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { PimMini } from "@/components/Pim";
+import { PimAsset } from "@/components/PimAsset";
 import { Button, Input } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { PimEditorCommand } from "@/lib/editor/pim-command-schema";
@@ -17,6 +18,86 @@ export interface EditorPimPanelProps {
   disabled?: boolean;
 }
 
+function EditorPimPanelContent({
+  messages,
+  sending,
+  disabled,
+  input,
+  onInputChange,
+  onSubmit,
+  listRef,
+}: {
+  messages: ChatMessage[];
+  sending: boolean;
+  disabled?: boolean;
+  input: string;
+  onInputChange: (value: string) => void;
+  onSubmit: () => void;
+  listRef: RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <>
+      <div className="flex shrink-0 items-center gap-2 border-b border-gri-100 px-3 py-2.5">
+        <PimMini pose="chat" size={28} />
+        <p className="text-[13px] font-semibold text-lacivert leading-tight">
+          Pim&apos;e söyle
+        </p>
+      </div>
+
+      <div
+        ref={listRef}
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-2.5 space-y-2 bg-gri-50"
+        aria-live="polite"
+      >
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={cn(
+              "max-w-[95%] rounded-xl px-3 py-2 text-[13px] leading-snug",
+              msg.role === "user"
+                ? "ml-auto bg-pim-mercan text-white"
+                : "mr-auto bg-white text-lacivert ring-1 ring-gri-200"
+            )}
+          >
+            {msg.text}
+          </div>
+        ))}
+        {sending ? (
+          <p className="text-[12px] text-gri-500 px-1">Pim düşünüyor…</p>
+        ) : null}
+      </div>
+
+      <form
+        className="shrink-0 border-t border-gri-200 bg-white p-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+      >
+        <div className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => onInputChange(e.target.value)}
+            placeholder="1 lira boyutu, yuvarlak kes…"
+            disabled={disabled || sending}
+            maxLength={500}
+            className="min-w-0 flex-1 text-[13px]"
+            aria-label="Pim komutu"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            disabled={disabled || sending || !input.trim()}
+            className="shrink-0"
+          >
+            Gönder
+          </Button>
+        </div>
+      </form>
+    </>
+  );
+}
+
 export function EditorPimPanel({ onCommand, disabled }: EditorPimPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -27,6 +108,7 @@ export function EditorPimPanel({ onCommand, disabled }: EditorPimPanelProps) {
   ]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -110,65 +192,62 @@ export function EditorPimPanel({ onCommand, disabled }: EditorPimPanelProps) {
     }
   }, [input, sending, disabled, onCommand, scrollToBottom]);
 
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSheetOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheetOpen]);
+
+  const panelProps = {
+    messages,
+    sending,
+    disabled,
+    input,
+    onInputChange: setInput,
+    onSubmit: () => void sendMessage(),
+    listRef,
+  };
+
   return (
-    <aside className="hidden h-full min-h-0 flex-col overflow-hidden border-l border-gri-200 bg-white lg:flex">
-      <div className="flex shrink-0 items-center gap-2 border-b border-gri-100 px-3 py-2.5">
-        <PimMini pose="chat" size={28} />
-        <p className="text-[13px] font-semibold text-lacivert leading-tight">
-          Pim&apos;e söyle
-        </p>
-      </div>
+    <>
+      <aside className="hidden h-full min-h-0 flex-col overflow-hidden border-l border-gri-200 bg-white lg:flex">
+        <EditorPimPanelContent {...panelProps} />
+      </aside>
 
-      <div
-        ref={listRef}
-        className="min-h-0 flex-1 overflow-y-auto px-3 py-2.5 space-y-2 bg-gri-50"
-        aria-live="polite"
+      <button
+        type="button"
+        aria-label="Pim asistanını aç"
+        disabled={disabled}
+        onClick={() => setSheetOpen(true)}
+        className={cn(
+          "lg:hidden fixed bottom-4 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-pim-mercan text-white shadow-lg ring-2 ring-white transition-transform active:scale-95",
+          disabled && "pointer-events-none opacity-50"
+        )}
       >
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={cn(
-              "max-w-[95%] rounded-xl px-3 py-2 text-[13px] leading-snug",
-              msg.role === "user"
-                ? "ml-auto bg-pim-mercan text-white"
-                : "mr-auto bg-white text-lacivert ring-1 ring-gri-200"
-            )}
-          >
-            {msg.text}
-          </div>
-        ))}
-        {sending ? (
-          <p className="text-[12px] text-gri-500 px-1">Pim düşünüyor…</p>
-        ) : null}
-      </div>
+        <PimAsset variant="icon" bg="dark" size={36} bob={false} ariaLabel="" />
+      </button>
 
-      <form
-        className="shrink-0 border-t border-gri-200 bg-white p-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void sendMessage();
-        }}
-      >
-        <div className="flex gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="1 lira boyutu, yuvarlak kes…"
-            disabled={disabled || sending}
-            maxLength={500}
-            className="min-w-0 flex-1 text-[13px]"
-            aria-label="Pim komutu"
+      {sheetOpen ? (
+        <>
+          <button
+            type="button"
+            aria-label="Pim panelini kapat"
+            className="lg:hidden fixed inset-0 z-40 bg-lacivert/40"
+            onClick={() => setSheetOpen(false)}
           />
-          <Button
-            type="submit"
-            size="sm"
-            disabled={disabled || sending || !input.trim()}
-            className="shrink-0"
+          <div
+            className="lg:hidden fixed inset-x-0 bottom-0 z-50 flex max-h-[50dvh] min-h-[280px] flex-col overflow-hidden rounded-t-2xl border border-gri-200 bg-white shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pim asistanı"
           >
-            Gönder
-          </Button>
-        </div>
-      </form>
-    </aside>
+            <EditorPimPanelContent {...panelProps} />
+          </div>
+        </>
+      ) : null}
+    </>
   );
 }

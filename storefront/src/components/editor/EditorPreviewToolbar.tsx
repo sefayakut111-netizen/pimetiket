@@ -33,7 +33,7 @@ export function EditorZoomControls({
       <button
         type="button"
         onClick={onZoomOut}
-        className="h-8 w-8 rounded-lg border border-gri-200 text-[16px] font-medium hover:bg-gri-50"
+        className="h-11 w-11 lg:h-8 lg:w-8 rounded-lg border border-gri-200 text-[16px] font-medium hover:bg-gri-50"
         aria-label="Uzaklaştır"
       >
         −
@@ -44,7 +44,7 @@ export function EditorZoomControls({
       <button
         type="button"
         onClick={onZoomIn}
-        className="h-8 w-8 rounded-lg border border-gri-200 text-[16px] font-medium hover:bg-gri-50"
+        className="h-11 w-11 lg:h-8 lg:w-8 rounded-lg border border-gri-200 text-[16px] font-medium hover:bg-gri-50"
         aria-label="Yakınlaştır"
       >
         +
@@ -52,7 +52,7 @@ export function EditorZoomControls({
       <button
         type="button"
         onClick={onZoomReset}
-        className="h-8 px-2 rounded-lg border border-gri-200 text-[11px] font-semibold hover:bg-gri-50"
+        className="h-11 px-3 lg:h-8 lg:px-2 rounded-lg border border-gri-200 text-[11px] font-semibold hover:bg-gri-50"
       >
         Sıfırla
       </button>

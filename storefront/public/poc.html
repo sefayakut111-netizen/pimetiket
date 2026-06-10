@@ -448,6 +448,7 @@
     background: transparent;
     border-radius: 6px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    touch-action: none;
   }
 
   .empty-state {
@@ -1900,6 +1901,13 @@ let viewZoom = 1;                  // yalnızca önizleme (0.25–3.0)
 let cutType = 'kisscut';           // kisscut | thrucut — üretim spot rengi
 let isDraggingArt = false;
 let dragStart = { x: 0, y: 0, tx: 0, ty: 0 };
+let viewPanX = 0;
+let viewPanY = 0;
+let isPanningView = false;
+let viewPanStart = { x: 0, y: 0, panX: 0, panY: 0 };
+let pinchStartDist = 0;
+let pinchStartZoom = 1;
+const canvasPointers = new Map();
 
 // ============================================================
 // PIM ENTEGRASYON BOOTSTRAP (Sefa 22 May v68 — Faz 4)
@@ -2325,11 +2333,7 @@ window.addEventListener('message', (e) => {
       render();
     } else if (msg.type === 'pim-set-view-zoom') {
       if (typeof msg.zoom === 'number' && msg.zoom > 0) {
-        viewZoom = Math.max(0.25, Math.min(3, msg.zoom));
-        applyViewZoom();
-        if (PIM_PARAMS.editorShell && currentMat) {
-          render();
-        }
+        pimSetViewZoom(msg.zoom, { silent: true });
       }
     } else if (msg.type === 'pim-dismiss-circle-contour-suggest') {
       pimCircleContourSuggestDismissed = true;
@@ -3496,6 +3500,26 @@ function applyPlacementPreset(preset) {
   }
 }
 
+function pimClampViewZoom(z) {
+  return Math.max(0.25, Math.min(3, Math.round(z * 10) / 10));
+}
+
+function pimSetViewZoom(z, opts) {
+  const silent = opts && opts.silent;
+  viewZoom = pimClampViewZoom(z);
+  if (viewZoom <= 1) {
+    viewPanX = 0;
+    viewPanY = 0;
+  }
+  applyViewZoom();
+  if (PIM_PARAMS.editorShell && currentMat) {
+    render();
+  }
+  if (PIM_PARAMS.editorShell && !silent) {
+    pimPostToParent({ type: 'pim-view-zoom-changed', zoom: viewZoom });
+  }
+}
+
 function applyViewZoom() {
   const inner = document.getElementById('canvasZoomInner');
   const label = document.getElementById('zoomLabel');
@@ -3526,8 +3550,8 @@ function pimComputeEditorShellViewport(contentW, contentH) {
     cw,
     ch,
     scale,
-    offsetX: (cw - contentW * scale) / 2,
-    offsetY: (ch - contentH * scale) / 2,
+    offsetX: (cw - contentW * scale) / 2 + viewPanX,
+    offsetY: (ch - contentH * scale) / 2 + viewPanY,
   };
 }
 
@@ -5201,16 +5225,13 @@ document.getElementById('btnPlaceContain')?.addEventListener('click', () => appl
 document.getElementById('btnResetSettings')?.addEventListener('click', () => resetEditorSettings());
 
 document.getElementById('zoomIn')?.addEventListener('click', () => {
-  viewZoom = Math.min(3, Math.round((viewZoom + 0.1) * 10) / 10);
-  applyViewZoom();
+  pimSetViewZoom(viewZoom + 0.1);
 });
 document.getElementById('zoomOut')?.addEventListener('click', () => {
-  viewZoom = Math.max(0.25, Math.round((viewZoom - 0.1) * 10) / 10);
-  applyViewZoom();
+  pimSetViewZoom(viewZoom - 0.1);
 });
 document.getElementById('zoomReset')?.addEventListener('click', () => {
-  viewZoom = 1;
-  applyViewZoom();
+  pimSetViewZoom(1);
 });
 applyViewZoom();
 
@@ -5218,7 +5239,7 @@ document.getElementById('exportCutlineApi')?.addEventListener('click', () => pim
 document.getElementById('exportDesignApi')?.addEventListener('click', () => pimDownloadProductionExport('design'));
 document.getElementById('exportCompositeApi')?.addEventListener('click', () => pimDownloadProductionExport('composite'));
 
-(function initArtDrag() {
+(function initCanvasPointer() {
   const canvas = document.getElementById('canvas');
   if (!canvas) return;
 
@@ -5232,11 +5253,79 @@ document.getElementById('exportCompositeApi')?.addEventListener('click', () => p
     };
   }
 
+  function pointerDistance(a, b) {
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  }
+
+  function hitTestArt(clientX, clientY) {
+    if (!currentMat) return false;
+    const art = getArtDrawRect();
+    if (!art) return false;
+    const vp = pimComputeEditorShellViewport(currentMat.cols, currentMat.rows);
+    if (!vp) return false;
+    const rect = canvas.getBoundingClientRect();
+    const px = clientX - rect.left;
+    const py = clientY - rect.top;
+    const cx = (px - vp.offsetX) / vp.scale;
+    const cy = (py - vp.offsetY) / vp.scale;
+    return cx >= art.x && cx <= art.x + art.w && cy >= art.y && cy <= art.y + art.h;
+  }
+
+  function canDragArt() {
+    return (PIM_PARAMS.embed && isCutlineLocked) || PIM_PARAMS.standalone;
+  }
+
+  canvas.addEventListener(
+    'wheel',
+    (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      pimSetViewZoom(viewZoom + (e.deltaY > 0 ? -0.1 : 0.1));
+    },
+    { passive: false }
+  );
+
   canvas.addEventListener('pointerdown', (e) => {
-    if (!sourceImage || !imageMetadata) return;
-    const canDrag =
-      (PIM_PARAMS.embed && isCutlineLocked) || PIM_PARAMS.standalone;
-    if (!canDrag) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    canvasPointers.set(e.pointerId, e);
+
+    if (canvasPointers.size === 2) {
+      const pts = Array.from(canvasPointers.values());
+      pinchStartDist = pointerDistance(pts[0], pts[1]);
+      pinchStartZoom = viewZoom;
+      isDraggingArt = false;
+      isPanningView = false;
+      e.preventDefault();
+      return;
+    }
+
+    if (canvasPointers.size > 2) return;
+
+    if (PIM_PARAMS.editorShell) {
+      if (sourceImage && imageMetadata && hitTestArt(e.clientX, e.clientY)) {
+        isDraggingArt = true;
+        canvas.classList.add('pim-dragging');
+        canvas.setPointerCapture(e.pointerId);
+        const pt = canvasPoint(e);
+        dragStart = { x: pt.x, y: pt.y, tx: imageTransform.x, ty: imageTransform.y };
+        e.preventDefault();
+        return;
+      }
+      if (viewZoom > 1) {
+        isPanningView = true;
+        canvas.setPointerCapture(e.pointerId);
+        viewPanStart = {
+          x: e.clientX,
+          y: e.clientY,
+          panX: viewPanX,
+          panY: viewPanY,
+        };
+        e.preventDefault();
+      }
+      return;
+    }
+
+    if (!sourceImage || !imageMetadata || !canDragArt()) return;
     isDraggingArt = true;
     canvas.classList.add('pim-dragging');
     canvas.setPointerCapture(e.pointerId);
@@ -5246,31 +5335,73 @@ document.getElementById('exportCompositeApi')?.addEventListener('click', () => p
   });
 
   canvas.addEventListener('pointermove', (e) => {
-    if (!isDraggingArt) return;
-    const pt = canvasPoint(e);
-    imageTransform.x = dragStart.tx + (pt.x - dragStart.x);
-    imageTransform.y = dragStart.ty + (pt.y - dragStart.y);
-    if (PIM_PARAMS.standalone) {
-      pimUserMovedImage = true;
-    }
-    render();
-  });
+    if (!canvasPointers.has(e.pointerId)) return;
 
-  function endDrag() {
-    if (!isDraggingArt) return;
-    isDraggingArt = false;
-    canvas.classList.remove('pim-dragging');
-    if (PIM_PARAMS.standalone && pimUserMovedImage) {
-      pimScheduleAutoSave();
-      pimScheduleHeightReport();
+    if (canvasPointers.size === 2) {
+      canvasPointers.set(e.pointerId, e);
+      const pts = Array.from(canvasPointers.values());
+      if (pinchStartDist > 0) {
+        const dist = pointerDistance(pts[0], pts[1]);
+        const ratio = dist / pinchStartDist;
+        pimSetViewZoom(pinchStartZoom * ratio);
+      }
+      e.preventDefault();
       return;
     }
-    pimScheduleAutoSave();
-    pimScheduleHeightReport();
+
+    if (isDraggingArt) {
+      const pt = canvasPoint(e);
+      if (PIM_PARAMS.editorShell && currentMat) {
+        const vp = pimComputeEditorShellViewport(currentMat.cols, currentMat.rows);
+        const scale = vp ? vp.scale : 1;
+        imageTransform.x = dragStart.tx + (pt.x - dragStart.x) / scale;
+        imageTransform.y = dragStart.ty + (pt.y - dragStart.y) / scale;
+      } else {
+        imageTransform.x = dragStart.tx + (pt.x - dragStart.x);
+        imageTransform.y = dragStart.ty + (pt.y - dragStart.y);
+      }
+      if (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) {
+        pimUserMovedImage = true;
+      }
+      render();
+      e.preventDefault();
+      return;
+    }
+
+    if (isPanningView && PIM_PARAMS.editorShell && viewZoom > 1) {
+      viewPanX = viewPanStart.panX + (e.clientX - viewPanStart.x);
+      viewPanY = viewPanStart.panY + (e.clientY - viewPanStart.y);
+      render();
+      e.preventDefault();
+    }
+  });
+
+  function endPointer(e) {
+    canvasPointers.delete(e.pointerId);
+    if (canvasPointers.size < 2) {
+      pinchStartDist = 0;
+    }
+    if (canvasPointers.size > 0) return;
+
+    if (isDraggingArt) {
+      isDraggingArt = false;
+      canvas.classList.remove('pim-dragging');
+      if (PIM_PARAMS.standalone && pimUserMovedImage) {
+        pimScheduleAutoSave();
+        pimScheduleHeightReport();
+        return;
+      }
+      if (PIM_PARAMS.editorShell && pimUserMovedImage) {
+        pimPostImageScaleChanged();
+      }
+      pimScheduleAutoSave();
+      pimScheduleHeightReport();
+    }
+    isPanningView = false;
   }
 
-  canvas.addEventListener('pointerup', endDrag);
-  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('pointerup', endPointer);
+  canvas.addEventListener('pointercancel', endPointer);
 })();
 
 // ============================================================

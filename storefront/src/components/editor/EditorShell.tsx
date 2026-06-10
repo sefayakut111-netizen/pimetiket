@@ -110,6 +110,14 @@ const EDITOR_TOOL_TABS = [
 
 type EditorToolTab = (typeof EDITOR_TOOL_TABS)[number]["id"];
 
+const MOBILE_ACCORDION = [
+  { id: "aracilar", label: "Araçlar", tab: "gorsel" as EditorToolTab },
+  { id: "bicak", label: "Bıçak", tab: "bicak" as EditorToolTab },
+  { id: "boyut", label: "Boyut", tab: "boyut" as EditorToolTab },
+] as const;
+
+type MobileAccordionId = (typeof MOBILE_ACCORDION)[number]["id"];
+
 const FIT_BUTTONS = [
   { id: "pim-fit-center", label: "Ortala" },
   { id: "pim-fit-contain", label: "Sığdır" },
@@ -201,6 +209,8 @@ export default function EditorShell() {
     message: string;
   } | null>({ state: "loading", message: "Editör yükleniyor…" });
   const [toolTab, setToolTab] = useState<EditorToolTab>("gorsel");
+  const [mobileAccordion, setMobileAccordion] =
+    useState<MobileAccordionId | null>("aracilar");
   const [cutType, setCutType] = useState<CutSet>("kisscut");
   const autoSwitchToBicakRef = useRef(false);
 
@@ -531,6 +541,10 @@ export default function EditorShell() {
         setRemovingBg(true);
       } else if (data.type === "pim-bg-remove-done") {
         setRemovingBg(false);
+      } else if (data.type === "pim-view-zoom-changed") {
+        if (typeof data.zoom === "number" && data.zoom > 0) {
+          setViewZoom(Math.max(0.25, Math.min(3, data.zoom)));
+        }
       } else if (data.type === "pim-poc-status") {
         const msg = String(data.msg ?? "");
         const level = String(data.level ?? "warn");
@@ -1034,10 +1048,10 @@ export default function EditorShell() {
 
   return (
     <main
-      className="editor-workspace flex h-[calc(100dvh-56px)] flex-col overflow-hidden bg-gri-50 px-4 md:px-6 lg:px-8"
+      className="editor-workspace flex flex-col bg-gri-50 px-4 md:px-6 lg:h-[calc(100dvh-56px)] lg:overflow-hidden lg:px-8"
       data-editor-workspace
     >
-      <div className="mx-auto flex h-full w-full max-w-[1600px] min-h-0 flex-col overflow-hidden">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col lg:h-full lg:min-h-0 lg:overflow-hidden">
       <EditorCoachmark
         open={showCoach}
         onComplete={() => {
@@ -1122,10 +1136,60 @@ export default function EditorShell() {
         </div>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[360px_1fr_320px]">
-        <aside className="flex min-h-0 flex-col overflow-hidden border-b border-gri-200 bg-white lg:border-b-0 lg:border-r">
+      <div className="flex flex-col lg:grid lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:grid-cols-[360px_1fr_320px]">
+        <section className="order-1 flex min-h-[50vh] min-w-0 flex-col gap-2 overflow-hidden p-3 lg:order-none lg:min-h-0 lg:flex-1 lg:p-4">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+            <EditorPreviewLegend cutType={cutType} />
+            <EditorZoomControls
+              zoom={viewZoom}
+              onZoomIn={zoomIn}
+              onZoomOut={zoomOut}
+              onZoomReset={zoomReset}
+            />
+          </div>
+
+          {showCircleContourSuggest ? (
+            <div className="shrink-0 rounded-xl border border-sari/40 bg-sari-soft px-3 py-2.5 text-[12px] text-lacivert">
+              <p className="leading-relaxed">
+                Bu görsel daireye tam oturmuyor. Şekline göre özel kesim (die-cut)
+                daha şık durabilir — ister misin?
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={acceptCircleContourSuggest}
+                >
+                  Özel kesime geç
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={dismissCircleContourSuggest}
+                >
+                  Yuvarlak kalsın
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="min-h-[50vh] flex-1 overflow-hidden rounded-xl border border-gri-200 bg-gri-100 shadow-sm lg:min-h-0">
+            <iframe
+              ref={iframeRef}
+              src={iframeSrc}
+              title="Bıçak editörü"
+              className="block h-full w-full min-h-[50vh] border-0 lg:min-h-[420px]"
+              scrolling="no"
+              sandbox="allow-scripts allow-same-origin allow-downloads"
+            />
+          </div>
+        </section>
+
+        <aside className="order-2 flex flex-col border-b border-gri-200 bg-white lg:order-none lg:min-h-0 lg:overflow-hidden lg:border-b-0 lg:border-r">
           <div
-            className="flex shrink-0 gap-1 border-b border-gri-100 p-2"
+            className="hidden shrink-0 gap-1 border-b border-gri-100 p-2 lg:flex"
             role="tablist"
             aria-label="Editör adımları"
           >
@@ -1148,7 +1212,45 @@ export default function EditorShell() {
             ))}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          <div className="border-b border-gri-200 lg:hidden">
+            {MOBILE_ACCORDION.map(({ id, label, tab }) => {
+              const open = mobileAccordion === id;
+              return (
+                <div key={id} className="border-b border-gri-100 last:border-b-0">
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() => {
+                      if (open) {
+                        setMobileAccordion(null);
+                      } else {
+                        setMobileAccordion(id);
+                        setToolTab(tab);
+                      }
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between px-4 py-3.5 text-left text-[14px] font-semibold transition-colors",
+                      open
+                        ? "bg-pim-mercan-tint text-lacivert"
+                        : "bg-white text-gri-700"
+                    )}
+                  >
+                    <span>{label}</span>
+                    <span className="text-[12px] text-gri-500" aria-hidden>
+                      {open ? "▾" : "▸"}
+                    </span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            className={cn(
+              "px-4 py-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto",
+              mobileAccordion ? "block" : "hidden lg:block"
+            )}
+          >
             {toolTab === "gorsel" ? (
               <>
                 <EditorPanelSection title="Dosya yükle" first>
@@ -1586,56 +1688,6 @@ export default function EditorShell() {
             ) : null}
           </div>
         </aside>
-
-        <section className="flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden p-3 lg:p-4">
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
-            <EditorPreviewLegend cutType={cutType} />
-            <EditorZoomControls
-              zoom={viewZoom}
-              onZoomIn={zoomIn}
-              onZoomOut={zoomOut}
-              onZoomReset={zoomReset}
-            />
-          </div>
-
-          {showCircleContourSuggest ? (
-            <div className="shrink-0 rounded-xl border border-sari/40 bg-sari-soft px-3 py-2.5 text-[12px] text-lacivert">
-              <p className="leading-relaxed">
-                Bu görsel daireye tam oturmuyor. Şekline göre özel kesim (die-cut)
-                daha şık durabilir — ister misin?
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={acceptCircleContourSuggest}
-                >
-                  Özel kesime geç
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={dismissCircleContourSuggest}
-                >
-                  Yuvarlak kalsın
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gri-200 bg-gri-100 shadow-sm">
-            <iframe
-              ref={iframeRef}
-              src={iframeSrc}
-              title="Bıçak editörü"
-              className="block h-full w-full min-h-[420px] border-0"
-              scrolling="no"
-              sandbox="allow-scripts allow-same-origin allow-downloads"
-            />
-          </div>
-        </section>
 
         <EditorPimPanel
           onCommand={handlePimCommand}
