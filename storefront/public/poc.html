@@ -2930,6 +2930,7 @@ function useFixedCutlineFrame() {
   const hasDims = getOrderDimsMm();
   const fixedMode = currentMode === 'circle' || currentMode === 'rect';
   if (PIM_PARAMS.standalone && hasDims && fixedMode) return true;
+  if (PIM_PARAMS.editorShell && hasDims && fixedMode) return true;
   return PIM_PARAMS.embed && hasDims && fixedMode;
 }
 
