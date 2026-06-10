@@ -4,6 +4,14 @@
 
 Bu dosya Claude Code oturumlarında **AGENTS.md üstüne** okunur. API, migration veya checkout yazmadan önce aşağıdaki **şema–kural uyumu** bölümünü esas al.
 
+## ⚡ Bağlam önbelleği — ÖNCE HARİTAYI OKU (token tasarrufu)
+
+Keşif için glob/grep'e başlamadan önce **`docs/SISTEM-BAGIMLILIK-HARITASI.md`** oku — tek okumayla: 123 sayfa route'u, 241 API ucu (method+guard), en çok import edilen 30 hub modül, mega dosyalar, lib envanteri.
+
+- "X sayfası/API'si nerede, guard'ı ne, merkezi modül hangisi" sorularını ORADAN cevapla; sadece haritada olmayan detay için grep yap.
+- Harita üretilmiş dosyadır — elle düzenleme. Bayatsa (büyük refactor sonrası): `npm run context:map` (~5 sn).
+- Z raporu ritüelinde harita yenilenir.
+
 ---
 
 ## Şema ≠ Ürün Kararı (KRİTİK)

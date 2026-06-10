@@ -8,6 +8,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Akıllı Bağlam (Smart Context)
 
+**⚡ Önce bağlam önbelleğini oku:** `docs/SISTEM-BAGIMLILIK-HARITASI.md` — tüm sayfa/API route'ları (guard'larıyla), hub modüller, mega dosyalar tek dosyada. Keşif grep'ine başlamadan buna bak. Yenile: `npm run context:map`.
+
 Cursor ve Claude **ortak manifest** kullanır: `smart-context/manifest.json`
 
 | Araç | Nasıl tetiklenir |

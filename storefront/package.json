@@ -10,6 +10,7 @@
     "check": "node scripts/health-check.mjs",
     "migrate": "node scripts/migrate.mjs",
     "context": "node scripts/smart-context.mjs",
+    "context:map": "node scripts/generate-context-map.mjs",
     "verify:upload-chain": "node scripts/verify-upload-chain.mjs",
     "verify:r2": "node scripts/verify-r2.mjs",
     "verify:pricebook": "node scripts/verify-pricebook.mjs",
