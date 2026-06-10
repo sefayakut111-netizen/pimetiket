@@ -47,7 +47,14 @@ import {
   offsetNoteText,
 } from "@/lib/editor/offset-label";
 import { cn } from "@/lib/cn";
-import { dispatchPimCommand } from "@/lib/editor/dispatch-pim-command";
+import {
+  dispatchPimCommand,
+  type PimCommandResult,
+} from "@/lib/editor/dispatch-pim-command";
+import {
+  EditorBgRemovePrompt,
+  type BgRemovePreviewPayload,
+} from "@/components/editor/EditorBgRemovePrompt";
 import { validateEditorUploadFile } from "@/lib/editor/file-limits";
 import {
   humanizePocError,
@@ -73,7 +80,7 @@ const CUT_SOURCES: { id: CutSource; label: string; desc: string }[] = [
   },
   {
     id: "diecut",
-    label: "Die-cut şablon",
+    label: "Şekilli kesim (die-cut)",
     desc: "Hazır kesim boyutlarından seç",
   },
 ];
@@ -117,6 +124,19 @@ const MOBILE_ACCORDION = [
 ] as const;
 
 type MobileAccordionId = (typeof MOBILE_ACCORDION)[number]["id"];
+
+type EditorUndoSnapshot = {
+  widthMm: number;
+  heightMm: number;
+  cutMode: CutMode;
+  cutSource: CutSource;
+  sekilPreset: SekilPreset;
+  imageScalePct: number;
+  offsetMm: number;
+  smoothness: number;
+  cornerRadiusMm: number;
+  activeDieCutId: string | null;
+};
 
 const FIT_BUTTONS = [
   { id: "pim-fit-center", label: "Ortala" },
@@ -212,11 +232,27 @@ export default function EditorShell() {
   const [mobileAccordion, setMobileAccordion] =
     useState<MobileAccordionId | null>("aracilar");
   const [cutType, setCutType] = useState<CutSet>("kisscut");
+  const [dirty, setDirty] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [bgRemovePreview, setBgRemovePreview] =
+    useState<BgRemovePreviewPayload | null>(null);
+  const undoSnapshotRef = useRef<EditorUndoSnapshot | null>(null);
   const autoSwitchToBicakRef = useRef(false);
 
   useEffect(() => {
     if (!isEditorOnboarded()) setShowCoach(true);
   }, []);
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (designLoaded && dirty && !saving) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [designLoaded, dirty, saving]);
 
   useEffect(() => {
     designLoadedRef.current = designLoaded;
@@ -292,11 +328,6 @@ export default function EditorShell() {
     [postToPoc]
   );
 
-  const handleRemoveBg = useCallback(() => {
-    setRemovingBg(true);
-    postToPoc({ type: "pim-trigger-bg-remove" });
-  }, [postToPoc]);
-
   const syncSizeToPoc = useCallback(
     (w: number, h: number) => {
       scaleEchoSuppressUntilRef.current = performance.now() + 800;
@@ -361,6 +392,82 @@ export default function EditorShell() {
     },
     [scalePctFromWidth, syncSizeToPoc, markCutlinePending]
   );
+
+  const captureUndoSnapshot = useCallback(() => {
+    undoSnapshotRef.current = {
+      widthMm,
+      heightMm,
+      cutMode,
+      cutSource,
+      sekilPreset,
+      imageScalePct,
+      offsetMm,
+      smoothness,
+      cornerRadiusMm,
+      activeDieCutId,
+    };
+    setCanUndo(true);
+    setDirty(true);
+  }, [
+    widthMm,
+    heightMm,
+    cutMode,
+    cutSource,
+    sekilPreset,
+    imageScalePct,
+    offsetMm,
+    smoothness,
+    cornerRadiusMm,
+    activeDieCutId,
+  ]);
+
+  const performUndo = useCallback(() => {
+    const snap = undoSnapshotRef.current;
+    if (!snap) return;
+    setWidthMm(snap.widthMm);
+    setHeightMm(snap.heightMm);
+    setCutMode(snap.cutMode);
+    setCutSource(snap.cutSource);
+    setSekilPreset(snap.sekilPreset);
+    setImageScalePct(snap.imageScalePct);
+    setOffsetMm(snap.offsetMm);
+    setSmoothness(snap.smoothness);
+    setCornerRadiusMm(snap.cornerRadiusMm);
+    setActiveDieCutId(snap.activeDieCutId);
+    markCutlinePending();
+    postToPoc({
+      type: "pim-editor-set-shape",
+      mode: snap.cutMode,
+      widthMm: snap.widthMm,
+      heightMm: snap.heightMm,
+      ...(snap.cutMode === "rect" ? { cornerRadiusMm: snap.cornerRadiusMm } : {}),
+    });
+    postToPoc({ type: "pim-set-offset", offsetMm: snap.offsetMm });
+    postToPoc({ type: "pim-set-smoothness", smoothness: snap.smoothness });
+    postToPoc({ type: "pim-set-image-scale", scale: snap.imageScalePct / 100 });
+    syncSizeToPoc(snap.widthMm, snap.heightMm);
+    undoSnapshotRef.current = null;
+    setCanUndo(false);
+    setPocStatus({ state: "loaded", message: "Son işlem geri alındı" });
+    window.setTimeout(() => setPocStatus(null), 2500);
+  }, [postToPoc, syncSizeToPoc, markCutlinePending]);
+
+  const handleRemoveBg = useCallback(() => {
+    captureUndoSnapshot();
+    setRemovingBg(true);
+    postToPoc({ type: "pim-trigger-bg-remove" });
+  }, [postToPoc, captureUndoSnapshot]);
+
+  const handleBgRemoveAccept = useCallback(() => {
+    postToPoc({ type: "pim-bg-remove-accept" });
+    setBgRemovePreview(null);
+    setDirty(true);
+  }, [postToPoc]);
+
+  const handleBgRemoveReject = useCallback(() => {
+    postToPoc({ type: "pim-bg-remove-reject" });
+    setBgRemovePreview(null);
+  }, [postToPoc]);
 
   const applyTemplateState = useCallback((tpl: DieCutTemplate) => {
     setWidthMm(tpl.widthMm);
@@ -475,6 +582,7 @@ export default function EditorShell() {
         if (typeof data.height === "number" && data.height > 0) {
           setImagePixelH(data.height);
         }
+        setDirty(true);
         setPocStatus({
           state: "loaded",
           message: "Tasarım yüklendi — kontur hesaplanıyor…",
@@ -539,8 +647,24 @@ export default function EditorShell() {
         window.setTimeout(() => setPocStatus(null), 2500);
       } else if (data.type === "pim-bg-remove-started") {
         setRemovingBg(true);
+      } else if (data.type === "pim-bg-remove-preview") {
+        setRemovingBg(false);
+        if (
+          typeof data.beforeDataUrl === "string" &&
+          typeof data.afterDataUrl === "string" &&
+          typeof data.fileName === "string"
+        ) {
+          setBgRemovePreview({
+            beforeDataUrl: data.beforeDataUrl,
+            afterDataUrl: data.afterDataUrl,
+            fileName: data.fileName,
+          });
+        }
       } else if (data.type === "pim-bg-remove-done") {
         setRemovingBg(false);
+        if (!data.previewPending) {
+          setBgRemovePreview(null);
+        }
       } else if (data.type === "pim-view-zoom-changed") {
         if (typeof data.zoom === "number" && data.zoom > 0) {
           setViewZoom(Math.max(0.25, Math.min(3, data.zoom)));
@@ -653,6 +777,7 @@ export default function EditorShell() {
   }, [saving, designLoaded, cutlineReady, cutlineError]);
 
   const handleWidthChange = (raw: number) => {
+    captureUndoSnapshot();
     const w = roundEditorMm(raw);
     const h =
       lockAspect && aspect > 0 ? roundEditorMm(w / aspect) : heightMm;
@@ -660,6 +785,7 @@ export default function EditorShell() {
   };
 
   const handleHeightChange = (raw: number) => {
+    captureUndoSnapshot();
     const h = roundEditorMm(raw);
     const w =
       lockAspect && aspect > 0 ? roundEditorMm(h * aspect) : widthMm;
@@ -672,6 +798,7 @@ export default function EditorShell() {
   };
 
   const handleCutModeChange = (mode: CutMode) => {
+    captureUndoSnapshot();
     setCutMode(mode);
     markCutlinePending();
     postToPoc({
@@ -685,6 +812,7 @@ export default function EditorShell() {
 
   const handleCutSourceChange = useCallback(
     (src: CutSource) => {
+      captureUndoSnapshot();
       setCutSource(src);
       if (src === "ozel") {
         setCutMode("contour");
@@ -709,7 +837,7 @@ export default function EditorShell() {
         });
       }
     },
-    [postToPoc, widthMm, heightMm, markCutlinePending]
+    [postToPoc, widthMm, heightMm, markCutlinePending, captureUndoSnapshot]
   );
 
   const dismissCircleContourSuggest = useCallback(() => {
@@ -725,6 +853,7 @@ export default function EditorShell() {
 
   const handleSekilPresetChange = useCallback(
     (preset: SekilPreset) => {
+      captureUndoSnapshot();
       setSekilPreset(preset);
       markCutlinePending();
       if (preset === "circle") {
@@ -752,15 +881,16 @@ export default function EditorShell() {
         cornerRadiusMm: radius,
       });
     },
-    [postToPoc, widthMm, heightMm, cornerRadiusMm, markCutlinePending]
+    [postToPoc, widthMm, heightMm, cornerRadiusMm, markCutlinePending, captureUndoSnapshot]
   );
 
   const handleDieCutSelect = useCallback(
     (tpl: DieCutTemplate) => {
+      captureUndoSnapshot();
       setCutSource("diecut");
       applyTemplate(tpl);
     },
-    [applyTemplate]
+    [applyTemplate, captureUndoSnapshot]
   );
 
   const showCornerRadius = useMemo(() => {
@@ -773,6 +903,7 @@ export default function EditorShell() {
   }, [cutSource, cutMode, activeDieCutId]);
 
   const handleImageScaleChange = (pct: number) => {
+    captureUndoSnapshot();
     applyCoordinatedScale(pct);
   };
 
@@ -829,8 +960,18 @@ export default function EditorShell() {
   }, [postToPoc]);
 
   const handlePimCommand = useCallback(
-    (command: PimEditorCommand) => {
-      dispatchPimCommand(command, {
+    (command: PimEditorCommand): PimCommandResult => {
+      const destructive =
+        command.action === "set_size" ||
+        command.action === "set_size_from_reference" ||
+        command.action === "apply_auto_cut" ||
+        command.action === "apply_shape_cut" ||
+        command.action === "apply_template" ||
+        command.action === "set_image_scale" ||
+        command.action === "remove_background";
+      if (destructive) captureUndoSnapshot();
+
+      const result = dispatchPimCommand(command, {
         widthMm,
         heightMm,
         postToPoc,
@@ -846,6 +987,8 @@ export default function EditorShell() {
         applyCoordinatedSize,
         setBaseFromSize,
       });
+      if (result.ok) setDirty(true);
+      return result;
     },
     [
       widthMm,
@@ -856,6 +999,7 @@ export default function EditorShell() {
       applyCoordinatedScale,
       applyCoordinatedSize,
       setBaseFromSize,
+      captureUndoSnapshot,
     ]
   );
 
@@ -1081,6 +1225,16 @@ export default function EditorShell() {
             <p className="text-[11px] text-gri-600">{ctaBlockedReason}</p>
           ) : null}
           <div className="flex flex-wrap items-center gap-2">
+            {canUndo ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => performUndo()}
+              >
+                Geri al
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant={
@@ -1199,6 +1353,15 @@ export default function EditorShell() {
                 type="button"
                 role="tab"
                 aria-selected={toolTab === tab.id}
+                data-onboard={
+                  tab.id === "gorsel"
+                    ? undefined
+                    : tab.id === "bicak"
+                      ? "blade"
+                      : tab.id === "boyut"
+                        ? "size"
+                        : undefined
+                }
                 onClick={() => setToolTab(tab.id)}
                 className={cn(
                   "flex-1 rounded-md px-2 py-2 text-[12px] font-semibold transition-colors",
@@ -1220,6 +1383,9 @@ export default function EditorShell() {
                   <button
                     type="button"
                     aria-expanded={open}
+                    data-onboard={
+                      id === "bicak" ? "blade" : id === "boyut" ? "size" : undefined
+                    }
                     onClick={() => {
                       if (open) {
                         setMobileAccordion(null);
@@ -1254,6 +1420,7 @@ export default function EditorShell() {
             {toolTab === "gorsel" ? (
               <>
                 <EditorPanelSection title="Dosya yükle" first>
+                  <div data-onboard="file">
                   <EditorUploadZone
                     designLoaded={designLoaded}
                     fileName={fileName}
@@ -1278,6 +1445,16 @@ export default function EditorShell() {
                     }}
                     onRemoveBg={handleRemoveBg}
                   />
+                  </div>
+                  {bgRemovePreview ? (
+                    <div className="mt-3">
+                      <EditorBgRemovePrompt
+                        preview={bgRemovePreview}
+                        onAccept={handleBgRemoveAccept}
+                        onReject={handleBgRemoveReject}
+                      />
+                    </div>
+                  ) : null}
                   {designLoaded &&
                   pocMeta?.source !== "vector" &&
                   pocMeta?.source !== "vector-with-cutline" ? (
@@ -1488,7 +1665,7 @@ export default function EditorShell() {
                         max={100}
                         step={1}
                         value={smoothness}
-                        disabled={!designLoaded}
+                        disabled={!designLoaded || cutMode === "hull"}
                         onChange={(e) =>
                           handleSmoothnessChange(parseInt(e.target.value, 10))
                         }
@@ -1498,6 +1675,11 @@ export default function EditorShell() {
                         className="mt-1.5 w-full accent-pim-mercan disabled:opacity-40"
                       />
                     </label>
+                    {cutMode === "hull" ? (
+                      <p className="mt-1 text-[10px] text-gri-500 leading-snug">
+                        Geniş kesimde yumuşatma uygulanmaz.
+                      </p>
+                    ) : null}
                   </EditorPanelSection>
                 ) : null}
 

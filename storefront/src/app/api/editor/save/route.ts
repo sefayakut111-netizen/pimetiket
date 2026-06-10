@@ -11,6 +11,7 @@ import {
   r2EditorDraftSvgKey,
 } from "@/lib/storage/buckets";
 import { rateLimit } from "@/lib/rate-limit";
+import { sanitizeSvg } from "@/lib/upload/sanitize-svg";
 
 export const runtime = "nodejs";
 
@@ -64,7 +65,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  if (!body.svg.includes("<svg")) {
+  let sanitizedSvg: string;
+  try {
+    sanitizedSvg = sanitizeSvg(body.svg);
+  } catch {
     return NextResponse.json({ error: "invalid_svg" }, { status: 400 });
   }
 
@@ -83,7 +87,7 @@ export async function POST(req: Request) {
   const svgKey = r2EditorDraftSvgKey(user.id, body.tempDesignId, ts);
   const svgUp = await uploadToR2({
     key: svgKey,
-    body: body.svg,
+    body: sanitizedSvg,
     contentType: "image/svg+xml",
   });
   if (!svgUp.success) {

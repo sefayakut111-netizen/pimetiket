@@ -33,10 +33,14 @@ export interface PimCommandDispatchContext {
   setBaseFromSize?: (w: number, h: number, scalePct: number) => void;
 }
 
+export type PimCommandResult =
+  | { ok: true }
+  | { ok: false; reason: string };
+
 export function dispatchPimCommand(
   command: PimEditorCommand,
   ctx: PimCommandDispatchContext
-): boolean {
+): PimCommandResult {
   const {
     widthMm,
     heightMm,
@@ -66,7 +70,7 @@ export function dispatchPimCommand(
         syncSizeToPoc(w, h);
       }
       triggerFitContain(postToPoc);
-      return true;
+      return { ok: true };
     }
     case "set_size_from_reference": {
       const w = roundEditorMm(command.estimatedWidthMm ?? widthMm);
@@ -98,14 +102,14 @@ export function dispatchPimCommand(
         });
       }
       triggerFitContain(postToPoc);
-      return true;
+      return { ok: true };
     }
     case "set_cut_offset":
       postToPoc({ type: "pim-set-offset", offsetMm: command.offsetMm });
-      return true;
+      return { ok: true };
     case "set_smoothness":
       postToPoc({ type: "pim-set-smoothness", smoothness: command.smoothness });
-      return true;
+      return { ok: true };
     case "apply_auto_cut": {
       const mode: CutMode = command.mode === "hull" ? "hull" : "contour";
       setCutMode(mode);
@@ -117,7 +121,7 @@ export function dispatchPimCommand(
         heightMm,
       });
       triggerFitContain(postToPoc);
-      return true;
+      return { ok: true };
     }
     case "apply_shape_cut": {
       const mode: CutMode = command.shape === "circle" ? "circle" : "rect";
@@ -131,11 +135,13 @@ export function dispatchPimCommand(
         heightMm,
       });
       triggerFitContain(postToPoc);
-      return true;
+      return { ok: true };
     }
     case "apply_template": {
       const tpl = DIE_CUT_BY_ID.get(command.templateId);
-      if (!tpl) return false;
+      if (!tpl) {
+        return { ok: false, reason: "Şablon bulunamadı" };
+      }
       const mode: CutMode =
         tpl.shape === "circle"
           ? "circle"
@@ -160,7 +166,7 @@ export function dispatchPimCommand(
         heightMm: tpl.heightMm,
       });
       triggerFitContain(postToPoc);
-      return true;
+      return { ok: true };
     }
     case "toggle_layer":
       setLayers((prev) => ({ ...prev, [command.layer]: command.on }));
@@ -169,10 +175,10 @@ export function dispatchPimCommand(
         layer: command.layer,
         on: command.on,
       });
-      return true;
+      return { ok: true };
     case "remove_background":
       handleRemoveBg();
-      return true;
+      return { ok: true };
     case "fit_view": {
       const type =
         command.mode === "center"
@@ -181,14 +187,14 @@ export function dispatchPimCommand(
             ? "pim-fit-cover"
             : "pim-fit-contain";
       postToPoc({ type });
-      return true;
+      return { ok: true };
     }
     case "align":
       postToPoc({ type: "pim-fit-center" });
-      return true;
+      return { ok: true };
     case "center_blade":
       postToPoc({ type: "pim-fit-center" });
-      return true;
+      return { ok: true };
     case "set_image_scale": {
       const pct = Math.max(25, Math.min(200, command.scalePct));
       if (applyCoordinatedScale) {
@@ -197,13 +203,15 @@ export function dispatchPimCommand(
         setImageScalePct(pct);
         postToPoc({ type: "pim-set-image-scale", scale: pct / 100 });
       }
-      return true;
+      return { ok: true };
     }
     case "suggest_product":
+      return { ok: false, reason: "Ürün önerisi şu an uygulanamıyor" };
     case "clarify":
+      return { ok: false, reason: command.question };
     case "reject":
-      return false;
+      return { ok: false, reason: command.reason };
     default:
-      return false;
+      return { ok: false, reason: "Bu komut desteklenmiyor" };
   }
 }

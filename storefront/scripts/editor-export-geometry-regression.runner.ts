@@ -13,6 +13,7 @@ import {
   buildEmbeddedCutlineSvg,
   computePathBBox,
 } from "../src/lib/proof/cutline-detect";
+import { chaikinSmoothPath } from "../src/lib/editor/chaikin-smooth";
 
 const WIDTH_MM = 50;
 const HEIGHT_MM = 30;
@@ -115,6 +116,26 @@ export function runRegressionTests() {
     embeddedSvg.includes('width="50mm"') && embeddedSvg.includes('height="30mm"'),
     "embedded SVG must preserve mm scale attrs"
   );
+
+  // (d) Chaikin smoothing deterministik
+  const square: [number, number][] = [
+    [0, 0],
+    [100, 0],
+    [100, 100],
+    [0, 100],
+  ];
+  const smoothA = chaikinSmoothPath(square, 60);
+  const smoothB = chaikinSmoothPath(square, 60);
+  assert(smoothA.length === smoothB.length, "chaikin output length stable");
+  for (let i = 0; i < smoothA.length; i++) {
+    assert(
+      smoothA[i]![0] === smoothB[i]![0] && smoothA[i]![1] === smoothB[i]![1],
+      `chaikin point ${i} must match`
+    );
+  }
+  assert(smoothA.length > square.length, "chaikin must subdivide corners");
+  const smoothZero = chaikinSmoothPath(square, 0);
+  assert(smoothZero.length === square.length, "smoothness 0 is no-op");
 
   console.log("[editor-export-geometry-regression] OK");
   console.log(`  SVG length: ${svgA.length} chars (stable)`);

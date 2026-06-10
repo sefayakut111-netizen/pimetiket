@@ -17,7 +17,7 @@ const STEPS: { target: string; text: string }[] = [
   },
   {
     target: '[data-onboard="size"]',
-    text: "Sağ panelden boyutlandır.",
+    text: "Sol paneldeki Boyut sekmesinden boyutlandır.",
   },
   {
     target: '[data-onboard="export"]',

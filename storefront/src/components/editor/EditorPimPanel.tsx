@@ -6,6 +6,7 @@ import { PimAsset } from "@/components/PimAsset";
 import { Button, Input } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { PimEditorCommand } from "@/lib/editor/pim-command-schema";
+import type { PimCommandResult } from "@/lib/editor/dispatch-pim-command";
 
 interface ChatMessage {
   id: string;
@@ -14,7 +15,7 @@ interface ChatMessage {
 }
 
 export interface EditorPimPanelProps {
-  onCommand: (command: PimEditorCommand) => void;
+  onCommand: (command: PimEditorCommand) => PimCommandResult;
   disabled?: boolean;
 }
 
@@ -103,7 +104,7 @@ export function EditorPimPanel({ onCommand, disabled }: EditorPimPanelProps) {
     {
       id: "welcome",
       role: "pim",
-      text: "Boyut, kesim veya arka plan — yaz, uygularım.",
+      text: "Boyut, kesim veya arka plan — yaz, uygularım. Örneğin: «50×30 mm yap», «yuvarlak kes», «arka planı kaldır».",
     },
   ]);
   const [input, setInput] = useState("");
@@ -169,13 +170,17 @@ export function EditorPimPanel({ onCommand, disabled }: EditorPimPanelProps) {
             ? cmd.question
             : "Tamam.");
 
+      let pimReply = reply;
       if (cmd.action !== "reject" && cmd.action !== "clarify") {
-        onCommand(cmd);
+        const result = onCommand(cmd);
+        if (!result.ok) {
+          pimReply = `Bunu uygulayamadım: ${result.reason}`;
+        }
       }
 
       setMessages((prev) => [
         ...prev,
-        { id: `p-${Date.now()}`, role: "pim", text: reply },
+        { id: `p-${Date.now()}`, role: "pim", text: pimReply },
       ]);
     } catch {
       setMessages((prev) => [

@@ -1674,11 +1674,11 @@
         <div class="toggle" data-layer="white"></div>
       </div>
       <div class="toggle-row">
-        <span>Bleed (taşma)</span>
+        <span>Taşma payı</span>
         <div class="toggle" data-layer="bleed"></div>
       </div>
       <div class="toggle-row">
-        <span>Safe zone</span>
+        <span>Güvenli alan</span>
         <div class="toggle" data-layer="safe"></div>
       </div>
     </div>
@@ -1687,10 +1687,9 @@
     <div class="panel" id="whitePlanPanel" style="display:none;">
       <div class="panel-title">Beyaz plan modu</div>
       <div class="white-mode-row">
-        <button class="white-mode-btn active" data-wmode="full">Full</button>
-        <button class="white-mode-btn" data-wmode="smart">Smart</button>
+        <button class="white-mode-btn active" data-wmode="full">Tam</button>
+        <button class="white-mode-btn" data-wmode="smart">Akıllı</button>
         <button class="white-mode-btn" data-wmode="ai">AI ile belirle</button>
-        <button class="white-mode-btn" data-wmode="custom" disabled title="Yakında — özel white spot color server export ile aktif olacak">Custom</button>
       </div>
       <div class="white-note" id="whiteNote">
         Şeffaf/metalize malzemede tasarımın altına beyaz mürekkep basılır. Renkler doğru çıkar.
@@ -1773,10 +1772,10 @@
           <span class="legend-swatch" style="border-top-color: var(--cut);"></span> Bıçak
         </div>
         <div class="legend-item">
-          <span class="legend-swatch" style="border-top-color: var(--bleed);"></span> Bleed
+          <span class="legend-swatch" style="border-top-color: var(--bleed);"></span> Taşma payı
         </div>
         <div class="legend-item">
-          <span class="legend-swatch" style="border-top-color: var(--safe);"></span> Safe
+          <span class="legend-swatch" style="border-top-color: var(--safe);"></span> Güvenli alan
         </div>
         </div>
       </div>
@@ -1842,19 +1841,6 @@
   </section>
 </main>
 
-<!-- Yardım modal -->
-<div class="modal-backdrop" id="helpModal">
-  <div class="modal">
-    <h3>Ekibimizden yardım iste</h3>
-    <p>Tasarımının kesim ayarları için ekibimiz Photoshop/Illustrator'da elle düzenleme yapsın. Genellikle 1 iş günü içinde dönüş yaparız.</p>
-    <textarea id="helpMessage" placeholder="Sorunu kısaca anlat: bıçak nerede iyi durmuyor, ne istiyorsun?"></textarea>
-    <div class="modal-actions">
-      <button class="btn-cancel" id="btnHelpCancel">İptal</button>
-      <button class="btn-submit" id="btnHelpSubmit">Talep gönder</button>
-    </div>
-  </div>
-</div>
-
 <script>
 // ============================================================
 // STATE
@@ -1877,6 +1863,11 @@ let currentPdfDoc = null;    // PDF.js document instance
 let currentPageNum = 1;
 let currentFile = null;
 let currentFileSource = 'raster'; // 'raster' | 'vector' | 'vector-with-cutline'
+let bgRemoveBackupFile = null;
+let bgRemovePendingFile = null;
+let bgRemovePendingBlobUrl = null;
+let bgRemoveBeforeObjectUrl = null;
+let bgRemoveAfterObjectUrl = null;
 let detectedCutContourNames = []; // Tespit edilen spot color isimleri
 
 // === BEYAZ PLAN STATE ===
@@ -2169,7 +2160,7 @@ window.addEventListener('message', (e) => {
         if (typeof render === 'function') render();
       }
     } else if (msg.type === 'pim-set-white-mode') {
-      const valid = ['off', 'full', 'smart', 'ai', 'custom'];
+      const valid = ['off', 'full', 'smart', 'ai'];
       if (valid.includes(msg.mode)) {
         whitePlanMode = msg.mode;
         const btn = document.querySelector(`.white-mode-btn[data-wmode="${msg.mode}"]`);
@@ -2236,6 +2227,14 @@ window.addEventListener('message', (e) => {
     } else if (msg.type === 'pim-trigger-bg-remove') {
       if (typeof performBackgroundRemoval === 'function') {
         void performBackgroundRemoval();
+      }
+    } else if (msg.type === 'pim-bg-remove-accept') {
+      if (typeof applyPendingBgRemoval === 'function') {
+        applyPendingBgRemoval();
+      }
+    } else if (msg.type === 'pim-bg-remove-reject') {
+      if (typeof rejectPendingBgRemoval === 'function') {
+        rejectPendingBgRemoval();
       }
     } else if (msg.type === 'pim-editor-set-size') {
       if (typeof msg.widthMm === 'number' && msg.widthMm > 0) {
@@ -2906,9 +2905,6 @@ async function selectPdfPage(pageNum) {
       currentFileSource = cutDetect.found ? 'vector-with-cutline' : 'vector';
       detectedCutContourNames = cutDetect.names;
       hasCustomWhitePlan = cutDetect.hasWhite;
-      // Custom modu sadece white spot color varsa enable et
-      const customBtn = document.querySelector('.white-mode-btn[data-wmode="custom"]');
-      if (customBtn) customBtn.disabled = !cutDetect.hasWhite;
       processImage(img, currentFile);
       currentPageNum = pageNum;
     };
@@ -3841,8 +3837,7 @@ function generateWhitePlan() {
   if (materialType === 'paper') return;
 
   if (whitePlanMode === 'custom') {
-    if (!hasCustomWhitePlan) return;
-    return; // Next.js fazında server'dan path çıkarılır
+    whitePlanMode = hasCustomWhitePlan ? 'smart' : 'full';
   }
 
   // Beyaz plan = görsel silueti (buildMask) — geometrik kesimde de siluet
@@ -4009,7 +4004,7 @@ function generateOffsetPaths(mask, offsetPx, smoothness, useHull) {
       for (let i = 0; i < hull.rows; i++) {
         path.push([hull.data32S[i * 2], hull.data32S[i * 2 + 1]]);
       }
-      paths.push(smoothPath(path, smoothness));
+      paths.push(path);
       mat.delete();
       hull.delete();
     }
@@ -4032,7 +4027,7 @@ function generateOffsetPaths(mask, offsetPx, smoothness, useHull) {
       for (let j = 0; j < approx.rows; j++) {
         path.push([approx.data32S[j * 2], approx.data32S[j * 2 + 1]]);
       }
-      paths.push(path);
+      paths.push(smoothPath(path, smoothness));
       approx.delete();
     }
   }
@@ -4044,10 +4039,24 @@ function generateOffsetPaths(mask, offsetPx, smoothness, useHull) {
   return paths;
 }
 
-// Chaikin smoothing (yumuşatma katmanı; approxPolyDP'den sonra ek yumuşatma)
-function smoothPath(path, iterations) {
-  // approxPolyDP zaten yapıyor, burası boş bırakılabilir veya ek geçiş yapılabilir
-  return path;
+// Chaikin corner-cutting — src/lib/editor/chaikin-smooth.ts ile senkron
+function smoothPath(path, smoothnessVal) {
+  if (!path || path.length < 3 || !smoothnessVal || smoothnessVal <= 0) return path;
+  const iterations = smoothnessVal >= 50 ? 2 : 1;
+  let pts = path.map(([x, y]) => ({ x, y }));
+  for (let iter = 0; iter < iterations; iter++) {
+    const next = [];
+    for (let i = 0; i < pts.length; i++) {
+      const p0 = pts[i];
+      const p1 = pts[(i + 1) % pts.length];
+      next.push(
+        { x: 0.75 * p0.x + 0.25 * p1.x, y: 0.75 * p0.y + 0.25 * p1.y },
+        { x: 0.25 * p0.x + 0.75 * p1.x, y: 0.25 * p0.y + 0.75 * p1.y }
+      );
+    }
+    pts = next;
+  }
+  return pts.map((p) => [p.x, p.y]);
 }
 
 // ============================================================
@@ -4806,6 +4815,102 @@ function generatePimComment() {
 // ============================================================
 let bgRemovalModule = null; // Lazy-loaded
 
+function pimRevokeBgRemoveUrls() {
+  if (bgRemovePendingBlobUrl) {
+    URL.revokeObjectURL(bgRemovePendingBlobUrl);
+    bgRemovePendingBlobUrl = null;
+  }
+  if (bgRemoveBeforeObjectUrl) {
+    URL.revokeObjectURL(bgRemoveBeforeObjectUrl);
+    bgRemoveBeforeObjectUrl = null;
+  }
+  if (bgRemoveAfterObjectUrl) {
+    URL.revokeObjectURL(bgRemoveAfterObjectUrl);
+    bgRemoveAfterObjectUrl = null;
+  }
+}
+
+function pimFileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('read_failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function applyBgRemovedFile(newFile) {
+  const objectUrl = URL.createObjectURL(newFile);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+    currentFileSource = 'raster';
+    currentFile = newFile;
+    processImage(img, newFile);
+    const btn = document.getElementById('btnRemoveBg');
+    if (btn) btn.disabled = false;
+    if (PIM_PARAMS.editorShell) {
+      pimPostToParent({ type: 'pim-bg-remove-done' });
+    }
+    showStatus('✓ Arka plan kaldırıldı. Bıçak yeniden üretildi.', 'ok');
+  };
+  img.onerror = () => {
+    hideLoading();
+    const btn = document.getElementById('btnRemoveBg');
+    if (btn) btn.disabled = false;
+    if (PIM_PARAMS.editorShell) {
+      pimPostToParent({ type: 'pim-bg-remove-done', error: true });
+    }
+    URL.revokeObjectURL(objectUrl);
+    showStatus('Sonuç görseli yüklenemedi', 'err');
+  };
+  img.src = objectUrl;
+}
+
+function applyPendingBgRemoval() {
+  if (!bgRemovePendingFile) return;
+  pimRevokeBgRemoveUrls();
+  const newFile = bgRemovePendingFile;
+  bgRemovePendingFile = null;
+  bgRemoveBackupFile = null;
+  applyBgRemovedFile(newFile);
+}
+
+function rejectPendingBgRemoval() {
+  pimRevokeBgRemoveUrls();
+  bgRemovePendingFile = null;
+  const btn = document.getElementById('btnRemoveBg');
+  if (btn) btn.disabled = false;
+  if (!bgRemoveBackupFile) {
+    if (PIM_PARAMS.editorShell) {
+      pimPostToParent({ type: 'pim-bg-remove-done' });
+    }
+    return;
+  }
+  const backup = bgRemoveBackupFile;
+  bgRemoveBackupFile = null;
+  const objectUrl = URL.createObjectURL(backup);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+    currentFileSource = 'raster';
+    currentFile = backup;
+    processImage(img, backup);
+    if (PIM_PARAMS.editorShell) {
+      pimPostToParent({ type: 'pim-bg-remove-done' });
+    }
+    showStatus('Orijinal görsele dönüldü.', 'ok');
+  };
+  img.onerror = () => {
+    if (PIM_PARAMS.editorShell) {
+      pimPostToParent({ type: 'pim-bg-remove-done', error: true });
+    }
+    URL.revokeObjectURL(objectUrl);
+    showStatus('Orijinal görsel yüklenemedi', 'err');
+  };
+  img.src = objectUrl;
+}
+
 async function performBackgroundRemoval() {
   if (!currentFile) {
     showStatus('Önce bir görsel yükleyin', 'warn');
@@ -4815,13 +4920,16 @@ async function performBackgroundRemoval() {
   const btn = document.getElementById('btnRemoveBg');
   if (btn) btn.disabled = true;
 
+  bgRemoveBackupFile = currentFile;
+  pimRevokeBgRemoveUrls();
+  bgRemovePendingFile = null;
+
   showLoading('AI modeli yükleniyor ve arka plan kaldırılıyor...\n(İlk kullanımda 30sn-1dk sürer, sonraki kullanımlarda hızlı)');
   if (PIM_PARAMS.editorShell) {
     pimPostToParent({ type: 'pim-bg-remove-started' });
   }
 
   try {
-    // Lazy load — ilk tıklamada modülü indir
     if (!bgRemovalModule) {
       bgRemovalModule = await Promise.race([
         import('https://esm.run/@imgly/background-removal@1.5.5'),
@@ -4835,7 +4943,6 @@ async function performBackgroundRemoval() {
     }
     const { removeBackground } = bgRemovalModule;
 
-    // Blob'a dönüştür — model staticimgly.com'dan (CSP connect-src)
     const blob = await removeBackground(currentFile, {
       progress: (key, current, total) => {
         const pct = total > 0 ? Math.round((current / total) * 100) : 0;
@@ -4844,33 +4951,43 @@ async function performBackgroundRemoval() {
       }
     });
 
-    // Yeni dosya gibi davran
     const newFileName = currentFile.name.replace(/\.[^.]+$/, '') + '-bg-kaldirildi.png';
     const newFile = new File([blob], newFileName, { type: 'image/png' });
+    bgRemovePendingBlobUrl = URL.createObjectURL(blob);
+    bgRemovePendingFile = newFile;
 
-    const img = new Image();
-    img.onload = () => {
-      currentFileSource = 'raster';
-      currentFile = newFile;
-      processImage(img, newFile);
-      if (btn) btn.disabled = false;
-      if (PIM_PARAMS.editorShell) {
-        pimPostToParent({ type: 'pim-bg-remove-done' });
+    hideLoading();
+
+    if (PIM_PARAMS.editorShell) {
+      try {
+        const [beforeDataUrl, afterDataUrl] = await Promise.all([
+          pimFileToDataUrl(bgRemoveBackupFile),
+          pimFileToDataUrl(newFile),
+        ]);
+        pimPostToParent({
+          type: 'pim-bg-remove-preview',
+          beforeDataUrl,
+          afterDataUrl,
+          fileName: newFileName,
+        });
+        pimPostToParent({ type: 'pim-bg-remove-done', previewPending: true });
+        showStatus('Arka plan kaldırıldı — sonucu onayla.', 'ok');
+        return;
+      } catch (previewErr) {
+        console.warn('BG preview oluşturulamadı, doğrudan uygulanıyor:', previewErr);
       }
-      showStatus('✓ Arka plan kaldırıldı. Bıçak yeniden üretildi.', 'ok');
-    };
-    img.onerror = () => {
-      hideLoading();
-      if (btn) btn.disabled = false;
-      if (PIM_PARAMS.editorShell) {
-        pimPostToParent({ type: 'pim-bg-remove-done', error: true });
-      }
-      showStatus('Sonuç görseli yüklenemedi', 'err');
-    };
-    img.src = URL.createObjectURL(blob);
+    }
+
+    pimRevokeBgRemoveUrls();
+    bgRemovePendingFile = null;
+    bgRemoveBackupFile = null;
+    applyBgRemovedFile(newFile);
 
   } catch (err) {
     hideLoading();
+    pimRevokeBgRemoveUrls();
+    bgRemovePendingFile = null;
+    bgRemoveBackupFile = null;
     if (btn) btn.disabled = false;
     if (PIM_PARAMS.editorShell) {
       pimPostToParent({ type: 'pim-bg-remove-done', error: true });
@@ -4987,35 +5104,9 @@ window.resetApproval = function() {
   document.getElementById('approvalOverlay').classList.remove('show');
 };
 
-// "Yardım iste" — modal aç
+// Yardım — gerçek destek sayfasına yönlendir
 document.getElementById('btnHelp').addEventListener('click', () => {
-  document.getElementById('helpModal').classList.add('open');
-});
-
-// Modal iptal
-document.getElementById('btnHelpCancel').addEventListener('click', () => {
-  document.getElementById('helpModal').classList.remove('open');
-});
-
-// Modal submit
-document.getElementById('btnHelpSubmit').addEventListener('click', () => {
-  const msg = document.getElementById('helpMessage').value.trim();
-  if (!msg) {
-    document.getElementById('helpMessage').focus();
-    return;
-  }
-  // Gerçek sistemde: operatör paneline talep gönder
-  console.log('[PimEtiket] Yardım talebi:', msg);
-  document.getElementById('helpModal').classList.remove('open');
-  document.getElementById('helpMessage').value = '';
-  showStatus('✓ Talebin alındı. Ekibimiz 1 iş günü içinde sana dönecek.', 'ok');
-});
-
-// Modal backdrop'a tıklayınca kapat
-document.getElementById('helpModal').addEventListener('click', (e) => {
-  if (e.target.id === 'helpModal') {
-    document.getElementById('helpModal').classList.remove('open');
-  }
+  window.location.href = '/destek';
 });
 // Mode butonları — kesim modu değişince state temizle + yeniden üret
 function pimOnCutModeChanged(mode) {
@@ -5170,11 +5261,6 @@ function updateWhiteNote() {
       break;
     case 'ai':
       note.textContent = 'AI bağımsız küçük parçaları da yakalar. Otomatik mod hata verirse veya tasarımda noktalar/parçalar varsa kullan.';
-      break;
-    case 'custom':
-      note.textContent = hasCustomWhitePlan
-        ? 'Tasarımcının kendi white spot color\'ı bulundu, koruyoruz.'
-        : 'Dosyada white spot color bulunamadı. Full, Smart veya AI seç.';
       break;
     case 'off':
       note.textContent = 'Beyaz plan kapalı. Bilinçli bir tercih ise sorun yok.';
@@ -5437,7 +5523,7 @@ function pimBuildCutlineMeta() {
     pim_feedback: null,
     pim_severity: tierInfo.tier === 'improve' ? 'warn' : 'ok',
     material_type: materialType,
-    white_plan_mode: whitePlanMode,
+    white_plan_mode: whitePlanMode === 'custom' ? 'smart' : whitePlanMode,
     white_plan_path_count: whitePlanPaths.length,
     has_custom_white_plan: hasCustomWhitePlan,
     tier: tierInfo.tier,

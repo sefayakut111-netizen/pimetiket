@@ -6,8 +6,8 @@ export type EditorLayer = "cut" | "white" | "bleed" | "safe";
 
 export const LAYER_LABELS: { id: EditorLayer; label: string; hint: string }[] = [
   { id: "cut", label: "Bıçak", hint: "Kesim çizgisi — etiketin kesileceği hat" },
-  { id: "bleed", label: "Bleed", hint: "Taşma payı — baskı kayması için kenar fazlası" },
-  { id: "safe", label: "Safe", hint: "Güvenli bölge — yazı/logo bu alanın içinde kalsın" },
+  { id: "bleed", label: "Taşma payı", hint: "Baskı kayması için kenar fazlası (bleed)" },
+  { id: "safe", label: "Güvenli alan", hint: "Yazı/logo bu alanın içinde kalsın (safe zone)" },
   { id: "white", label: "Beyaz", hint: "Beyaz mürekkep katmanı — şeffaf/metalik zeminde" },
 ];
 

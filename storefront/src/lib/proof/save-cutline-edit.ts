@@ -5,6 +5,7 @@ import { uploadToR2, r2KeyBuilders } from "@/lib/storage/r2-client";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 import { runProofValidationAfterEdit } from "@/lib/proof/orchestrator";
 import type { Database, Enums, Json, TablesInsert, TablesUpdate } from "@/lib/supabase/types";
+import { sanitizeSvg } from "@/lib/upload/sanitize-svg";
 
 const ALLOWED_SOURCES = new Set([
   "raster",
@@ -20,13 +21,7 @@ const ALLOWED_MATERIALS = new Set([
   "metallic",
   "holographic",
 ]);
-const ALLOWED_WHITE_MODES = new Set([
-  "off",
-  "full",
-  "smart",
-  "ai",
-  "custom",
-]);
+const ALLOWED_WHITE_MODES = new Set(["off", "full", "smart", "ai"]);
 const ALLOWED_TIERS = new Set(["pro", "standard", "improve"]);
 const ALLOWED_CUTLINE_SOURCES = new Set([
   "file_embedded",
@@ -106,9 +101,15 @@ function parseBody(raw: SaveCutlineEditBody): SaveCutlineEditResult | {
     pim_feedback: string | null;
   };
 } {
-  const svg = typeof raw.svg === "string" ? raw.svg : "";
-  if (!svg || !svg.includes("<svg") || svg.length > MAX_SVG_SIZE) {
+  const rawSvg = typeof raw.svg === "string" ? raw.svg : "";
+  if (!rawSvg || rawSvg.length > MAX_SVG_SIZE) {
     return { ok: false, error: "SVG geçersiz veya çok büyük (>2MB)", status: 400 };
+  }
+  let svg: string;
+  try {
+    svg = sanitizeSvg(rawSvg);
+  } catch {
+    return { ok: false, error: "SVG geçersiz veya güvenlik kontrolünden geçemedi", status: 400 };
   }
   const source = typeof raw.source === "string" ? raw.source : "";
   const mode = typeof raw.mode === "string" ? raw.mode : "";
@@ -125,11 +126,17 @@ function parseBody(raw: SaveCutlineEditBody): SaveCutlineEditResult | {
     ALLOWED_MATERIALS.has(raw.material_type)
       ? raw.material_type
       : null;
+  const rawWhiteMode =
+    typeof raw.white_plan_mode === "string" ? raw.white_plan_mode : null;
+  if (rawWhiteMode === "custom") {
+    return {
+      ok: false,
+      error: "Özel beyaz plan modu desteklenmiyor — Tam veya Akıllı seç",
+      status: 400,
+    };
+  }
   const whitePlanMode =
-    typeof raw.white_plan_mode === "string" &&
-    ALLOWED_WHITE_MODES.has(raw.white_plan_mode)
-      ? raw.white_plan_mode
-      : null;
+    rawWhiteMode && ALLOWED_WHITE_MODES.has(rawWhiteMode) ? rawWhiteMode : null;
   const whitePlanPathCount =
     typeof raw.white_plan_path_count === "number" &&
     raw.white_plan_path_count >= 0 &&

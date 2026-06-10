@@ -23,6 +23,7 @@ const PRIVATE_DISALLOW = [
   "/ayarlar/",
   "/studio",
   "/editor",
+  "/poc.html",
   "/destek",
   "/api/",
 ] as const;

@@ -15,8 +15,8 @@ const STATIC_ITEMS: {
     short: "Beyaz mürekkep",
     dashed: true,
   },
-  { color: "#ef4444", label: "Taşma", short: "Bleed", dashed: true },
-  { color: "#3b82f6", label: "Güvenli", short: "Safe zone", dashed: true },
+  { color: "#ef4444", label: "Taşma payı", short: "Taşma", dashed: true },
+  { color: "#3b82f6", label: "Güvenli alan", short: "Güvenli", dashed: true },
 ];
 
 function LegendSwatch({
