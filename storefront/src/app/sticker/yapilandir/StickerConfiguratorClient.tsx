@@ -26,6 +26,10 @@ import {
   getFirstPendingStepId,
 } from "@/lib/configurator-step-highlight";
 import { track } from "@/lib/analytics/posthog-events";
+import {
+  DELIVERY_PROMISE_NOTE,
+  getDeliveryPromise,
+} from "@/lib/delivery-promise";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 // Pim mascot kaldırıldı (Sefa kuralı 15 May v4 — sticker UX paketi).
 import { SchemaJsonLd, breadcrumbSchema } from "@/components/SchemaJsonLd";
@@ -2178,6 +2182,8 @@ function StickerPage() {
               })()}
               onPendingStepsClick={focusPendingStep}
               deliveryDate={deliveryEstimate({ kind: "sticker", qty: totalStickerCount })}
+              deliveryPromiseRange={getDeliveryPromise("sticker")}
+              deliveryPromiseNote={DELIVERY_PROMISE_NOTE}
               ctaLabel={ctaLabel}
               ctaLoading={cartAdding}
               onCta={async () => {

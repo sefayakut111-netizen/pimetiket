@@ -1,11 +1,13 @@
 import { StickerHubSchema } from "@/components/seo/StickerHubSchema";
+import { getPublishedReviewStats } from "@/lib/reviews-server";
 import StickerGridPage from "./StickerPageClient";
 
-export default function StickerPage() {
+export default async function StickerPage() {
+  const reviewStats = await getPublishedReviewStats();
   return (
     <>
       <StickerHubSchema />
-      <StickerGridPage />
+      <StickerGridPage reviewStats={reviewStats} />
     </>
   );
 }

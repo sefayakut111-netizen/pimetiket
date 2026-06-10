@@ -30,6 +30,27 @@ export function MemberWelcomeEmail({ customerName }: MemberWelcomeProps) {
           margin: "20px 0",
         }}
       >
+        <Text style={{ ...mailStyles.label, marginTop: 0 }}>
+          İLK SİPARİŞİNE ÖZEL
+        </Text>
+        <Text style={{ ...mailStyles.p, margin: "8px 0 0", fontSize: 15 }}>
+          İlk siparişine özel %10:{" "}
+          <strong style={{ letterSpacing: "0.06em" }}>HOSGELDIN10</strong>
+          <br />
+          <span style={{ fontSize: 13, color: COLORS.gri700 }}>
+            Min. sepet 250₺ · kişi başı tek kullanım
+          </span>
+        </Text>
+      </Section>
+
+      <Section
+        style={{
+          background: COLORS.krem,
+          borderRadius: 12,
+          padding: "16px 20px",
+          margin: "20px 0",
+        }}
+      >
         <Text style={{ ...mailStyles.label, marginTop: 0 }}>NELER YAPABİLİRSİN?</Text>
         <Text style={{ ...mailStyles.p, margin: "8px 0 0", fontSize: 14 }}>
           • Sticker / etiket fiyatını anında hesapla

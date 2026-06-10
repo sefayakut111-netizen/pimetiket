@@ -53,8 +53,11 @@ import { addDaysIso } from "@/lib/customer-order";
 import {
   DEFAULT_ETIKET_DELIVERY_DAYS,
   DEFAULT_STICKER_DELIVERY_DAYS,
-  formatDeliveryDaysLabel,
 } from "@/lib/site-settings-shared";
+import {
+  DELIVERY_PROMISE_NOTE,
+  getDeliveryPromiseForCart,
+} from "@/lib/delivery-promise";
 import { vatBreakdownFromGross } from "@/lib/vat-breakdown";
 import {
   validateCoupon,
@@ -247,9 +250,7 @@ const COPY = {
     vatIncluded: "KDV dahil",
 
     // Sefa 20 May v68 UX paket A:
-    estDelivery: "Tahmini teslimat",
-    deliveryNote:
-      "Tasarımı zamanında yüklersen kargo bu süre içinde elinde.",
+    estDelivery: "Üretim süresi",
     paymentMethodsTitle: "Kabul edilen ödeme araçları",
     paymentMethodsNote:
       "Taksit seçeneklerin PayTR güvenli ödeme ekranında görünür.",
@@ -387,8 +388,7 @@ const COPY = {
     fullTotal: "Total:",
     vatIncluded: "VAT included",
 
-    estDelivery: "Est. delivery",
-    deliveryNote: "Ships within this window if you upload the design on time.",
+    estDelivery: "Production time",
     paymentMethodsTitle: "Accepted payment methods",
     paymentMethodsNote:
       "Installment options appear on PayTR's secure payment screen.",
@@ -2034,8 +2034,6 @@ export default function OdemePage() {
                 {c.vatIncluded}
               </div>
 
-              {/* Sefa 20 May v68 UX paket A #3: Tahmini teslimat — ürün-spesifik.
-                  Karışık sepette (sticker + etiket) en uzun süre gösterilir. */}
               {cartItems.length > 0 && (
                 <div className="mt-4 flex items-start gap-2 bg-gri-50 rounded-lg p-3">
                   <Icon.Package size={18} className="text-pim-mercan shrink-0 mt-0.5" />
@@ -2043,19 +2041,11 @@ export default function OdemePage() {
                     <div className="font-semibold text-lacivert">
                       {c.estDelivery}:{" "}
                       <span className="text-pim-mercan">
-                        {cartItems.some((i) => i.product === "etiket")
-                          ? formatDeliveryDaysLabel(
-                              etiketDeliveryDays,
-                              locale === "en" ? "en" : "tr"
-                            )
-                          : formatDeliveryDaysLabel(
-                              stickerDeliveryDays,
-                              locale === "en" ? "en" : "tr"
-                            )}
+                        {getDeliveryPromiseForCart(cartItems)}
                       </span>
                     </div>
                     <div className="text-gri-700 text-[11px] mt-0.5">
-                      {c.deliveryNote}
+                      {DELIVERY_PROMISE_NOTE}
                     </div>
                   </div>
                 </div>

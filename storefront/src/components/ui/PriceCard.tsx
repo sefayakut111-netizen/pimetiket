@@ -27,6 +27,9 @@ interface PriceCardProps {
   savingsLabel?: string | null;
   upsell?: Upsell | null;
   deliveryDate: string;
+  /** Üretim süresi aralığı — delivery-promise modülünden */
+  deliveryPromiseRange?: string;
+  deliveryPromiseNote?: string;
   ctaLabel: string;
   /** Sepete ekleme devam ederken buton devre dışı + yükleme metni */
   ctaLoading?: boolean;
@@ -60,6 +63,8 @@ export function PriceCard({
   savingsLabel,
   upsell,
   deliveryDate,
+  deliveryPromiseRange,
+  deliveryPromiseNote,
   ctaLabel,
   ctaLoading = false,
   onCta,
@@ -140,11 +145,19 @@ export function PriceCard({
 
         {pendingWarning}
 
-        <div className="relative mt-4 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-white/10 text-[13px]">
-          <Icon.Calendar size={14} />
-          <span>
-            Tahmini teslim: <strong>{deliveryDate}</strong>
-          </span>
+        <div className="relative mt-4 flex flex-col gap-1 px-3.5 py-2.5 rounded-lg bg-white/10 text-[13px]">
+          <div className="flex items-center gap-2.5">
+            <Icon.Calendar size={14} />
+            <span>
+              Tahmini teslim: <strong>{deliveryDate}</strong>
+            </span>
+          </div>
+          {deliveryPromiseRange ? (
+            <span className="text-white/75 text-[12px] pl-[22px]">
+              Üretim: <strong>{deliveryPromiseRange}</strong>
+              {deliveryPromiseNote ? ` · ${deliveryPromiseNote}` : ""}
+            </span>
+          ) : null}
         </div>
 
         <Button
@@ -261,11 +274,19 @@ export function PriceCard({
         </button>
       )}
 
-      <div className="flex items-center gap-2.5 px-3.5 py-2.5 mb-4 rounded-lg bg-gri-50 text-[13px]">
-        <Icon.Calendar size={16} />
-        <span>
-          Tahmini teslim: <strong>{deliveryDate}</strong>
-        </span>
+      <div className="flex flex-col gap-1 px-3.5 py-2.5 mb-4 rounded-lg bg-gri-50 text-[13px]">
+        <div className="flex items-center gap-2.5">
+          <Icon.Calendar size={16} />
+          <span>
+            Tahmini teslim: <strong>{deliveryDate}</strong>
+          </span>
+        </div>
+        {deliveryPromiseRange ? (
+          <span className="text-gri-700 text-[12px] pl-[26px]">
+            Üretim: <strong>{deliveryPromiseRange}</strong>
+            {deliveryPromiseNote ? ` · ${deliveryPromiseNote}` : ""}
+          </span>
+        ) : null}
       </div>
 
       <Button

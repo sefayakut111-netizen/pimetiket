@@ -35,6 +35,8 @@ import Image from "next/image";
 import { useT } from "@/lib/i18n/context";
 import { track } from "@/lib/analytics/posthog-events";
 import { ga4ViewItem } from "@/lib/analytics/ga4-events";
+import { ReviewStatsBand } from "@/components/reviews/ReviewStatsBand";
+import type { ReviewStats } from "@/lib/reviews-server";
 import {
   getStickerCardSvg,
   DieCutIcon as RegistryDieCutIcon,
@@ -632,7 +634,11 @@ function cutOf(card: StickerCard): string {
   return new URLSearchParams(q).get("cut") ?? "diecut";
 }
 
-export default function StickerGridPage() {
+export default function StickerGridPage({
+  reviewStats,
+}: {
+  reviewStats: ReviewStats;
+}) {
   const { locale } = useT();
   const isEn = locale === "en";
 
@@ -684,6 +690,10 @@ export default function StickerGridPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-lacivert">
             {isEn ? "Choose your sticker type" : "Sticker tipini seç"}
           </h1>
+          <ReviewStatsBand
+            stats={reviewStats}
+            className="mt-3 text-[14px] font-medium text-gri-700 tracking-tight text-center"
+          />
           <p className="mt-3 text-[15px] text-gri-700 max-w-2xl mx-auto leading-relaxed">
             {isEn
               ? "Pick the form that reflects you — starts at 25 pcs. Prototypes, gifts, events, collections, hobby: useful across many spaces. Material, size, and quantity in the next step — customization is all yours."

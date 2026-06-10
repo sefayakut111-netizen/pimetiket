@@ -14,6 +14,7 @@ import { QcFlaggedEmail } from "./templates/qc-flagged";
 import { QcRejectedEmail } from "./templates/qc-rejected";
 import { ShipmentStatusEmail } from "./templates/shipment-status";
 import { ShippingUpdateEmail } from "./templates/shipping-update";
+import { OrderShippedEmail } from "./templates/order-shipped";
 import { ProofHelpResolvedEmail } from "./templates/proof-help-resolved";
 import { OrderUploadReminderEmail } from "./templates/order-upload-reminder";
 import { OrderCancelledEmail } from "./templates/order-cancelled";
@@ -75,6 +76,11 @@ export const MAIL_TEMPLATES = [
     key: "shipping-update",
     label: "Kargo Takip",
     subject: "Kargonuz yola çıktı",
+  },
+  {
+    key: "order-shipped",
+    label: "Kargoya Verildi",
+    subject: "Siparişiniz kargoya verildi",
   },
   {
     key: "proof-help-resolved",
@@ -296,6 +302,19 @@ export async function previewMailTemplate(
           trackingNumber: "1234567890",
           trackingUrl: "https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula",
           estimatedDelivery: "27 Mayıs 2026",
+        })
+      );
+      return { subject: `${meta.subject} — #${MOCK_ORDER_ID}`, html, text: "" };
+    }
+    case "order-shipped": {
+      const html = await render(
+        OrderShippedEmail({
+          customerName: MOCK_NAME,
+          orderId: MOCK_ORDER_ID,
+          carrierName: "Yurtiçi Kargo",
+          trackingNumber: "1234567890",
+          trackingUrl: "https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula",
+          deliveryWindow: "5-7 iş günü",
         })
       );
       return { subject: `${meta.subject} — #${MOCK_ORDER_ID}`, html, text: "" };

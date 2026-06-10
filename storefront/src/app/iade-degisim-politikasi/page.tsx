@@ -32,6 +32,9 @@ export default function IadeDegisimPolitikasiPage() {
           <p className="mt-2 text-[14px] text-gri-500">
             Son güncelleme: 9 Mayıs 2026
           </p>
+          <p className="mt-4 text-[15px] text-lacivert font-medium leading-relaxed max-w-[560px] mx-auto">
+            Baskı hatası bizdense ücretsiz yeniden basarız.
+          </p>
         </div>
 
         {/* Quick summary */}

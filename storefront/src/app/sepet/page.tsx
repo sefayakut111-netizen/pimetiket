@@ -36,10 +36,9 @@ import { parseConfigChips } from "@/lib/cart-config-filter";
 import { useRouter } from "next/navigation";
 import { track } from "@/lib/analytics/posthog-events";
 import {
-  DEFAULT_ETIKET_DELIVERY_DAYS,
-  DEFAULT_STICKER_DELIVERY_DAYS,
-  formatDeliveryDaysLabel,
-} from "@/lib/site-settings-shared";
+  DELIVERY_PROMISE_NOTE,
+  getDeliveryPromiseForCart,
+} from "@/lib/delivery-promise";
 import { vatBreakdownFromGross } from "@/lib/vat-breakdown";
 import { useUser } from "@/lib/supabase/use-user";
 
@@ -73,10 +72,7 @@ const EXTRA = {
     continueShoppingLabel: "Alışverişe devam:",
     subtotalNoVat: "Ara toplam (KDV hariç)",
     vatLabel: "KDV (%20)",
-    estDelivery: "Tahmini teslimat",
-    // Sefa 20 May v68 (test geri bildirim #9): metin onay tarihi vurgusu
-    deliveryNote:
-      "Tasarım onay tarihiniz baz alınarak güncelleme yapılacaktır.",
+    estDelivery: "Üretim süresi",
     shippingFreeFull: (curr: string, threshold: string) =>
       `Kargo bedava (${curr}/${threshold} ₺)`,
     mobileCheckoutTotal: "Toplam",
@@ -105,8 +101,7 @@ const EXTRA = {
     continueShoppingLabel: "Keep shopping:",
     subtotalNoVat: "Subtotal (VAT excl.)",
     vatLabel: "VAT (20%)",
-    estDelivery: "Est. delivery",
-    deliveryNote: "Ships within this window if you upload the design on time.",
+    estDelivery: "Production time",
     shippingFreeFull: (curr: string, threshold: string) =>
       `Free shipping (${curr}/${threshold} TRY)`,
     mobileCheckoutTotal: "Total",
@@ -141,12 +136,6 @@ export default function SepetPage() {
   // Sefa 18 May v68 Migration 053: min/max sipariş tutarı limit
   const [minOrderTotal, setMinOrderTotal] = useState<number>(0);
   const [maxOrderTotal, setMaxOrderTotal] = useState<number>(0);
-  const [stickerDeliveryDays, setStickerDeliveryDays] = useState(
-    DEFAULT_STICKER_DELIVERY_DAYS
-  );
-  const [etiketDeliveryDays, setEtiketDeliveryDays] = useState(
-    DEFAULT_ETIKET_DELIVERY_DAYS
-  );
   const [repricedIds, setRepricedIds] = useState<Set<string>>(new Set());
 
   const refresh = useCallback(() => {
@@ -165,20 +154,6 @@ export default function SepetPage() {
         if (json?.settings) {
           setMinOrderTotal(Number(json.settings.min_order_total_try ?? 0));
           setMaxOrderTotal(Number(json.settings.max_order_total_try ?? 0));
-          setStickerDeliveryDays(
-            Math.max(
-              1,
-              Number(json.settings.sticker_delivery_days) ||
-                DEFAULT_STICKER_DELIVERY_DAYS
-            )
-          );
-          setEtiketDeliveryDays(
-            Math.max(
-              1,
-              Number(json.settings.etiket_delivery_days) ||
-                DEFAULT_ETIKET_DELIVERY_DAYS
-            )
-          );
           setCustomerCartShippingSettings(
             Number(json.settings.shipping_fee_try ?? 49),
             Number(json.settings.free_shipping_threshold ?? 500)
@@ -631,27 +606,17 @@ export default function SepetPage() {
                 </p>
               )}
 
-              {/* Sefa-7: Tahmini teslimat — ürün tipine göre. Sticker
-                  3-5, etiket 5-7. Karışık sepette en uzun süreyi gösterir. */}
               <div className="mt-4 flex items-start gap-2 bg-gri-50 rounded-lg p-3">
                 <Icon.Package size={18} className="text-pim-mercan shrink-0 mt-0.5" />
                 <div className="text-[12px] leading-relaxed">
                   <div className="font-semibold text-lacivert">
                     {x.estDelivery}:{" "}
                     <span className="text-pim-mercan">
-                      {cart.some((i) => i.product === "etiket")
-                        ? formatDeliveryDaysLabel(
-                            etiketDeliveryDays,
-                            locale === "en" ? "en" : "tr"
-                          )
-                        : formatDeliveryDaysLabel(
-                            stickerDeliveryDays,
-                            locale === "en" ? "en" : "tr"
-                          )}
+                      {getDeliveryPromiseForCart(cart)}
                     </span>
                   </div>
                   <div className="text-gri-700 text-[11px] mt-0.5">
-                    {x.deliveryNote}
+                    {DELIVERY_PROMISE_NOTE}
                   </div>
                 </div>
               </div>

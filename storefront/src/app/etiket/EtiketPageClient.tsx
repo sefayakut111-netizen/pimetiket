@@ -28,6 +28,8 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
 import { track } from "@/lib/analytics/posthog-events";
 import { ga4ViewItem } from "@/lib/analytics/ga4-events";
+import { ReviewStatsBand } from "@/components/reviews/ReviewStatsBand";
+import type { ReviewStats } from "@/lib/reviews-server";
 import {
   ETIKET_LAUNCH_LABEL,
   ETIKET_RULO_ENABLED,
@@ -250,7 +252,11 @@ function ProductCard({
 // Sayfa component
 // ============================================================
 
-export default function EtiketGridPage() {
+export default function EtiketGridPage({
+  reviewStats,
+}: {
+  reviewStats: ReviewStats;
+}) {
   const { locale, t } = useT();
   const isEn = locale === "en";
   const ruloPreviewOnly = !ETIKET_RULO_ENABLED;
@@ -306,6 +312,10 @@ export default function EtiketGridPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-lacivert">
             {isEn ? "Choose your label type" : "Etiket tipini seç"}
           </h1>
+          <ReviewStatsBand
+            stats={reviewStats}
+            className="mt-3 text-[14px] font-medium text-gri-700 tracking-tight text-center"
+          />
           <p className="mt-3 text-[15px] text-gri-700 max-w-2xl mx-auto leading-relaxed">
             {isEn
               ? "Choose the form that becomes your brand's face. Material, size, coating, and quantity — all yours in the next step."

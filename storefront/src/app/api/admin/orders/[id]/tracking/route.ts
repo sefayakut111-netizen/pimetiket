@@ -27,6 +27,8 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { queryYurticiShipment } from "@/lib/shipping/yurtici-api";
 import { findCarrier, getTrackingUrl } from "@/lib/shipping/carriers";
 import { logOrderEvent } from "@/lib/order-events-server";
+import { sendOrderShipped } from "@/lib/mail/notifications";
+import { getDeliveryPromise } from "@/lib/delivery-promise";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -141,10 +143,15 @@ export async function POST(
   // Mevcut assignment var mı?
   const { data: existing } = await supabase
     .from("order_assignments")
-    .select("id, status")
+    .select("id, status, tracking_number")
     .eq("order_id", orderId)
     .order("assigned_at", { ascending: false })
     .limit(1);
+
+  const hadTrackingBefore = Boolean(
+    (existing?.[0] as { tracking_number?: string | null } | undefined)
+      ?.tracking_number?.trim()
+  );
 
   let assignmentId: string;
   if (existing && existing.length > 0) {
@@ -246,6 +253,31 @@ export async function POST(
       yurtici_dry_run: apiResult.dryRun,
     },
   });
+
+  if (!hadTrackingBefore) {
+    const orderUserId = (order as { user_id: string }).user_id;
+    const { data: items } = await supabase
+      .from("order_items")
+      .select("product")
+      .eq("order_id", orderId);
+    const productKind =
+      (items ?? []).some(
+        (i) => (i as { product: string }).product === "etiket"
+      )
+        ? "etiket"
+        : "sticker";
+
+    void sendOrderShipped({
+      userId: orderUserId,
+      orderId,
+      carrierName: carrier.displayName,
+      trackingNumber,
+      trackingUrl,
+      deliveryWindow: getDeliveryPromise(productKind),
+    }).catch((err) => {
+      console.error("[tracking] order_shipped mail failed:", err);
+    });
+  }
 
   return NextResponse.json({
     success: true,

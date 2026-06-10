@@ -1,11 +1,13 @@
 import { EtiketHubSchema } from "@/components/seo/EtiketHubSchema";
+import { getPublishedReviewStats } from "@/lib/reviews-server";
 import EtiketGridPage from "./EtiketPageClient";
 
-export default function EtiketPage() {
+export default async function EtiketPage() {
+  const reviewStats = await getPublishedReviewStats();
   return (
     <>
       <EtiketHubSchema />
-      <EtiketGridPage />
+      <EtiketGridPage reviewStats={reviewStats} />
     </>
   );
 }

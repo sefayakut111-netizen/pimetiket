@@ -25,6 +25,10 @@ import {
   getFirstPendingStepId,
 } from "@/lib/configurator-step-highlight";
 import { track } from "@/lib/analytics/posthog-events";
+import {
+  DELIVERY_PROMISE_NOTE,
+  getDeliveryPromise,
+} from "@/lib/delivery-promise";
 import { AddToCartSuccessModal } from "@/components/cart/AddToCartSuccessModal";
 import { ClampedNumberInput } from "@/components/ClampedNumberInput";
 // Pim mascot import edilmiyor — UX audit (15 May): inline avatar kart
@@ -2884,6 +2888,8 @@ function EtiketPage() {
                     : null
                 }
                 deliveryDate={teslim}
+                deliveryPromiseRange={getDeliveryPromise("etiket")}
+                deliveryPromiseNote={DELIVERY_PROMISE_NOTE}
                 ctaLabel={t.config.addToCart}
                 ctaLoading={cartAdding}
                 onCta={handleAddToCart}

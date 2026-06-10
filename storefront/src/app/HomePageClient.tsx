@@ -23,6 +23,8 @@ import { ETIKET_ENABLED } from "@/lib/etiket-feature-flags";
 import { useMemo } from "react";
 import { formatDeliveryDaysLabel } from "@/lib/site-settings-shared";
 import { useDeliveryDays } from "@/hooks/useDeliveryDays";
+import { ReviewStatsBand } from "@/components/reviews/ReviewStatsBand";
+import type { ReviewStats } from "@/lib/reviews-server";
 
 // Sefa kararı 17 May v11: baselineStickerPrice/baselineEtiketPrice/
 // formatUnitPriceLocale helper'ları + QuickReorderWidget + Product
@@ -72,7 +74,11 @@ function buildHomeFaqs(
   ];
 }
 
-export default function HomePage() {
+export default function HomePage({
+  reviewStats,
+}: {
+  reviewStats: ReviewStats;
+}) {
   const { t, locale } = useT();
   const { user } = useUser();
   const deliveryDays = useDeliveryDays();
@@ -286,9 +292,12 @@ export default function HomePage() {
       {/* ============================== PRODUCTION QUALITY ============================== */}
       <section className="py-16 md:py-20 bg-white">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-          <h2 className="text-[28px] md:text-[36px] font-semibold tracking-tight leading-tight text-lacivert mb-10 md:mb-12 max-w-[560px]">
-            {t.home.productionQualityTitle}
-          </h2>
+          <div className="mb-10 md:mb-12">
+            <h2 className="text-[28px] md:text-[36px] font-semibold tracking-tight leading-tight text-lacivert max-w-[560px]">
+              {t.home.productionQualityTitle}
+            </h2>
+            <ReviewStatsBand stats={reviewStats} className="mt-3" />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
             {[
               {

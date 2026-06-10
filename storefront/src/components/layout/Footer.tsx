@@ -215,6 +215,11 @@ export function Footer() {
                       </Link>
                     );
                   })}
+                  {g.t === t.footer.groupSupport ? (
+                    <p className="mt-2 text-[12px] text-white/65 leading-relaxed max-w-[220px]">
+                      Baskı hatası bizdense ücretsiz yeniden basarız.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             ))}

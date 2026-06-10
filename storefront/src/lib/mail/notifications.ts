@@ -43,6 +43,10 @@ import {
   ShippingUpdateEmail,
   type ShippingUpdateProps,
 } from "./templates/shipping-update";
+import {
+  OrderShippedEmail,
+  type OrderShippedProps,
+} from "./templates/order-shipped";
 // Sefa 19 May v68 (su borusu denetimi — 4 yeni mail):
 import {
   QcRejectedEmail,
@@ -473,6 +477,61 @@ export async function sendShippingUpdate(args: {
     kind: "shipping_update",
     // Tracking no kombinasyonu — aynı kargo için 2× shipping update gitmesin
     idempotencyKey: `shipping_update:${args.orderId}:${args.trackingNumber}`,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/**
+ * Kargoya verildi — admin tracking POST (ilk takip no).
+ */
+export async function sendOrderShipped(args: {
+  userId: string;
+  orderId: string;
+  carrierName: string;
+  trackingNumber: string;
+  trackingUrl?: string;
+  deliveryWindow: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const optedIn = await getEmailPref(args.userId, "email_shipping_updates");
+  if (!optedIn) return { ok: false, reason: "opted_out" };
+
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("display_name")
+    .eq("id", args.userId)
+    .maybeSingle();
+
+  const customerName =
+    (profile as { display_name?: string | null } | null)?.display_name ??
+    email.split("@")[0];
+
+  const props: OrderShippedProps = {
+    customerName,
+    orderId: args.orderId,
+    carrierName: args.carrierName,
+    trackingNumber: args.trackingNumber,
+    trackingUrl: args.trackingUrl,
+    deliveryWindow: args.deliveryWindow,
+  };
+
+  const html = await render(OrderShippedEmail(props));
+  const subject = `Kargoya verildi — ${args.orderId}`;
+  const text = `${args.orderId} kargoda. ${args.carrierName} ${args.trackingNumber}. Takip: ${args.trackingUrl ?? `${SITE_URL_FALLBACK}/siparis/${args.orderId}`}`;
+
+  const result = await enqueuePrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "order_shipped",
+    idempotencyKey: `order_shipped:${args.orderId}`,
   });
 
   return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
