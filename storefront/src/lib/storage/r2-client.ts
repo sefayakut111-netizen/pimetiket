@@ -113,28 +113,44 @@ export interface R2UploadResult {
 /**
  * Hot path R2 upload — cutline, fason contract vb. DRY_RUN'dan etkilenmez.
  */
+function normalizeR2Body(body: Buffer | Uint8Array | string): Buffer {
+  if (typeof body === "string") return Buffer.from(body, "utf-8");
+  if (Buffer.isBuffer(body)) return body;
+  return Buffer.from(body);
+}
+
 export async function uploadToR2(params: {
   key: string;
   body: Buffer | Uint8Array | string;
   contentType?: string;
   metadata?: Record<string, string>;
 }): Promise<R2UploadResult> {
-  const size =
-    typeof params.body === "string"
-      ? Buffer.byteLength(params.body, "utf-8")
-      : params.body.length;
+  const normalizedBody = normalizeR2Body(params.body);
+  const size = normalizedBody.length;
 
   try {
     await getClient().send(
       new PutObjectCommand({
         Bucket: R2_BUCKET,
         Key: params.key,
-        Body: params.body,
+        Body: normalizedBody,
         ContentType: params.contentType ?? "application/octet-stream",
         Metadata: params.metadata,
       })
     );
-    return { success: true, key: params.key, size };
+    const verified = await getR2ObjectInfo(params.key);
+    if (!verified.exists) {
+      console.error(
+        "[r2-client] upload verify failed (HeadObject miss):",
+        params.key
+      );
+      return {
+        success: false,
+        key: params.key,
+        error: "upload_verify_failed",
+      };
+    }
+    return { success: true, key: params.key, size: verified.size ?? size };
   } catch (err) {
     console.error("[r2-client] upload failed:", params.key, err);
     return {
@@ -261,7 +277,12 @@ export async function getR2ObjectInfo(key: string): Promise<{
       size: response.ContentLength,
       lastModified: response.LastModified,
     };
-  } catch {
+  } catch (err) {
+    const status = (err as { $metadata?: { httpStatusCode?: number } })
+      .$metadata?.httpStatusCode;
+    if (status !== 404) {
+      console.warn("[r2-client] head failed:", key, status ?? err);
+    }
     return { exists: false };
   }
 }

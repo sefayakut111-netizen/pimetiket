@@ -22,6 +22,7 @@
     "verify:qc-tokens": "node scripts/verify-qc-tokens.mjs",
     "verify:editor-geometry": "npx --yes tsx scripts/editor-export-geometry-regression.runner.ts",
     "verify:print-pdf": "npx --yes tsx scripts/print-pdf-regression.runner.ts",
+    "verify:print-pdf-cache": "npx --yes tsx scripts/print-pdf-cache-regression.runner.ts",
     "verify:pricing-consistency": "npx --yes tsx scripts/pricing-config-consistency-regression.runner.ts",
     "supabase:types": "supabase gen types typescript --project-id ucmpwxnoaqjpzhijnxtp > src/lib/supabase/types.ts",
     "analyze:deps": "npx madge --json --extensions ts,tsx --ts-config tsconfig.json src/ > deps.json && python scripts/analyze-deps.py",

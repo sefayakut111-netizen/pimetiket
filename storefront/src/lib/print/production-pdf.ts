@@ -148,10 +148,15 @@ export async function getOrBuildProductionPrintPdf(args: {
 
   const upload = await uploadToR2({
     key: cacheKey,
-    body: pdfBytes,
+    body: Buffer.from(pdfBytes),
     contentType: "application/pdf",
   });
   if (!upload.success) {
+    console.error(
+      "[production-pdf] R2 cache write failed:",
+      cacheKey,
+      upload.error
+    );
     return { ok: false, error: "PDF cache yazılamadı", status: 500 };
   }
 

@@ -33,7 +33,7 @@ export async function downloadProductionExport(
   if (designFileId) qs.set("design_file_id", designFileId);
   const res = await fetch(
     `/api/orders/${orderId}/proof/${itemId}/production-export?${qs.toString()}`,
-    { credentials: "include" }
+    { credentials: "include", cache: "no-store" }
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();

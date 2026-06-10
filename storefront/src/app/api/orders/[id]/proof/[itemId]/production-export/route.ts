@@ -95,8 +95,10 @@ export async function GET(
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="pim-print-ready-${orderId.slice(-6)}-${itemId.slice(-6)}.pdf"`,
-        "Cache-Control": "private, max-age=3600",
+        // PDF her istekte sunucuya gitsin — max-age tarayıcıda X-Pim-Print-Cached'i donduruyordu
+        "Cache-Control": "private, no-cache, must-revalidate",
         "X-Pim-Print-Cached": built.cached ? "1" : "0",
+        "X-Pim-Print-Cache-Key": built.cacheKey,
       },
     });
   }
