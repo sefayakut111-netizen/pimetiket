@@ -11,13 +11,10 @@ const MESSAGES = [
     </span>{" "}
     koduyla %20 indirim
   </>,
-  <>Sadece Avrupa malzeme — Avery, Orafol, Fasson</>,
-  <>AI dosya kontrolü — üretime gitmeden eksikleri söyler</>,
-  <>Sipariş onayınla basılır — provayı sen onaylarsın</>,
 ] as const;
 
 /** Geniş ekranda track > viewport olması için yarı başına tekrar sayısı */
-const MESSAGE_REPEATS_PER_HALF = 2;
+const MESSAGE_REPEATS_PER_HALF = 8;
 
 function MarqueeHalf({ hidden }: { hidden?: boolean }) {
   return (
