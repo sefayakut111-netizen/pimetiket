@@ -29,6 +29,7 @@
     "verify:hosgeldin10": "npx --yes tsx scripts/verify-hosgeldin10-coupon.runner.ts",
     "verify:partner-shipping-info": "npx --yes tsx scripts/verify-partner-shipping-info.runner.ts",
     "verify:approval-requests": "npx --yes tsx scripts/verify-approval-requests.runner.ts",
+    "verify:instagram-token": "npx --yes tsx scripts/verify-instagram-token.runner.ts",
     "migrate:177": "node scripts/apply-migrations-177.mjs",
     "supabase:types": "supabase gen types typescript --project-id ucmpwxnoaqjpzhijnxtp > src/lib/supabase/types.ts",
     "analyze:deps": "npx madge --json --extensions ts,tsx --ts-config tsconfig.json src/ > deps.json && python scripts/analyze-deps.py",

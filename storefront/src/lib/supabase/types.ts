@@ -2462,6 +2462,27 @@ export type Database = {
           },
         ]
       }
+      integration_secrets: {
+        Row: {
+          key: string
+          value: string
+          expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          key: string
+          value: string
+          expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          key?: string
+          value?: string
+          expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_events: {
         Row: {
           actor_id: string | null

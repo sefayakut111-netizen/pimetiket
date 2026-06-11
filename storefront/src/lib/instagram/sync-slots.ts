@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
 import { fetchInstagramMedia, mediaToFeedPost } from "./fetch-media";
+import { getInstagramToken } from "./token";
 
 const BUCKET = "public-assets";
 const SLOTS = [
@@ -19,7 +20,7 @@ function extForMime(mime: string): string {
 }
 
 export async function syncInstagramToSiteImageSlots(limit = 6) {
-  const token = process.env.INSTAGRAM_ACCESS_TOKEN?.trim();
+  const token = await getInstagramToken();
   if (!token) {
     return { ok: false as const, reason: "missing_token" as const, synced: 0 };
   }

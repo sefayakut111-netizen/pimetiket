@@ -146,6 +146,10 @@
     {
       "path": "/api/cron/instagram-sync",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-token-refresh",
+      "schedule": "30 8 * * 0"
     }
   ]
 }

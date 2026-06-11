@@ -2,6 +2,7 @@ import { getSiteImages } from "@/lib/site-images";
 import { fetchInstagramMedia, mediaToFeedPost } from "./fetch-media";
 import type { InstagramFeedPost, InstagramFeedResponse } from "./types";
 import { INSTAGRAM_HANDLE } from "./types";
+import { getInstagramToken } from "./token";
 
 const INSTAGRAM_SLOTS = [
   "home_instagram_1",
@@ -45,7 +46,7 @@ function postsFromSyncedSlots(
 export async function getInstagramHomeFeed(
   limit = 6
 ): Promise<InstagramFeedResponse> {
-  const token = process.env.INSTAGRAM_ACCESS_TOKEN?.trim();
+  const token = await getInstagramToken();
 
   if (token) {
     try {

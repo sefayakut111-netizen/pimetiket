@@ -16,6 +16,10 @@ import {
   psiUrlForPath,
 } from "@/lib/perf-baseline";
 import { getSiteUrl } from "@/lib/site-url";
+import {
+  type InstagramTokenStatus,
+  getInstagramTokenStatus,
+} from "@/lib/instagram/token";
 
 export type AutomationFlagStatus = "active" | "partial" | "inactive" | "cancelled";
 
@@ -149,10 +153,13 @@ export async function buildSystemOverview(
 
   const queueCritical = await countQueueCritical(admin);
 
+  const instagramToken = await getInstagramTokenStatus();
+
   const automation = buildAutomationFlags({
     mailStubMode,
     welcomeMailPending: welcomeMailPending ?? 0,
     mailPending: mailPending ?? 0,
+    instagramToken,
   });
 
   const envChecks = [
@@ -233,10 +240,30 @@ export async function buildSystemOverview(
   };
 }
 
+function formatInstagramTokenDetail(status: InstagramTokenStatus): string {
+  if (status.source === "none") {
+    return "env bekliyor: INSTAGRAM_ACCESS_TOKEN";
+  }
+  if (status.source === "env") {
+    return "env'den, henüz DB'ye alınmadı — haftalık refresh cron DB'ye yazar.";
+  }
+  const refresh = status.updatedAt
+    ? new Date(status.updatedAt).toLocaleDateString("tr-TR", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "—";
+  const days =
+    status.daysRemaining != null ? `~${status.daysRemaining}` : "—";
+  return `token var · son yenileme ${refresh} · kalan ${days} gün · günlük feed sync cron.`;
+}
+
 function buildAutomationFlags(ctx: {
   mailStubMode: boolean;
   welcomeMailPending: number;
   mailPending: number;
+  instagramToken: InstagramTokenStatus;
 }): AutomationFlag[] {
   const flags: AutomationFlag[] = [
     {
@@ -301,13 +328,9 @@ function buildAutomationFlags(ctx: {
     {
       id: "instagram_sync",
       label: "Instagram sync",
-      status: process.env.INSTAGRAM_ACCESS_TOKEN?.trim()
-        ? "active"
-        : "inactive",
-      detail: process.env.INSTAGRAM_ACCESS_TOKEN?.trim()
-        ? "Günlük cron — ana sayfa feed slotları güncellenir."
-        : "env bekliyor: INSTAGRAM_ACCESS_TOKEN",
-      activationStep: process.env.INSTAGRAM_ACCESS_TOKEN?.trim()
+      status: ctx.instagramToken.hasToken ? "active" : "inactive",
+      detail: formatInstagramTokenDetail(ctx.instagramToken),
+      activationStep: ctx.instagramToken.hasToken
         ? undefined
         : "Meta Developer → long-lived INSTAGRAM_ACCESS_TOKEN",
     },
