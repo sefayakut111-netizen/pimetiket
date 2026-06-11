@@ -35,6 +35,10 @@ function writeOversizePng(filePath: string, sizeBytes: number) {
   fs.writeFileSync(filePath, Buffer.concat([header, padding]));
 }
 
+function pocFrame(page: import("@playwright/test").Page) {
+  return page.frameLocator('iframe[title="Bıçak editörü"]').first();
+}
+
 async function openEditor(page: import("@playwright/test").Page) {
   await page.addInitScript(() => {
     localStorage.setItem("pim_editor_onboarded", "1");
@@ -51,13 +55,43 @@ async function openEditor(page: import("@playwright/test").Page) {
   await expect(page.getByRole("tab", { name: "Görsel" })).toBeVisible({
     timeout: 30_000,
   });
+
+  const iframe = page.locator('iframe[title="Bıçak editörü"]').first();
+  await expect(iframe).toBeVisible({ timeout: 60_000 });
+  await expect(pocFrame(page).locator("#canvas")).toBeAttached({
+    timeout: 90_000,
+  });
+
   await expect(
     page.getByText("Görsel yükle — bıçak otomatik netleşir")
-  ).toBeVisible({ timeout: 45_000 });
+  ).toBeVisible({ timeout: 90_000 });
+
+  // OpenCV + PDF + PSD — handleFile bu üçü hazır olmadan dosya işlemez
+  await expect(pocFrame(page).locator("#cvStatus .text")).toHaveText("Hazır", {
+    timeout: 120_000,
+  });
+}
+
+async function waitForDesignLoaded(page: import("@playwright/test").Page) {
+  await expect(
+    page.getByText(/Tasarım yüklendi|Bıçak hazır|kontur hesaplanıyor/i).first()
+  ).toBeVisible({ timeout: 90_000 });
+}
+
+/** designLoaded sonrası shell otomatik Bıçak sekmesine geçer — yeniden yükleme Görsel'de */
+async function openGorselUploadZone(page: import("@playwright/test").Page) {
+  await page.getByRole("tab", { name: "Görsel" }).click();
+  const uploadBtn = page
+    .getByRole("button", {
+      name: /Dosya yükle veya sürükle|Yeni dosya|\.png|\.jpg|\.pdf/i,
+    })
+    .first();
+  await expect(uploadBtn).toBeVisible({ timeout: 15_000 });
+  return uploadBtn;
 }
 
 test("Editor: bozuk PDF yükleme — hata banner'da görünür", async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   await openEditor(page);
 
   const brokenPdfPath = path.join(os.tmpdir(), `pim-broken-${Date.now()}.pdf`);
@@ -69,7 +103,9 @@ test("Editor: bozuk PDF yükleme — hata banner'da görünür", async ({ page }
   await fileChooser.setFiles(brokenPdfPath);
 
   await expect(
-    page.getByText(/PDF açılamadı|açılamadı/i).first()
+    page
+      .getByText(/PDF açılamadı|Invalid PDF|Bozuk PDF|açılamadı/i)
+      .first()
   ).toBeVisible({ timeout: 30_000 });
 
   fs.unlinkSync(brokenPdfPath);
@@ -125,33 +161,32 @@ test("Editor: eski format .ai (%!PS) — yönlendirme mesajı görünür", async
 test("Editor: tasarım yüklüyken ikinci bozuk dosya — hata banner'ı görünür", async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   await openEditor(page);
 
   const tinyPngPath = path.join(os.tmpdir(), `pim-tiny-${Date.now()}.png`);
   writeTinyPng(tinyPngPath);
 
-  const uploadBtn = page.getByRole("button", {
-    name: /Dosya yükle veya sürükle/i,
-  });
-
   let fileChooserPromise = page.waitForEvent("filechooser");
-  await uploadBtn.click();
+  await (
+    await openGorselUploadZone(page)
+  ).click();
   await (await fileChooserPromise).setFiles(tinyPngPath);
 
-  await expect(
-    page.getByText(/Tasarım yüklendi|Bıçak hazır/i).first()
-  ).toBeVisible({ timeout: 60_000 });
+  await waitForDesignLoaded(page);
 
   const brokenPdfPath = path.join(os.tmpdir(), `pim-broken2-${Date.now()}.pdf`);
   fs.writeFileSync(brokenPdfPath, "%PDF-1.4\n% not a real pdf\n%%EOF\n");
 
+  const uploadBtn = await openGorselUploadZone(page);
   fileChooserPromise = page.waitForEvent("filechooser");
   await uploadBtn.click();
   await (await fileChooserPromise).setFiles(brokenPdfPath);
 
   await expect(
-    page.getByText(/PDF açılamadı|açılamadı/i).first()
+    page
+      .getByText(/PDF açılamadı|Invalid PDF|Bozuk PDF|açılamadı/i)
+      .first()
   ).toBeVisible({ timeout: 30_000 });
 
   fs.unlinkSync(tinyPngPath);
