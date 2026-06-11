@@ -210,51 +210,77 @@ function renderCustomerInProduction(input: MailTemplateInput): MailRendered {
 // ============================================================
 function renderCustomerShipped(input: MailTemplateInput): MailRendered {
   const p = input.payload;
-  const orderId = escape(p.order_id);
-  const carrier = escape(p.carrier ?? "Kargo");
-  const trackingNo = escape(p.tracking_no ?? "");
-  // Defansif: yalnızca https:// URL'lere href ver. Endpoint zaten
-  // doğruluyor, mail template ikinci katman güvence.
+  const orderIdRaw = String(p.order_id ?? p.orderId ?? "");
+  const orderId = escape(orderIdRaw);
+  const firstName = escape(
+    String(p.customer_name ?? p.customerName ?? "")
+      .split(" ")[0] || "Merhaba"
+  );
+  const carrier = escape(p.carrier ?? p.carrierName ?? "Kargo");
+  const trackingNo = escape(
+    p.tracking_no ?? p.tracking_number ?? p.trackingNumber ?? ""
+  );
+  const deliveryWindow =
+    typeof p.delivery_window === "string" && p.delivery_window.trim()
+      ? escape(p.delivery_window)
+      : "";
+
   let trackingUrl = "";
-  if (typeof p.tracking_url === "string") {
+  const trackRaw = p.tracking_url ?? p.trackingUrl;
+  if (typeof trackRaw === "string") {
     try {
-      const u = new URL(p.tracking_url);
+      const u = new URL(trackRaw);
       if (u.protocol === "https:") trackingUrl = u.toString();
     } catch {
-      /* invalid URL, link gösterilmez */
+      /* invalid URL */
     }
   }
+  const orderLink = trackingUrl || `${SITE_URL}/siparis/${orderIdRaw}`;
 
-  const subject = `Kargoya verildi — ${orderId}`;
+  const subject = `Kargoya verildi — ${orderIdRaw}`;
 
   const body = `
-    <h1 style="font-size: 18px; margin: 0 0 12px;">Sipariş yola çıktı!</h1>
-    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
-      <strong>${orderId}</strong> numaralı sipariş kargoya teslim edildi.
+    <p style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #78716c; margin: 0 0 8px;">Sipariş #${orderId}</p>
+    <h1 style="font-size: 22px; margin: 0 0 12px; color: #1e293b;">${firstName}, siparişin kargoda</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524; margin: 0 0 16px;">
+      <strong>${orderId}</strong> numaralı siparişin kargoya verildi.
+      ${
+        deliveryWindow
+          ? `Tahmini teslim aralığı: <strong>${deliveryWindow}</strong> (kargo süresi hariç).`
+          : ""
+      }
     </p>
 
-    <table role="presentation" style="width: 100%; margin: 16px 0; font-size: 13px;">
-      <tr><td style="padding: 6px 0; color: #57534e;">Kargo firması</td><td style="padding: 6px 0; font-weight: 600;">${carrier}</td></tr>
-      ${trackingNo ? `<tr><td style="padding: 6px 0; color: #57534e;">Takip no</td><td style="padding: 6px 0; font-weight: 600;">${trackingNo}</td></tr>` : ""}
-    </table>
+    <div style="background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 12px; padding: 16px; margin: 16px 0;">
+      <p style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #78716c;">Kargo bilgileri</p>
+      <p style="margin: 8px 0 0; font-size: 18px; font-weight: 700; color: #1e293b;">${carrier}</p>
+      ${
+        trackingNo
+          ? `<p style="margin: 4px 0 0; font-size: 14px; color: #1e293b; font-family: monospace;">Takip no: <strong>${trackingNo}</strong></p>`
+          : ""
+      }
+    </div>
 
-    ${
-      trackingUrl
-        ? `<div style="margin: 24px 0;">
-            <a href="${escape(trackingUrl)}" style="display: inline-block; background: #1e293b; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
-              Kargoyu takip et →
-            </a>
-          </div>`
-        : ""
-    }
+    <div style="margin: 24px 0;">
+      <a href="${escape(orderLink)}" style="display: inline-block; background: #f97066; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+        Kargomu takip et
+      </a>
+    </div>
   `;
 
   const footer = `
-    Bir sorun olursa <a href="${SITE_URL}/iletisim">iletişim</a> sayfasından
-    bize ulaşabilirsin. İyi günlerde kullan!
+    Teslimde sorun olursa <a href="${SITE_URL}/destek">destek</a> sayfasından yazabilirsin.
   `;
 
-  const text = `Kargoya verildi — ${orderId}\n\nKargo: ${carrier}${trackingNo ? `\nTakip no: ${trackingNo}` : ""}${trackingUrl ? `\nTakip: ${trackingUrl}` : ""}`;
+  const text = [
+    `${firstName}, siparişin kargoda — ${orderIdRaw}`,
+    deliveryWindow ? `Tahmini teslim: ${deliveryWindow}` : "",
+    `Kargo: ${carrier}`,
+    trackingNo ? `Takip no: ${trackingNo}` : "",
+    `Takip: ${orderLink}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return { subject, html: shellHtml(subject, body, footer), text };
 }

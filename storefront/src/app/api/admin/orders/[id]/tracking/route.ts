@@ -15,8 +15,10 @@
  * Davranış:
  *   - order_assignments'ta mevcut "shipped" satır varsa update eder.
  *   - Yoksa yeni assignment yaratır (fason flow olmadan da manuel kargolama).
- *   - status='shipped' set edilirse trg_notify_customer_shipped tetiklenir
- *     → mail_outbox'a "kargoya verildi" maili düşer (Migration 045).
+ *   - status='shipped' UPDATE'de trg_notify_customer_shipped tetiklenir
+ *     → fason_mail_outbox'a customer_shipped düşer (Migration 045).
+ *   - İlk takip no'da sendOrderShipped da çağrılır; fason trigger zaten
+ *     kuyrukladıysa (son 1 saat) ikinci mail atlanır.
  *   - İlk Yurtiçi API poll'u senkron çağrılır — kargo gerçekten yola çıktı
  *     mı doğrulanır + ilk timeline event'i oluşur.
  */
@@ -28,6 +30,7 @@ import { queryYurticiShipment } from "@/lib/shipping/yurtici-api";
 import { findCarrier, getTrackingUrl } from "@/lib/shipping/carriers";
 import { logOrderEvent } from "@/lib/order-events-server";
 import { sendOrderShipped } from "@/lib/mail/notifications";
+import { shouldSkipAdminOrderShippedMail } from "@/lib/mail/shipped-mail-guard";
 import { getDeliveryPromise } from "@/lib/delivery-promise";
 
 export const runtime = "nodejs";
@@ -255,28 +258,40 @@ export async function POST(
   });
 
   if (!hadTrackingBefore) {
-    const orderUserId = (order as { user_id: string }).user_id;
-    const { data: items } = await supabase
-      .from("order_items")
-      .select("product")
-      .eq("order_id", orderId);
-    const productKind =
-      (items ?? []).some(
-        (i) => (i as { product: string }).product === "etiket"
-      )
-        ? "etiket"
-        : "sticker";
+    const skipDuplicate = await shouldSkipAdminOrderShippedMail(
+      supabase,
+      orderId
+    );
 
-    void sendOrderShipped({
-      userId: orderUserId,
-      orderId,
-      carrierName: carrier.displayName,
-      trackingNumber,
-      trackingUrl,
-      deliveryWindow: getDeliveryPromise(productKind),
-    }).catch((err) => {
-      console.error("[tracking] order_shipped mail failed:", err);
-    });
+    if (skipDuplicate) {
+      console.info(
+        "[tracking] customer_shipped already queued (fason trigger) — skip admin mail",
+        orderId
+      );
+    } else {
+      const orderUserId = (order as { user_id: string }).user_id;
+      const { data: items } = await supabase
+        .from("order_items")
+        .select("product")
+        .eq("order_id", orderId);
+      const productKind =
+        (items ?? []).some(
+          (i) => (i as { product: string }).product === "etiket"
+        )
+          ? "etiket"
+          : "sticker";
+
+      void sendOrderShipped({
+        userId: orderUserId,
+        orderId,
+        carrierName: carrier.displayName,
+        trackingNumber,
+        trackingUrl,
+        deliveryWindow: getDeliveryPromise(productKind),
+      }).catch((err) => {
+        console.error("[tracking] customer_shipped mail failed:", err);
+      });
+    }
   }
 
   return NextResponse.json({

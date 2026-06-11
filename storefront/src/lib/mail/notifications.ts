@@ -43,10 +43,6 @@ import {
   ShippingUpdateEmail,
   type ShippingUpdateProps,
 } from "./templates/shipping-update";
-import {
-  OrderShippedEmail,
-  type OrderShippedProps,
-} from "./templates/order-shipped";
 // Sefa 19 May v68 (su borusu denetimi — 4 yeni mail):
 import {
   QcRejectedEmail,
@@ -510,28 +506,23 @@ export async function sendOrderShipped(args: {
     (profile as { display_name?: string | null } | null)?.display_name ??
     email.split("@")[0];
 
-  const props: OrderShippedProps = {
-    customerName,
-    orderId: args.orderId,
-    carrierName: args.carrierName,
-    trackingNumber: args.trackingNumber,
-    trackingUrl: args.trackingUrl,
-    deliveryWindow: args.deliveryWindow,
-  };
-
-  const html = await render(OrderShippedEmail(props));
-  const subject = `Kargoya verildi — ${args.orderId}`;
-  const text = `${args.orderId} kargoda. ${args.carrierName} ${args.trackingNumber}. Takip: ${args.trackingUrl ?? `${SITE_URL_FALLBACK}/siparis/${args.orderId}`}`;
-
-  const result = await enqueuePrerendered({
+  const result = await enqueueMail({
+    templateKey: "customer_shipped",
     to: email,
-    subject,
-    html,
-    text,
-    userId: args.userId,
-    orderId: args.orderId,
-    kind: "order_shipped",
-    idempotencyKey: `order_shipped:${args.orderId}`,
+    payload: {
+      order_id: args.orderId,
+      orderId: args.orderId,
+      customer_name: customerName,
+      carrier: args.carrierName,
+      tracking_no: args.trackingNumber,
+      tracking_number: args.trackingNumber,
+      tracking_url: args.trackingUrl,
+      delivery_window: args.deliveryWindow,
+    },
+    category: "customer",
+    targetType: "order",
+    targetId: args.orderId,
+    idempotencyKey: `customer_shipped:${args.orderId}`,
   });
 
   return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };

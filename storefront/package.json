@@ -23,6 +23,7 @@
     "verify:editor-geometry": "npx --yes tsx scripts/editor-export-geometry-regression.runner.ts",
     "verify:print-pdf": "npx --yes tsx scripts/print-pdf-regression.runner.ts",
     "verify:print-pdf-cache": "npx --yes tsx scripts/print-pdf-cache-regression.runner.ts",
+    "verify:shipped-mail-dedup": "npx --yes tsx scripts/verify-shipped-mail-dedup.runner.ts",
     "verify:pricing-consistency": "npx --yes tsx scripts/pricing-config-consistency-regression.runner.ts",
     "seed:hosgeldin10": "node scripts/seed-hosgeldin10-coupon.mjs",
     "verify:hosgeldin10": "npx --yes tsx scripts/verify-hosgeldin10-coupon.runner.ts",
