@@ -5,6 +5,7 @@
  * Fiyat sohbette hesaplanmaz — redirect/nav + faq_lookup araçları.
  */
 
+import * as Sentry from "@sentry/nextjs";
 import { openai } from "@ai-sdk/openai";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import {
@@ -13,7 +14,6 @@ import {
   type PimPageContext,
   type PimPersona,
 } from "@/lib/pim/personas";
-import { getSiteDeliveryDays } from "@/lib/site-settings-server";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { OPENAI_CHAT_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 import { createClient as createServerClient } from "@/lib/supabase/server";
@@ -169,12 +169,10 @@ export async function POST(req: Request) {
   }
 
   const memory = body.memory ?? {};
-  const deliveryDays = await getSiteDeliveryDays();
   const systemPrompt = buildSystemPromptWithMemory(
     persona,
     memory,
-    body.pageContext,
-    deliveryDays
+    body.pageContext
   );
   const modelMessages = await convertToModelMessages(clampedMessages);
 
@@ -201,6 +199,13 @@ export async function POST(req: Request) {
     onFinish: async ({ usage, text }) => {
       if (text && looksLikeSystemPromptLeak(text)) {
         console.warn("[pim/chat] possible system prompt leak in response");
+        Sentry.captureMessage("pim_chat_system_prompt_leak", {
+          level: "warning",
+          extra: {
+            persona,
+            textPreview: text.slice(0, 200),
+          },
+        });
       }
       const inputTokens = usage?.inputTokens ?? 0;
       const outputTokens = usage?.outputTokens ?? 0;

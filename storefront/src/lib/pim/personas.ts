@@ -10,16 +10,21 @@
  */
 
 import { ETIKET_TABAKA_MIN_QTY } from "@/lib/etiket-customer-pricing";
+import { looksLikePromptInjection } from "@/lib/pim/chat-guard";
 import { buildPimKnowledgeBase } from "@/lib/pim/knowledge-base";
 import {
   PIM_CARRIER_NAME,
 } from "@/lib/pim/site-facts";
-import type { DeliveryDaysSettings } from "@/lib/site-settings-shared";
 import {
   CUSTOMER_STICKER_TIERS,
+  STICKER_MAX_H,
+  STICKER_MAX_W,
+  STICKER_MIN_DIM,
   STICKER_MIN_QTY,
   STICKER_QTY_STEP,
 } from "@/lib/sticker-customer-pricing";
+
+const STICKER_SIZE_LIMIT_LINE = `Sticker boyutu ${STICKER_MIN_DIM}×${STICKER_MIN_DIM} mm ile ${STICKER_MAX_W}×${STICKER_MAX_H} mm arasında; daha büyüğü istiyorsan WhatsApp'tan yaz, özel teklif çıkarırız.`;
 
 export type PimPersona = "welcome" | "designer" | "shipper";
 
@@ -77,8 +82,7 @@ KÖTÜ (yapma):
   "Hazır şablon kütüphanemiz yok ama Canva ve Adobe Express'te ücretsiz
   şablonlar var — oradan başla, PDF olarak indir, sisteme yükle."
   "Bunu doğrudan yapamıyorum ama şöyle yapabilirsin: …"
-  "Sticker boyutu bizde 400×650 mm ile sınırlı; daha büyüğü istiyorsan
-  WhatsApp'tan yaz, özel teklif çıkarırız."
+  "${STICKER_SIZE_LIMIT_LINE}"
 
 Cevabın 1. cümlesi ÇÖZÜM olsun. Olumsuzluk varsa 2. cümlede geç,
 çözümle dengele. "Üzgünüm/Maalesef" sözcükleri YASAK.
@@ -195,7 +199,7 @@ C) SİPARİŞ DURUMU / KARGO TAKİBİ
      * Teslim → "ulaşmış görünüyor, sorun varsa söyle"
 
 D) DOSYA HAZIRLAMA / TASARIM
-   - Format: PDF, PNG, JPEG, AI, PSD, SVG kabul; EPS desteklenmez. PDF (X-1a) önerilen, raster için 300 DPI.
+   - Format: PDF, PNG, JPEG, AI, PSD, SVG kabul; EPS desteklenmez. PDF (X-1a) önerilen, raster için 300 DPI. Dosya max 30 MB; siparişte en fazla 50 dosya.
    - Çözünürlük: 300 DPI gerçek baskı boyutunda.
    - Bleed (taşma payı): her kenardan 2-3 mm, kritik içerik (yazı/logo) kesim çizgisinden 3 mm içeride.
    - Renk uzayı:
@@ -203,7 +207,7 @@ D) DOSYA HAZIRLAMA / TASARIM
      * Canva Pro / Adobe / Figma → CMYK PDF export edebiliyorsa CMYK öner
      * RGB → CMYK dönüşümünde %5-10 renk sapması olağan; Pantone kritikse spot renk
    - Fontlar outline'a çevrilmeli (Illustrator: Type → Create Outlines; Photoshop: rasterize)
-   - "Tasarımcım yok" → /sablonlar (Canva için hazır boyut şablonlar) + Canva.com / Adobe Express / Figma'ya yönlendir, "ücretsiz online araçlarla hazırlayabilirsin" de.
+   - "Tasarımcım yok" → önce /editor (tarayıcıda tasarım editörü — die-cut, geri alma, mobil uyumlu), sonra /sablonlar (Canva için hazır boyut şablonlar) + Canva.com / Adobe Express alternatifi; "ücretsiz online araçlarla hazırlayabilirsin" de.
 
 E) GENEL SORULAR / SORUN / ŞİKAYET
    - Cevabı bilmiyorsan "Sefa'ya WhatsApp / info@pimetiket.com'dan iletmek en hızlısı" de + /iletisim linki ver
@@ -255,7 +259,7 @@ GÖREVİN:
 4. Aktif ton: "Seni 60×80 mm, 2000 adet, kraft tabaka hazır ayarlarıyla götürüyorum — fiyatı orada görürsün." + tek CTA butonu (tool'dan gelir).
 
 KARARLAR:
-- Sticker boyutu: kare verilir (W=H). Etiket satış durumu (tabaka/rulo açık mı) KNOWLEDGE_BASE'den — sabit "kapalı" varsayımı yapma.
+- ${STICKER_SIZE_LIMIT_LINE} Kare verilirse W=H. Etiket satış durumu (tabaka/rulo açık mı) KNOWLEDGE_BASE'den — sabit "kapalı" varsayımı yapma.
 - Tabaka etiket min ${ETIKET_TABAKA_MIN_QTY} adet (250'şer artış), rulo etiket min 1.000 adet (1.000'er artış — rulo kapalıysa KNOWLEDGE_BASE). Sticker min ${STICKER_MIN_QTY} adet (${STICKER_QTY_STEP}'er artış; geçerli: ${CUSTOMER_STICKER_TIERS.join("/")}).
 - Etiket boyut 5×5'ten 400×650'a kadar. Daha büyüğüne "büyük etiket servisi yakında" de.
 - Sticker malzeme/yüzey: vinil/transparan/holografik/simli + parlak/mat/kaplamasız; bilmiyorsa "vinil parlak" default ver.
@@ -348,10 +352,9 @@ export function buildSystemPromptWithMemory(
     facts?: Array<{ key: string; value: string }>;
     lastConversationSummary?: string;
   },
-  pageContext?: PimPageContext,
-  deliveryDays?: DeliveryDaysSettings
+  pageContext?: PimPageContext
 ): string {
-  const knowledgeBase = buildPimKnowledgeBase(deliveryDays);
+  const knowledgeBase = buildPimKnowledgeBase();
   const base = PERSONAS[persona].systemPrompt.replace(
     KNOWLEDGE_BASE_PLACEHOLDER,
     knowledgeBase
@@ -381,12 +384,18 @@ export function buildSystemPromptWithMemory(
     );
   }
   if (memory.facts && memory.facts.length > 0) {
-    const factLines = memory.facts
-      .map((f) => `- ${f.key}: ${f.value}`)
-      .join("\n");
-    blocks.push(
-      `\nÖNCEKİ KONUŞMALARDAN HATIRLADIKLARIN:\n${factLines}\n\nBu bilgileri DOĞAL kullan, "geçen konuşmamızda demiştin ki" tarzı yapay yapma. Bağlam olarak akılda tut.`
+    const safeFacts = memory.facts.filter(
+      (f) =>
+        !looksLikePromptInjection(f.key) && !looksLikePromptInjection(f.value)
     );
+    if (safeFacts.length > 0) {
+      const factLines = safeFacts
+        .map((f) => `- ${f.key}: ${f.value}`)
+        .join("\n");
+      blocks.push(
+        `\nÖNCEKİ KONUŞMALARDAN HATIRLADIKLARIN:\n${factLines}\n\nBu bilgileri DOĞAL kullan, "geçen konuşmamızda demiştin ki" tarzı yapay yapma. Bağlam olarak akılda tut.`
+      );
+    }
   }
   if (memory.lastConversationSummary) {
     blocks.push(

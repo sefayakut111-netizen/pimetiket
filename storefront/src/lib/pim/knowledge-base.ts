@@ -4,10 +4,9 @@
  */
 
 import {
-  DEFAULT_ETIKET_DELIVERY_DAYS,
-  DEFAULT_STICKER_DELIVERY_DAYS,
-  type DeliveryDaysSettings,
-} from "@/lib/site-settings-shared";
+  DELIVERY_PROMISE,
+  DELIVERY_PROMISE_NOTE,
+} from "@/lib/delivery-promise";
 import {
   ETIKET_LAUNCH_LABEL,
   ETIKET_RULO_ENABLED,
@@ -79,12 +78,7 @@ function buildEtiketPriceRule(): string {
 }
 
 /** Pim system prompt'a inject edilen bilgi tabanı (sync). */
-export function buildPimKnowledgeBase(
-  _deliveryDays: DeliveryDaysSettings = {
-    sticker: DEFAULT_STICKER_DELIVERY_DAYS,
-    etiket: DEFAULT_ETIKET_DELIVERY_DAYS,
-  }
-): string {
+export function buildPimKnowledgeBase(): string {
   const stickerMaterials = Object.values(STICKER_MATERIAL_LABELS).join(", ");
   const stickerQtyPresets = CUSTOMER_STICKER_TIERS.join(", ");
   const etiketMaterials = listNames(ETIKET_MATERIALS);
@@ -102,18 +96,20 @@ PİM ETİKET HAKKINDA:
 - Etiket ürün ailesi: Rulo (1.000+ adet) ve Tabaka (${ETIKET_TABAKA_MIN_QTY}+ adet). Referans malzeme listesi (pricing-engine): ${etiketMaterials}. Kaplama: ${etiketCoatings}. Özelleştirme (rulo): ${etiketCustom}.
 ${etiketSalesBlock}
 - Sticker: min ${STICKER_MIN_QTY} adet (${STICKER_QTY_STEP}'er artış; önerilen: ${stickerQtyPresets}). Malzeme: ${stickerMaterials}. Yüzey: ${STICKER_FINISH_LABELS.join(", ")}.
-- Üretim süresi (tasarım onayından sonra, iş günü — hafta sonu/resmi tatil hariç): sticker 3 · tabaka etiket 3 · rulo etiket 10. Sonra kargo süresi eklenir (İstanbul 1, diğer iller 2-3 iş günü).
+- Üretim süresi (iş günü — hafta sonu/resmi tatil hariç): sticker ${DELIVERY_PROMISE.sticker}, etiket ${DELIVERY_PROMISE.etiket} (${DELIVERY_PROMISE_NOTE.toLowerCase()}). Sonra kargo süresi eklenir (İstanbul 1, diğer iller 2-3 iş günü).
 - AI dosya kontrolü var (DPI/CMYK/bleed) — siparişten önce dosya kontrolü ücretsiz.
 ${productionBlock}
 - Tasarım dosyası formatları: PDF, PNG, JPEG, AI, PSD, SVG kabul; EPS desteklenmez.
 - KDV dahil fiyat gösterilir.
 - Kargo: Yurtiçi Kargo (birincil) + DHL; Aras/MNG yok. 1000 ₺ üzeri siparişlerde kargo ücretsiz; altında kargo ücreti sepette/konfigüratörde görünür.
+- Kupon: İlk siparişe özel %10 — kod HOSGELDIN10, /odeme sayfasındaki kupon alanına yazılır; kişi başı tek kullanım. Cüzdan/puan/üyelik indirimi YOK — sadece kupon kodu geçerli.
 - Ödeme: yalnızca kart (PayTR 3D Secure). Havale/EFT yok.
 - Sipariş tutarı limit: Min ${PIM_ORDER_LIMITS.minTotalTry} ₺ (KDV dahil) — altı sepet ödemeye geçemez. Max ${PIM_ORDER_LIMITS.maxTotalTry} ₺ — üstü için müşteri WhatsApp'a yönlendirilir.
 
 SİTE SAYFALARI (LİNK YÖNLENDİRMESİ):
 ${etiketPageLine}
-- /sticker → sticker konfigüratörü (3 iş günü üretim, ${STICKER_MIN_QTY}+ adet) — TAM AÇIK, sipariş alınır
+- /sticker → sticker konfigüratörü (${DELIVERY_PROMISE.sticker} üretim, ${STICKER_MIN_QTY}+ adet) — TAM AÇIK, sipariş alınır
+- /editor → tarayıcıda tasarım editörü (şekilli kesim/die-cut, geri alma, mobil uyumlu, baskıya hazır PDF; dosya max 30 MB)
 - /nasil-uretiyoruz → üretim süreci ve kalite (Avrupa malzeme, baskı tekniği, AI kontrol, prova)
 - /malzemeler → tüm malzeme türleri + kullanım alanları (güncel liste)
 - /sablonlar → hazır şablonlar (Canva/Adobe için boyut + indirme)
@@ -130,6 +126,7 @@ NE YAPMIYORUZ:
 - 1.000 altı rulo etiket / ${ETIKET_TABAKA_MIN_QTY} altı tabaka etiket / ${STICKER_MIN_QTY} altı sticker basmıyoruz.
 - HIZLI / ACELE BASKI HİZMETİ YOK. Belirli teslim tarihine yetişmesi gereken siparişler için erken planlama öner.
 - Tasarım hizmeti vermiyoruz — sadece baskı.
+- Numune göndermiyoruz — ücretsiz AI dosya kontrolü + dijital prova var; basmadan ekranda onaylarsın.
 - Cüzdan / mağaza puanı / üyelik indirimi YOK.
 - **Sticker fire payı (overrun) bahsetme.** Tool sonucundaki hediye_adet bilgisini müşteriye SÖYLEME. Sadece sipariş ettiği adet sayısını söyle.
 
@@ -148,7 +145,7 @@ CANVA / TASARIM ARAÇLARI POLİTİKASI (KRİTİK):
 
 ÖNEMLİ KURALLAR:
 - Fiyat sorulduğunda kesin rakam VERME — redirect_to_configurator ile doldurulmuş konfigüratöre götür; fiyat orada canlı görünür.
-- Teslim: "Sticker 3, tabaka etiket 3, rulo etiket 10 iş günü (onay sonrası) içinde kargoya" de. ASLA "hızlı baskı" deme.
+- Teslim: "Sticker ${DELIVERY_PROMISE.sticker}, etiket ${DELIVERY_PROMISE.etiket} (${DELIVERY_PROMISE_NOTE.toLowerCase()})" de. ASLA "hızlı baskı" deme.
 - Kargo: "Yurtiçi Kargo (birincil) + DHL; 1000 ₺ üzeri ücretsiz, altında sepette görünür."
 - Operatöre devretme (şikayet, iade, kurumsal) → info@pimetiket.com veya WhatsApp + /iletisim.
 `.trim();
