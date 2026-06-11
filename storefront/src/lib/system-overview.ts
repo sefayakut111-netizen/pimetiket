@@ -145,24 +145,12 @@ export async function buildSystemOverview(
     .eq("subscribed", true)
     .is("deleted_at", null);
 
-  const { data: settings } = await admin
-    .from("site_settings")
-    .select("partner_auto_assign_enabled")
-    .eq("id", 1)
-    .maybeSingle();
-
-  const partnerAutoAssign = Boolean(
-    (settings as { partner_auto_assign_enabled?: boolean } | null)
-      ?.partner_auto_assign_enabled
-  );
-
   const mailStubMode = !isResendConfigured();
 
   const queueCritical = await countQueueCritical(admin);
 
   const automation = buildAutomationFlags({
     mailStubMode,
-    partnerAutoAssign,
     welcomeMailPending: welcomeMailPending ?? 0,
     mailPending: mailPending ?? 0,
   });
@@ -247,7 +235,6 @@ export async function buildSystemOverview(
 
 function buildAutomationFlags(ctx: {
   mailStubMode: boolean;
-  partnerAutoAssign: boolean;
   welcomeMailPending: number;
   mailPending: number;
 }): AutomationFlag[] {
@@ -279,18 +266,6 @@ function buildAutomationFlags(ctx: {
         : "Kuyruk boş veya Resend kapalı.",
       activationStep: ctx.mailStubMode ? "Önce Resend'i aktifleştir (C1)" : undefined,
       href: "/admin/aboneler",
-    },
-    {
-      id: "partner_auto_assign",
-      label: "Fason otomatik atama",
-      status: ctx.partnerAutoAssign ? "active" : "inactive",
-      detail: ctx.partnerAutoAssign
-        ? "site_settings.partner_auto_assign_enabled = true"
-        : "Varsayılan kapalı — ilk siparişler manuel atama.",
-      activationStep: !ctx.partnerAutoAssign
-        ? "İlk 5 sipariş manuel atandıktan sonra Ayarlar'dan aç"
-        : undefined,
-      href: "/admin/ayarlar",
     },
     {
       id: "yurtici_tracking",

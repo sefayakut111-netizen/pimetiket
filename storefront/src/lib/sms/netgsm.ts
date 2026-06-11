@@ -1,6 +1,10 @@
 /**
  * Netgsm SMS gönderim wrapper — server-only.
  *
+ * NOT: Partner SMS bildirimi bilinçli olarak bağlı değil (Sefa kararı).
+ * notify_sms_on_urgent DB kolonu korunur; UI toggle kaldırıldı.
+ * Aktivasyon öncesi Netgsm hesabı + IYS onayı gerekir.
+ *
  * Netgsm REST API: https://www.netgsm.com.tr/dokuman/
  *
  * .env:

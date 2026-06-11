@@ -21,7 +21,7 @@
  *   6. order_items.proof_status = 'partner_revised'
  *      + partner_decided_by/at/note
  *   7. order_events: 'partner_uploaded_revision'
- *   8. TODO: müşteriye mail (proof_pending_again template)
+ *   8. Müşteriye prova maili (sendOrderProofRequired → outbox)
  *
  * Body limits:
  *   - File size: max 50MB
@@ -276,7 +276,6 @@ export async function POST(
     },
   ]);
 
-  // TODO (Sefa 23 May v68): müşteriye mail
   void sendOrderProofRequired({
     userId: order.user_id,
     orderId: order.id,

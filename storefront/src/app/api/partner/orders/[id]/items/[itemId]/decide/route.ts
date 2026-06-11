@@ -27,9 +27,9 @@
  *       order_assignments.issue_description = note
  *       Admin loop'u devreye girer.
  *
- * NOT (P4/P5'te eklenecek):
- *   - revise_editor: partner editör ile düzelt → /partner/.../duzenle
- *   - revise_upload: partner kendi dosyasını yükledi → /api/.../upload-revision
+ * Revize yolları (canlı):
+ *   - revise_editor: /partner/.../duzenle
+ *   - revise_upload: /api/.../upload-revision (Mod B — müşteri prova maili)
  *
  * Auth:
  *   1) role='partner'
@@ -44,9 +44,43 @@ import {
   isPartnerDecideAllowed,
   isPartnerPending,
 } from "@/lib/fason/partner-proof-status";
+import { enqueueMail } from "@/lib/mail/enqueue";
 import { z } from "zod";
 
 export const runtime = "nodejs";
+
+function getAdminNotificationEmails(): string[] {
+  return (process.env.ADMIN_NOTIFICATION_EMAIL ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.includes("@"));
+}
+
+async function resolvePartnerContactName(
+  admin: ReturnType<typeof createAdminClient>,
+  partnerId: string,
+  userId: string
+): Promise<string | null> {
+  const { data: rows } = await admin
+    .from("partner_contacts")
+    .select("name, role, user_id")
+    .eq("partner_id", partnerId);
+
+  const contacts = (rows ?? []) as Array<{
+    name: string;
+    role: string;
+    user_id: string | null;
+  }>;
+  if (contacts.length === 0) return null;
+
+  const byUser = contacts.find((c) => c.user_id === userId);
+  if (byUser) return byUser.name;
+
+  const owner = contacts.find((c) => c.role === "owner");
+  if (owner) return owner.name;
+
+  return contacts[0].name;
+}
 
 const BodySchema = z.object({
   action: z.enum(["approve", "reject"]),
@@ -96,14 +130,12 @@ export async function POST(
   const partnerId = ctx.partnerId;
   const userId = ctx.userId;
 
-  const { data: contactRow } = await admin
-    .from("partner_contacts")
-    .select("partner_id, name")
-    .eq("partner_id", partnerId)
-    .limit(1)
-    .maybeSingle();
-  const contact = contactRow as { partner_id: string; name: string } | null;
-  if (!contact) {
+  const contactName = await resolvePartnerContactName(
+    admin,
+    partnerId,
+    userId
+  );
+  if (!contactName) {
     return NextResponse.json(
       { error: "partner_link_missing" },
       { status: 404 }
@@ -189,8 +221,8 @@ export async function POST(
       actor_role: "partner",
       summary:
         action === "approve"
-          ? `${contact.name} (partner) ${item.title} tasarımını onayladı`
-          : `${contact.name} (partner) ${item.title} tasarımını reddetti: ${note?.slice(0, 80)}`,
+          ? `${contactName} (partner) ${item.title} tasarımını onayladı`
+          : `${contactName} (partner) ${item.title} tasarımını reddetti: ${note?.slice(0, 80)}`,
       detail: {
         item_id: itemId,
         item_title: item.title,
@@ -231,6 +263,36 @@ export async function POST(
       })
       .eq("id", assignment.id);
     assignmentTransition = "issue";
+
+    const { data: partnerRow } = await admin
+      .from("fason_partners")
+      .select("name")
+      .eq("id", partnerId)
+      .maybeSingle();
+    const partnerName =
+      (partnerRow as { name?: string } | null)?.name ?? "Partner";
+    const issueDesc =
+      note ?? `${item.title} tasarımı partner tarafından reddedildi`;
+    const adminEmails = getAdminNotificationEmails();
+
+    for (const to of adminEmails) {
+      await enqueueMail({
+        templateKey: "admin_fason_status",
+        to,
+        category: "admin",
+        targetType: "assignment",
+        targetId: assignment.id,
+        payload: {
+          order_id: order.id,
+          fason_name: partnerName,
+          action: "issue",
+          action_label: "Tasarım reddetti",
+          issue: issueDesc,
+        },
+        idempotencyKey: `admin_fason:reject:${assignment.id}:${itemId}:${to}`,
+        subject: `Fason güncelleme — ${order.id}: Tasarım reddetti`,
+      });
+    }
   }
 
   return NextResponse.json({

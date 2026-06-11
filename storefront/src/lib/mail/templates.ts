@@ -749,17 +749,20 @@ function renderAdminDailySummary(input: MailTemplateInput): MailRendered {
   const production = Number(p.inProduction) || 0;
   const shipped = Number(p.shipped24h) || 0;
   const capacityWarn = Number(p.partnerCapacityWarn) || 0;
+  const fasonOverdue = Number(p.fasonOverdueCount) || 0;
   const adminLink = `${SITE_URL}/admin`;
 
   const subject = `📊 Günlük özet — ${newOrders} yeni sipariş · ${revenue} ₺`;
 
   // Kritik uyarı banner'ı (varsa)
-  const hasAlerts = awaitingUploadStale > 0 || capacityWarn > 0;
+  const hasAlerts =
+    awaitingUploadStale > 0 || capacityWarn > 0 || fasonOverdue > 0;
   const alertBanner = hasAlerts
     ? `<div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #78350f;">
         <strong>⚠️ Dikkat:</strong>
         ${awaitingUploadStale > 0 ? `${awaitingUploadStale} sipariş 24+ saattir tasarım bekliyor. ` : ""}
         ${capacityWarn > 0 ? `${capacityWarn} üretim partneri kapasitesinin %85+'inde. ` : ""}
+        ${fasonOverdue > 0 ? `${fasonOverdue} gecikmiş fason işi. ` : ""}
       </div>`
     : "";
 

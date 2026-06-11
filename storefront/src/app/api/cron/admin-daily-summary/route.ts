@@ -20,6 +20,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertCronAuth } from "@/lib/cron-auth";
 import { withCronRun } from "@/lib/cron-logger";
+import { ACTIVE_ASSIGNMENT_STATUS_LIST } from "@/lib/fason/active-assignment-statuses";
 import { sendAdminDailySummary } from "@/lib/mail/notifications";
 
 export const runtime = "nodejs";
@@ -35,6 +36,7 @@ interface DailySummaryData {
   inProduction: number;
   shipped24h: number;
   partnerCapacityWarn: number; // %85+ kapasite dolu partner sayısı
+  fasonOverdueCount: number; // estimated_delivery geçmiş aktif atama
 }
 
 export async function GET(req: Request) {
@@ -112,32 +114,49 @@ export async function GET(req: Request) {
     .lte("paid_at", dayAgo);
   const awaitingUploadStale = staleCount ?? 0;
 
-  // 5) Partner kapasite uyarısı (%85+)
-  // partner_capacity_usage view veya benzeri yoksa basit hesap:
-  // active assignments / capacity_per_week
+  // 5) Partner kapasite uyarısı (%85+) — fason_partners + ACTIVE_ASSIGNMENT_STATUS_LIST
   type PartnerRow = {
     id: string;
     name: string;
-    capacity_per_week: number | null;
+    max_concurrent_orders: number | null;
   };
   const { data: partnersData } = await admin
-    .from("partners")
-    .select("id, name, capacity_per_week")
-    .eq("is_active", true);
+    .from("fason_partners")
+    .select("id, name, max_concurrent_orders")
+    .eq("active", true);
   const partners = (partnersData ?? []) as PartnerRow[];
+
+  const { data: activeAssignments } = await admin
+    .from("order_assignments")
+    .select("fason_partner_id")
+    .in("status", [...ACTIVE_ASSIGNMENT_STATUS_LIST]);
+
+  const activeCountByPartner = new Map<string, number>();
+  for (const row of (activeAssignments ?? []) as Array<{
+    fason_partner_id: string;
+  }>) {
+    activeCountByPartner.set(
+      row.fason_partner_id,
+      (activeCountByPartner.get(row.fason_partner_id) ?? 0) + 1
+    );
+  }
 
   let partnerCapacityWarn = 0;
   for (const p of partners) {
-    if (!p.capacity_per_week || p.capacity_per_week <= 0) continue;
-    const { count: activeCount } = await admin
-      .from("order_assignments")
-      .select("id", { count: "exact", head: true })
-      .eq("partner_id", p.id)
-      .in("status", ["pending", "in_progress"]);
-    if ((activeCount ?? 0) >= p.capacity_per_week * 0.85) {
+    if (!p.max_concurrent_orders || p.max_concurrent_orders <= 0) continue;
+    const active = activeCountByPartner.get(p.id) ?? 0;
+    if (active >= p.max_concurrent_orders * 0.85) {
       partnerCapacityWarn++;
     }
   }
+
+  const nowIso = new Date().toISOString();
+  const { count: fasonOverdueCount } = await admin
+    .from("order_assignments")
+    .select("id", { count: "exact", head: true })
+    .in("status", [...ACTIVE_ASSIGNMENT_STATUS_LIST])
+    .not("estimated_delivery", "is", null)
+    .lt("estimated_delivery", nowIso);
 
   const data: DailySummaryData = {
     newOrders24h,
@@ -149,6 +168,7 @@ export async function GET(req: Request) {
     inProduction,
     shipped24h,
     partnerCapacityWarn,
+    fasonOverdueCount: fasonOverdueCount ?? 0,
   };
 
   const mailResult = await sendAdminDailySummary(data);

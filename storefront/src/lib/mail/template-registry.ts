@@ -382,6 +382,7 @@ export async function previewMailTemplate(
         inProduction: 8,
         shipped24h: 6,
         partnerCapacityWarn: 1,
+        fasonOverdueCount: 2,
       });
       const html = await render(
         AdminDailySummaryEmail({

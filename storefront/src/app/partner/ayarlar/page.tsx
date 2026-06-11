@@ -29,7 +29,6 @@ interface SettingsPayload {
   };
   notifications: {
     emailOnAssign: boolean;
-    smsOnUrgent: boolean;
   };
 }
 
@@ -46,7 +45,6 @@ export default function PartnerSettingsPage() {
   const [verifyCode, setVerifyCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [emailOnAssign, setEmailOnAssign] = useState(true);
-  const [smsOnUrgent, setSmsOnUrgent] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -61,7 +59,6 @@ export default function PartnerSettingsPage() {
         setPendingEmail(j.contact.pendingEmail ?? null);
       }
       setEmailOnAssign(j.notifications.emailOnAssign);
-      setSmsOnUrgent(j.notifications.smsOnUrgent);
     } catch {
       toast.error("Ayarlar yüklenemedi");
     } finally {
@@ -114,7 +111,6 @@ export default function PartnerSettingsPage() {
           },
           notifications: {
             emailOnAssign,
-            smsOnUrgent,
           },
         }),
       });
@@ -312,15 +308,6 @@ export default function PartnerSettingsPage() {
               type="checkbox"
               checked={emailOnAssign}
               onChange={(e) => setEmailOnAssign(e.target.checked)}
-              className="h-5 w-5 rounded border-gri-300"
-            />
-          </label>
-          <label className="flex items-center justify-between gap-3 text-sm">
-            <span>Acil iş atandığında SMS</span>
-            <input
-              type="checkbox"
-              checked={smsOnUrgent}
-              onChange={(e) => setSmsOnUrgent(e.target.checked)}
               className="h-5 w-5 rounded border-gri-300"
             />
           </label>

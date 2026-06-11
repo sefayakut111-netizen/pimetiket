@@ -19,6 +19,7 @@ export interface DailySummaryStats {
   inProduction: number;
   shipped24h: number;
   partnerCapacityWarn: number;
+  fasonOverdueCount: number;
 }
 
 const SummarySchema = z.object({
@@ -51,6 +52,9 @@ export function buildDailySummaryFallback(stats: DailySummaryStats): string {
   ];
   if (stats.partnerCapacityWarn > 0) {
     lines.push(`⚠ Partner kapasite: ${stats.partnerCapacityWarn} partner %85+ dolu`);
+  }
+  if (stats.fasonOverdueCount > 0) {
+    lines.push(`⚠ Gecikmiş fason işi: ${stats.fasonOverdueCount}`);
   }
   return lines.join("\n");
 }

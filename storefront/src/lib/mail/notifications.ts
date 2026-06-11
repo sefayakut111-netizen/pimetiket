@@ -137,10 +137,6 @@ import {
   type AdminSupportTicketProps,
 } from "./templates/admin-support-ticket";
 import {
-  FasonStatusEmail,
-  type FasonStatusProps,
-} from "./templates/fason-status";
-import {
   FasonCancelledEmail,
   type FasonCancelledProps,
 } from "./templates/fason-cancelled";
@@ -1701,42 +1697,7 @@ export async function sendAdminSupportTicket(args: {
   return { ok: sent > 0, sent };
 }
 
-/** 18) Fason iş durumu — partner */
-export async function sendFasonStatus(args: {
-  orderId: string;
-  statusText: string;
-  partnerEmail: string;
-  assignmentId: string;
-  partnerId: string;
-}): Promise<{ ok: boolean; reason?: string }> {
-  const token = await issueFasonToken(args.assignmentId, args.partnerId);
-  if (!token) return { ok: false, reason: "token_failed" };
-
-  const props: FasonStatusProps = {
-    orderId: args.orderId,
-    statusText: args.statusText,
-    token,
-  };
-
-  const html = await render(FasonStatusEmail(props));
-  const subject = `İş güncellemesi — ${args.orderId}`;
-  const text = `${args.orderId}: ${args.statusText}\n${SITE_URL_FALLBACK}/fason/${token}`;
-
-  const result = await enqueuePrerendered({
-    to: args.partnerEmail,
-    subject,
-    html,
-    text,
-    orderId: args.orderId,
-    kind: "fason_status",
-    category: "fason",
-    idempotencyKey: `fason_status:${args.assignmentId}:${args.statusText}`,
-  });
-
-  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
-}
-
-/** 19) Fason iş iptali — partner */
+/** 18) Fason iş iptali — partner */
 export async function sendFasonCancelled(args: {
   orderId: string;
   partnerEmail: string;

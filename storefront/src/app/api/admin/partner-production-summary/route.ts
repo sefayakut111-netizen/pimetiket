@@ -4,12 +4,11 @@
  */
 
 import { NextResponse } from "next/server";
+import { ACTIVE_ASSIGNMENT_STATUS_LIST } from "@/lib/fason/active-assignment-statuses";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
-
-const ACTIVE_STATUSES = ["assigned", "acknowledged", "in_production"] as const;
 
 export async function GET() {
   const auth = await assertPermission("fason", "view");
@@ -30,7 +29,7 @@ export async function GET() {
       fason_partners ( name )
     `
     )
-    .in("status", [...ACTIVE_STATUSES]);
+    .in("status", [...ACTIVE_ASSIGNMENT_STATUS_LIST]);
 
   if (error) {
     console.error("[partner-production-summary]", error);
