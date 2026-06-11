@@ -128,7 +128,7 @@ async function logPurgeEvent(
     kvkkRequestId?: string;
   }
 ): Promise<void> {
-  await admin.from("archive_events").insert({
+  const { error } = await admin.from("archive_events").insert({
     event_type: "permanent_deleted",
     resource_type: params.resourceType,
     resource_id: params.resourceId,
@@ -142,6 +142,10 @@ async function logPurgeEvent(
       kvkk_request_id: params.kvkkRequestId ?? null,
     },
   });
+  if (error) {
+    console.error("[kvkk/storage-purge] archive_events insert failed:", error);
+    throw new Error(error.message);
+  }
 }
 
 async function deleteSupabasePaths(
@@ -472,7 +476,7 @@ export async function purgeKvkkUserStorage(
             resourceType: prefix.startsWith("print/")
               ? "print_cache"
               : "cutline_cache",
-            resourceId: orderId,
+            resourceId: userId,
             archivePath: prefix,
             reason,
             kvkkRequestId,
