@@ -36,7 +36,7 @@ export function EditorUploadZone({
   const toast = useToast();
 
   const pickFile = () => {
-    if (!disabled || validating) inputRef.current?.click();
+    if (!disabled && !validating) inputRef.current?.click();
   };
 
   const reportValidationError = (message: string) => {

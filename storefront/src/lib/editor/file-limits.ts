@@ -5,6 +5,48 @@ export const EDITOR_MAX_MEGAPIXELS = 40_000_000;
 export const EDITOR_FILE_LIMIT_HINT =
   "En fazla 30 MB · raster için en fazla 40 megapiksel";
 
+/** Eski PostScript tabanlı .ai — poc.html ile senkron */
+export const LEGACY_AI_MESSAGE =
+  "Bu .ai dosyası eski formatta — Illustrator'da 'Farklı Kaydet → PDF uyumlu dosya oluştur' işaretleyip yeniden kaydet, ya da PDF olarak dışa aktar.";
+
+/** ag-psd supportedColorModes CMYK içermiyor — poc.html ile senkron */
+export const CMYK_PSD_MESSAGE =
+  "CMYK PSD desteklenmiyor — PNG ya da PDF olarak dışa aktarıp yükle (renkleri baskıda biz CMYK'ya çeviriyoruz).";
+
+const PSD_COLOR_MODE_CMYK = 4;
+
+export async function readFileHeader(
+  file: File,
+  length = 8
+): Promise<Uint8Array> {
+  const buf = await file.slice(0, length).arrayBuffer();
+  return new Uint8Array(buf);
+}
+
+export function isLegacyPostScriptAi(header: Uint8Array): boolean {
+  return (
+    header.length >= 4 &&
+    header[0] === 0x25 &&
+    header[1] === 0x21 &&
+    header[2] === 0x50 &&
+    header[3] === 0x53
+  );
+}
+
+/** PSD dosya başlığından colorMode (uint16 LE, offset 24) */
+export function psdColorModeFromHeader(header: Uint8Array): number | null {
+  if (header.length < 26) return null;
+  if (
+    header[0] !== 0x38 ||
+    header[1] !== 0x42 ||
+    header[2] !== 0x50 ||
+    header[3] !== 0x53
+  ) {
+    return null;
+  }
+  return header[24] | (header[25] << 8);
+}
+
 export function formatFileSizeMb(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1);
 }
@@ -64,6 +106,20 @@ export async function validateEditorUploadFile(
 ): Promise<string | null> {
   const sizeErr = rejectFileBySize(file);
   if (sizeErr) return sizeErr;
+
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+
+  if (ext === "ai") {
+    const header = await readFileHeader(file, 4);
+    if (isLegacyPostScriptAi(header)) return LEGACY_AI_MESSAGE;
+  }
+
+  if (ext === "psd" || file.type === "image/vnd.adobe.photoshop") {
+    const header = await readFileHeader(file, 26);
+    if (psdColorModeFromHeader(header) === PSD_COLOR_MODE_CMYK) {
+      return CMYK_PSD_MESSAGE;
+    }
+  }
 
   if (!isRasterImageFile(file)) return null;
 

@@ -551,6 +551,7 @@ export default function EditorShell() {
         syncCutTypeToPoc(cutType);
         applyPendingSablon();
       } else if (data.type === "pim-poc-loading") {
+        setPocStatus({ state: "loading", message: "Dosya işleniyor…" });
         setDesignLoaded(false);
         markCutlinePending();
         setImageScalePct(100);
@@ -1433,6 +1434,10 @@ export default function EditorShell() {
                     onFileSelected={(file) => {
                       setEnhanceDismissed(false);
                       setShowEnhancePrompt(false);
+                      setPocStatus({
+                        state: "loading",
+                        message: "Dosya işleniyor…",
+                      });
                       void (async () => {
                         const err = await validateEditorUploadFile(file);
                         if (err) {
@@ -1440,7 +1445,16 @@ export default function EditorShell() {
                           toast.error(err);
                           return;
                         }
-                        await uploadFileToPoc(file);
+                        try {
+                          await uploadFileToPoc(file);
+                        } catch (uploadErr) {
+                          const msg =
+                            uploadErr instanceof Error
+                              ? uploadErr.message
+                              : "Dosya yüklenemedi";
+                          setPocStatus({ state: "error", message: msg });
+                          toast.error(msg);
+                        }
                       })();
                     }}
                     onRemoveBg={handleRemoveBg}

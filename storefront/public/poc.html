@@ -2220,7 +2220,7 @@ window.addEventListener('message', (e) => {
           String(msg.fileName),
           { type: msg.mimeType || 'application/octet-stream' }
         );
-        handleFile(file);
+        void handleFile(file);
       } catch (err) {
         pimPostToParent({ type: 'pim-poc-error', error: String(err) });
       }
@@ -2514,7 +2514,7 @@ async function pimAutoLoadDesign() {
     const file = new File([blob], name, { type: mime });
     console.log('[pim-poc] handleFile çağrılıyor:', name);
     if (typeof handleFile === 'function') {
-      handleFile(file);
+      void handleFile(file);
     } else {
       throw new Error('handleFile_not_defined');
     }
@@ -2611,6 +2611,32 @@ function pimRejectRasterMegapixels(width, height) {
   return false;
 }
 
+const PIM_LEGACY_AI_MSG =
+  "Bu .ai dosyası eski formatta — Illustrator'da 'Farklı Kaydet → PDF uyumlu dosya oluştur' işaretleyip yeniden kaydet, ya da PDF olarak dışa aktar.";
+const PIM_CMYK_PSD_MSG =
+  "CMYK PSD desteklenmiyor — PNG ya da PDF olarak dışa aktarıp yükle (renkleri baskıda biz CMYK'ya çeviriyoruz).";
+
+async function pimReadFileHeader(file, len) {
+  const buf = await file.slice(0, len).arrayBuffer();
+  return new Uint8Array(buf);
+}
+
+function pimIsLegacyPostScriptAi(header) {
+  return header.length >= 4 &&
+    header[0] === 0x25 && header[1] === 0x21 && header[2] === 0x50 && header[3] === 0x53;
+}
+
+function pimPsdColorModeFromHeader(header) {
+  if (header.length < 26) return null;
+  if (header[0] !== 0x38 || header[1] !== 0x42 || header[2] !== 0x50 || header[3] !== 0x53) return null;
+  return header[24] | (header[25] << 8);
+}
+
+function pimIsCmykPsdError(err) {
+  const msg = String((err && err.message) || err || '');
+  return /color mode not supported/i.test(msg) && /cmyk/i.test(msg);
+}
+
 function pimIsUnsupportedRasterFormat(file, ext) {
   const type = (file.type || '').toLowerCase();
   return (
@@ -2627,7 +2653,7 @@ const uploadZone = document.getElementById('uploadZone');
 const fileInput = document.getElementById('fileInput');
 
 fileInput.addEventListener('change', (e) => {
-  if (e.target.files.length > 0) handleFile(e.target.files[0]);
+  if (e.target.files.length > 0) void handleFile(e.target.files[0]);
 });
 
 ['dragenter', 'dragover'].forEach(evt => {
@@ -2647,11 +2673,11 @@ fileInput.addEventListener('change', (e) => {
 uploadZone.addEventListener('drop', (e) => {
   e.preventDefault();
   if (e.dataTransfer.files.length > 0) {
-    handleFile(e.dataTransfer.files[0]);
+    void handleFile(e.dataTransfer.files[0]);
   }
 });
 
-function handleFile(file) {
+async function handleFile(file) {
   pimAutoSaveDone = false;
   pimVisionFallbackSent = false;
   if (PIM_PARAMS.editorShell || PIM_PARAMS.standalone) {
@@ -2683,23 +2709,37 @@ function handleFile(file) {
     return;
   }
 
-  // PSD → ag-psd ile işle
+  // PSD → ag-psd ile işle (CMYK ag-psd supportedColorModes dışında)
   if (isPsd) {
+    const psdHeader = await pimReadFileHeader(file, 26);
+    if (pimPsdColorModeFromHeader(psdHeader) === 4) {
+      hideLoading();
+      showStatus(PIM_CMYK_PSD_MSG, 'err');
+      return;
+    }
     if (typeof agPsd === 'undefined') {
       showStatus('PSD motoru henüz yükleniyor, biraz bekleyin...', 'warn');
       return;
     }
-    handlePsdFile(file);
+    void handlePsdFile(file);
     return;
   }
 
   // PDF/AI → PDF.js ile işle
   if (isPdf || isAi) {
+    if (isAi) {
+      const aiHeader = await pimReadFileHeader(file, 4);
+      if (pimIsLegacyPostScriptAi(aiHeader)) {
+        hideLoading();
+        showStatus(PIM_LEGACY_AI_MSG, 'err');
+        return;
+      }
+    }
     if (!pdfJsReady) {
       showStatus('PDF motoru henüz yükleniyor, biraz bekleyin...', 'warn');
       return;
     }
-    handlePdfFile(file, isAi);
+    void handlePdfFile(file, isAi);
     return;
   }
 
@@ -2785,7 +2825,11 @@ async function handlePsdFile(file) {
   } catch (err) {
     hideLoading();
     console.error('PSD açma hatası:', err);
-    showStatus('PSD dosyası açılamadı: ' + (err.message || 'Bilinmeyen hata'), 'err');
+    if (pimIsCmykPsdError(err)) {
+      showStatus(PIM_CMYK_PSD_MSG, 'err');
+    } else {
+      showStatus('PSD dosyası açılamadı: ' + (err.message || 'Bilinmeyen hata'), 'err');
+    }
   }
 }
 
@@ -2820,7 +2864,7 @@ async function handlePdfFile(file, isAi) {
     hideLoading();
     console.error('PDF açma hatası:', err);
     if (isAi) {
-      showStatus('Illustrator dosyası açılamadı. Eski sürüm AI dosyaları PDF uyumlu olmayabilir. Lütfen "Save As" ile PDF uyumlu kaydedin.', 'err');
+      showStatus(PIM_LEGACY_AI_MSG, 'err');
     } else {
       showStatus('PDF açılamadı: ' + (err.message || 'Bilinmeyen hata'), 'err');
     }
