@@ -218,7 +218,7 @@ export function EditorPimPanel({ onCommand, disabled }: EditorPimPanelProps) {
 
   return (
     <>
-      <aside className="hidden h-full min-h-0 flex-col overflow-hidden border-l border-gri-200 bg-white lg:flex">
+      <aside className="hidden h-full min-h-0 flex-col overflow-hidden border-l border-gri-200 bg-white lg:order-3 lg:flex">
         <EditorPimPanelContent {...panelProps} />
       </aside>
 

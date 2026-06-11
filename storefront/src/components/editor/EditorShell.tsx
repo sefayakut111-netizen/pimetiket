@@ -1291,7 +1291,7 @@ export default function EditorShell() {
       ) : null}
 
       <div className="flex flex-col lg:grid lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:grid-cols-[360px_1fr_320px]">
-        <section className="order-1 flex min-h-[50vh] min-w-0 flex-col gap-2 overflow-hidden p-3 lg:order-none lg:min-h-0 lg:flex-1 lg:p-4">
+        <section className="order-1 flex min-h-[50vh] min-w-0 flex-col gap-2 overflow-hidden p-3 lg:order-2 lg:min-h-0 lg:flex-1 lg:p-4">
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
             <EditorPreviewLegend cutType={cutType} />
             <EditorZoomControls
@@ -1341,7 +1341,7 @@ export default function EditorShell() {
           </div>
         </section>
 
-        <aside className="order-2 flex flex-col border-b border-gri-200 bg-white lg:order-none lg:min-h-0 lg:overflow-hidden lg:border-b-0 lg:border-r">
+        <aside className="order-2 flex flex-col border-b border-gri-200 bg-white lg:order-1 lg:min-h-0 lg:overflow-hidden lg:border-b-0 lg:border-r">
           <div
             className="hidden shrink-0 gap-1 border-b border-gri-100 p-2 lg:flex"
             role="tablist"
