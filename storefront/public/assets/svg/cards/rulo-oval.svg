@@ -18,18 +18,18 @@
   </defs>
 
   <g filter="url(#rulo-o-shadow)">
-    <ellipse cx="65" cy="68" rx="48" ry="46" fill="url(#rulo-o-body)" stroke="#1F1B2D" stroke-width="2"/>
-    <ellipse cx="65" cy="68" rx="42" ry="40" fill="none" stroke="#1F1B2D" stroke-width="0.6" opacity="0.25"/>
-    <ellipse cx="65" cy="68" rx="35" ry="33" fill="none" stroke="#1F1B2D" stroke-width="0.6" opacity="0.18"/>
-    <ellipse cx="65" cy="68" rx="14" ry="13" fill="#F4F1E6" stroke="#1F1B2D" stroke-width="1.5"/>
-    <ellipse cx="65" cy="68" rx="6" ry="5.5" fill="#1F1B2D" opacity="0.15"/>
+    <ellipse cx="65" cy="68" rx="48" ry="46" fill="url(#rulo-o-body)" stroke="#141524" stroke-width="2"/>
+    <ellipse cx="65" cy="68" rx="42" ry="40" fill="none" stroke="#141524" stroke-width="0.6" opacity="0.25"/>
+    <ellipse cx="65" cy="68" rx="35" ry="33" fill="none" stroke="#141524" stroke-width="0.6" opacity="0.18"/>
+    <ellipse cx="65" cy="68" rx="14" ry="13" fill="#F4F1E6" stroke="#141524" stroke-width="1.5"/>
+    <ellipse cx="65" cy="68" rx="6" ry="5.5" fill="#141524" opacity="0.15"/>
     <path d="M 35 50 Q 50 45 70 46" fill="none" stroke="#FFFFFF" stroke-width="1.4" opacity="0.7"/>
   </g>
 
   <!-- 2 oval sticker (stacked) -->
   <g filter="url(#rulo-o-shadow)">
-    <ellipse cx="170" cy="92" rx="28" ry="16" fill="#f8b4be" stroke="#1F1B2D" stroke-width="1.5" opacity="0.6"/>
-    <ellipse cx="155" cy="60" rx="32" ry="18" fill="url(#rulo-o-sticker)" stroke="#1F1B2D" stroke-width="1.8"/>
+    <ellipse cx="170" cy="92" rx="28" ry="16" fill="#f8b4be" stroke="#141524" stroke-width="1.5" opacity="0.6"/>
+    <ellipse cx="155" cy="60" rx="32" ry="18" fill="url(#rulo-o-sticker)" stroke="#141524" stroke-width="1.8"/>
     <ellipse cx="148" cy="54" rx="8" ry="4" fill="#FFFFFF" opacity="0.4"/>
   </g>
 </svg>

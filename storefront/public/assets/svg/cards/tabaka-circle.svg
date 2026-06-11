@@ -19,15 +19,15 @@
 
   <!-- Arka kağıt (stacked effect, hafif kayık) -->
   <g opacity="0.5" transform="rotate(-2 110 65)">
-    <rect x="75" y="14" width="78" height="106" rx="3" fill="#F4F1E6" stroke="#1F1B2D" stroke-width="1.4"/>
+    <rect x="75" y="14" width="78" height="106" rx="3" fill="#F4F1E6" stroke="#141524" stroke-width="1.4"/>
   </g>
 
   <!-- Ön kağıt — DİKEY, hafif rotation -->
   <g filter="url(#tabaka-c-shadow)" transform="rotate(-4 110 65)">
-    <rect x="70" y="10" width="80" height="110" rx="3" fill="url(#tabaka-c-paper)" stroke="#1F1B2D" stroke-width="2"/>
+    <rect x="70" y="10" width="80" height="110" rx="3" fill="url(#tabaka-c-paper)" stroke="#141524" stroke-width="2"/>
 
     <!-- 3 sütun × 4 satır = 12 daire, eşit aralıklı -->
-    <g fill="url(#tabaka-c-sticker)" stroke="#1F1B2D" stroke-width="1.2">
+    <g fill="url(#tabaka-c-sticker)" stroke="#141524" stroke-width="1.2">
       <circle cx="86" cy="26" r="7"/><circle cx="110" cy="26" r="7"/><circle cx="134" cy="26" r="7"/>
       <circle cx="86" cy="50" r="7"/><circle cx="110" cy="50" r="7"/><circle cx="134" cy="50" r="7"/>
       <circle cx="86" cy="74" r="7"/><circle cx="110" cy="74" r="7"/><circle cx="134" cy="74" r="7"/>

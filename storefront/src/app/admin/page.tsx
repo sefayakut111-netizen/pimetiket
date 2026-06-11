@@ -1478,7 +1478,7 @@ function AdminDashboardPageInner() {
             </div>
             <DonutChart
               slices={[
-                { label: "Etiket", value: productMix.etiket, color: "#FF4D4F" },
+                { label: "Etiket", value: productMix.etiket, color: "#ef3e56" },
                 { label: "Sticker", value: productMix.sticker, color: "#1F2A4D" },
               ]}
               size={150}

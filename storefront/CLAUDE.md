@@ -135,7 +135,7 @@ Sisteme eklenen **her yeni ikon** `docs/ICON-DESIGN-SPEC.md` anayasasına uymak 
 - **Tek kaynak:** `src/components/Icon.tsx` (merkezî kütüphane). Yeni ikon buraya component + `Icon` registry kaydı olarak eklenir.
 - **Değişmezler:** `viewBox="0 0 24 24"`, `fill="none"`, `stroke="currentColor"`, round cap/join, `baseProps(size)` helper.
 - **Stroke skalası:** 1.6 / 1.7 (varsayılan) / 1.8 / 2.0 — istisna yalnız Check (3.0).
-- **Marka aksanı:** kontur kesim ipucu mercan kesikli çizgi (`#FF6B5B`, `stroke-dasharray`); renk gövdeye değil aksana.
+- **Marka aksanı:** kontur kesim ipucu mercan kesikli çizgi (`#ef3e56`, `stroke-dasharray`); renk gövdeye değil aksana.
 - **Yasak:** inline SVG ile var olan ikonu kopyalama; renk hard-code; viewBox/stroke skalası dışına çıkma.
 - Spec değişirse `docs/ICON-DESIGN-SPEC.md` güncellenir; bu blok ona işaret eder.
 

@@ -35,7 +35,7 @@ export function seoOgImageResponse(input: {
       : C.lacivert;
 
   const titleColor = isGradient ? C.beyaz : isKrem ? C.lacivert : C.beyaz;
-  const subColor = isGradient ? C.beyaz : isKrem ? "#4A5568" : C.krem;
+  const subColor = isGradient ? C.beyaz : isKrem ? "#4b5563" : C.krem;
   const brandTextColor = isGradient ? C.beyaz : isKrem ? C.lacivert : C.beyaz;
   const logoBg = isGradient ? C.beyaz : C.mercan;
   const logoTextColor = isGradient ? C.mercan : C.beyaz;

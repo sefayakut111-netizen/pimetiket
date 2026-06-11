@@ -85,7 +85,7 @@ interface StickerCard {
 // (Midjourney görseli hazır olunca imageSrc field'a refactor)
 // ============================================================
 
-const STROKE = "#1F1B2D";
+const STROKE = "#141524";
 const FILL_PRIMARY = "url(#sticker-primary)";
 const FILL_SECONDARY = "url(#sticker-secondary)";
 

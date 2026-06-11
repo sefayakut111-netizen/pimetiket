@@ -30,12 +30,12 @@ const ADMIN_STATUS_STYLES: Record<
   OrderStatus,
   { color: string; bg: string; hex?: string }
 > = {
-  paid: { color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF4D4F" },
+  paid: { color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#ef3e56" },
   awaiting_upload: { color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FB923C" },
-  qc_pending: { color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF4D4F" },
+  qc_pending: { color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#ef3e56" },
   qc_flagged: { color: "text-sari-koyu", bg: "bg-sari-soft", hex: "#FFC53D" },
-  operator_review: { color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF4D4F" },
-  human_review: { color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#FF4D4F" },
+  operator_review: { color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#ef3e56" },
+  human_review: { color: "text-pim-mercan", bg: "bg-pim-mercan-tint", hex: "#ef3e56" },
   human_review_failed: { color: "text-kirmizi-koyu", bg: "bg-kirmizi-soft", hex: "#DC2626" },
   proof_generating: { color: "text-lacivert", bg: "bg-gri-100", hex: "#64748B" },
   proof_pending: { color: "text-lacivert", bg: "bg-gri-100", hex: "#64748B" },

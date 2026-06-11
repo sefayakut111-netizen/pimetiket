@@ -18,14 +18,14 @@
   </defs>
 
   <g opacity="0.5" transform="rotate(-2 110 65)">
-    <rect x="75" y="14" width="78" height="106" rx="3" fill="#F4F1E6" stroke="#1F1B2D" stroke-width="1.4"/>
+    <rect x="75" y="14" width="78" height="106" rx="3" fill="#F4F1E6" stroke="#141524" stroke-width="1.4"/>
   </g>
 
   <g filter="url(#tabaka-o-shadow)" transform="rotate(-4 110 65)">
-    <rect x="70" y="10" width="80" height="110" rx="3" fill="url(#tabaka-o-paper)" stroke="#1F1B2D" stroke-width="2"/>
+    <rect x="70" y="10" width="80" height="110" rx="3" fill="url(#tabaka-o-paper)" stroke="#141524" stroke-width="2"/>
 
     <!-- 2 sütun × 4 satır = 8 oval, eşit aralıklı dikey grid -->
-    <g fill="url(#tabaka-o-sticker)" stroke="#1F1B2D" stroke-width="1.2">
+    <g fill="url(#tabaka-o-sticker)" stroke="#141524" stroke-width="1.2">
       <ellipse cx="91" cy="26" rx="13" ry="6"/><ellipse cx="129" cy="26" rx="13" ry="6"/>
       <ellipse cx="91" cy="50" rx="13" ry="6"/><ellipse cx="129" cy="50" rx="13" ry="6"/>
       <ellipse cx="91" cy="74" rx="13" ry="6"/><ellipse cx="129" cy="74" rx="13" ry="6"/>

@@ -12,7 +12,7 @@
 
 import type { FC } from "react";
 
-const STROKE = "#1F1B2D";
+const STROKE = "#141524";
 
 /** Ortak gradient defs — tüm SVG'lerde aynı */
 function GradientDefs({ id }: { id: string }) {

@@ -47,7 +47,7 @@ export const COLORS = {
   errorBorder: "#FFA39E",
   errorText: "#A8071A",
   // --- Yeni (EPOSTA-MIMARI §1 — base render + 16 yeni şablon) ---
-  ink: "#1F1B2D", // ana metin / başlık
+  ink: "#141524", // ana metin / başlık
   govde: "#3A3530", // gövde paragraf
   griMetin: "#8A8578", // ikincil/gri metin
   kremKart: "#FAF4E8", // header şeridi + detay kutusu

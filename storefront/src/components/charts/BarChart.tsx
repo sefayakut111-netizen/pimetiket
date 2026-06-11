@@ -27,7 +27,7 @@ export function BarChart({
   height = 140,
   formatY = (n) => n.toString(),
   emptyLabel = "Veri yok",
-  defaultColor = "#FF4D4F",
+  defaultColor = "var(--color-pim-mercan)",
   valueUnit = "",
 }: BarChartProps) {
   const [hovered, setHovered] = useState<number | null>(null);

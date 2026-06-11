@@ -765,7 +765,7 @@ function AdminFinansPageInner() {
             <DonutChart
               slices={[
                 { label: "Kart", value: cardRevenue, color: "#52C41A" },
-                { label: "Havale", value: transferRevenue, color: "#FF4D4F" },
+                { label: "Havale", value: transferRevenue, color: "#ef3e56" },
               ]}
               size={150}
               centerLabel="Toplam"
