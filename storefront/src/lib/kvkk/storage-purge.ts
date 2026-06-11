@@ -455,6 +455,46 @@ export async function purgeKvkkUserStorage(
     });
   }
 
+  // ---- Supabase: approvals/{orderId}/ (onay görseli dosyaları) ----
+  if (
+    orderIds.length > 0 &&
+    (purgeScope.full || purgeScope.orders)
+  ) {
+    for (const orderId of orderIds) {
+      const approvalPaths = await listSupabaseFolder(
+        admin,
+        DESIGNS_BUCKET,
+        `approvals/${orderId}`
+      );
+      if (approvalPaths.length > 0) {
+        const r = await deleteSupabasePaths(
+          admin,
+          DESIGNS_BUCKET,
+          approvalPaths
+        );
+        supabaseDeleted += r.deleted;
+        supabaseErrors += r.errors;
+        await logPurgeEvent(admin, {
+          userId,
+          actorId,
+          actorType,
+          resourceType: "approval_assets",
+          resourceId: userId,
+          archivePath: `approvals/${orderId}/`,
+          reason,
+          kvkkRequestId,
+          metadata: {
+            bucket: DESIGNS_BUCKET,
+            order_id: orderId,
+            paths_attempted: approvalPaths.length,
+            deleted: r.deleted,
+            errors: r.errors,
+          },
+        });
+      }
+    }
+  }
+
   // ---- R2: customer-cutlines/{orderId}/ + print/{orderId}/ ----
   if (
     orderIds.length > 0 &&

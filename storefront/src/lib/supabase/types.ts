@@ -2350,6 +2350,115 @@ export type Database = {
           },
         ]
       }
+      approval_assets: {
+        Row: {
+          id: string
+          mime: string
+          request_id: string
+          sort: number
+          storage_path: string
+        }
+        Insert: {
+          id?: string
+          mime: string
+          request_id: string
+          sort?: number
+          storage_path: string
+        }
+        Update: {
+          id?: string
+          mime?: string
+          request_id?: string
+          sort?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_assets_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "approval_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approval_requests: {
+        Row: {
+          blocking: boolean
+          created_at: string
+          created_by: string
+          customer_comment: string | null
+          decided_at: string | null
+          id: string
+          message: string | null
+          order_id: string
+          order_item_id: string | null
+          partner_id: string | null
+          source: string
+          status: string
+          title: string
+        }
+        Insert: {
+          blocking?: boolean
+          created_at?: string
+          created_by: string
+          customer_comment?: string | null
+          decided_at?: string | null
+          id?: string
+          message?: string | null
+          order_id: string
+          order_item_id?: string | null
+          partner_id?: string | null
+          source: string
+          status?: string
+          title: string
+        }
+        Update: {
+          blocking?: boolean
+          created_at?: string
+          created_by?: string
+          customer_comment?: string | null
+          decided_at?: string | null
+          id?: string
+          message?: string | null
+          order_id?: string
+          order_item_id?: string | null
+          partner_id?: string | null
+          source?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_requests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "approval_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_requests_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_requests_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "fason_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_events: {
         Row: {
           actor_id: string | null
