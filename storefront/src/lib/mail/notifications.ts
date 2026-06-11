@@ -144,6 +144,22 @@ import {
   AdminAutoRefundEmail,
   type AdminAutoRefundProps,
 } from "./templates/admin-auto-refund";
+import {
+  ApprovalRequestEmail,
+  type ApprovalRequestProps,
+} from "./templates/approval-request";
+import {
+  ApprovalRequestReminderEmail,
+  type ApprovalRequestReminderProps,
+} from "./templates/approval-request-reminder";
+import {
+  AdminApprovalDecidedEmail,
+  type AdminApprovalDecidedProps,
+} from "./templates/admin-approval-decided";
+import {
+  FasonStatusEmail,
+  type FasonStatusProps,
+} from "./templates/fason-status";
 
 const SITE_URL_FALLBACK =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com";
@@ -1772,4 +1788,167 @@ export async function sendAdminAutoRefund(args: {
   }
 
   return { ok: sent > 0, sent };
+}
+
+// ============================================================
+// Onay görseli (OG-3) — müşteri + admin + fason bildirimleri
+// ============================================================
+
+/** Müşteri — yeni onay görseli isteği (istek başına 1 mail). */
+export async function sendApprovalRequestToCustomer(args: {
+  userId: string;
+  orderId: string;
+  requestId: string;
+  title: string;
+  assetCount: number;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const props: ApprovalRequestProps = {
+    orderId: args.orderId,
+    title: args.title,
+    assetCount: args.assetCount,
+  };
+
+  const html = await render(ApprovalRequestEmail(props));
+  const subject = `Onay görseli bekliyor — ${args.orderId}`;
+  const text = `${args.title} — ${args.assetCount} görsel. Yanıtla: ${SITE_URL_FALLBACK}/onay/${args.orderId}`;
+
+  const result = await enqueuePrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "approval_request",
+    idempotencyKey: `approval_request:${args.requestId}:${email.toLowerCase()}`,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+/** Müşteri — 3+ gün pending hatırlatma (cron, istek başına max 1). */
+export async function sendApprovalRequestReminder(args: {
+  userId: string;
+  orderId: string;
+  requestId: string;
+  title: string;
+  daysPending: number;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const email = await getUserEmail(args.userId);
+  if (!email) return { ok: false, reason: "no_email" };
+
+  const props: ApprovalRequestReminderProps = {
+    orderId: args.orderId,
+    title: args.title,
+    daysPending: args.daysPending,
+  };
+
+  const html = await render(ApprovalRequestReminderEmail(props));
+  const subject = `Onay görseli hatırlatma — ${args.orderId}`;
+  const text = `${args.title} — ${args.daysPending} gün. Yanıtla: ${SITE_URL_FALLBACK}/onay/${args.orderId}`;
+
+  const result = await enqueuePrerendered({
+    to: email,
+    subject,
+    html,
+    text,
+    userId: args.userId,
+    orderId: args.orderId,
+    kind: "approval_reminder",
+    idempotencyKey: `approval_reminder:${args.requestId}`,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
+}
+
+function approvalDecisionLabel(decision: "approve" | "reject"): string {
+  return decision === "approve" ? "Onaylandı" : "Değişiklik istendi";
+}
+
+/** Admin — müşteri karar verdiğinde iç bildirim. */
+export async function sendApprovalDecidedToAdmin(args: {
+  orderId: string;
+  requestId: string;
+  title: string;
+  decision: "approve" | "reject";
+  comment: string | null;
+}): Promise<{ ok: boolean; sent: number; reason?: string }> {
+  const adminEmails = getAdminNotificationEmails();
+  if (adminEmails.length === 0) {
+    return { ok: true, sent: 0, reason: "no_admin_emails" };
+  }
+
+  const decisionLabel = approvalDecisionLabel(args.decision);
+  const props: AdminApprovalDecidedProps = {
+    orderId: args.orderId,
+    title: args.title,
+    decisionLabel,
+    comment: args.comment,
+  };
+
+  const html = await render(AdminApprovalDecidedEmail(props));
+  const subject = `Onay görseli yanıtlandı: ${args.title} → ${decisionLabel}`;
+  const commentLine = args.comment ? `\nNot: ${args.comment}` : "";
+  const text = `${args.orderId} — ${args.title} → ${decisionLabel}${commentLine}\n${SITE_URL_FALLBACK}/admin/siparisler/${args.orderId}`;
+
+  let sent = 0;
+  for (const to of adminEmails) {
+    const result = await enqueuePrerendered({
+      to,
+      subject,
+      html,
+      text,
+      orderId: args.orderId,
+      kind: "admin_approval_decided",
+      category: "admin",
+      idempotencyKey: `approval_decided_admin:${args.requestId}:${to.toLowerCase()}`,
+    });
+    if (result.ok && !result.suppressed) sent++;
+  }
+
+  return { ok: sent > 0, sent };
+}
+
+/** Partner — kaynak partner ise fason mail kalıbıyla karar bildirimi. */
+export async function sendApprovalDecidedToPartner(args: {
+  orderId: string;
+  requestId: string;
+  title: string;
+  decision: "approve" | "reject";
+  comment: string | null;
+  partnerId: string;
+  assignmentId: string;
+  partnerEmail: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const token = await issueFasonToken(args.assignmentId, args.partnerId);
+  if (!token) return { ok: false, reason: "token_failed" };
+
+  const decisionLabel = approvalDecisionLabel(args.decision);
+  const statusText = `Onay görseli yanıtlandı: ${args.title} → ${decisionLabel}${args.comment ? ` (${args.comment})` : ""}`;
+
+  const props: FasonStatusProps = {
+    orderId: args.orderId,
+    statusText,
+    token,
+  };
+
+  const html = await render(FasonStatusEmail(props));
+  const subject = `Onay görseli yanıtlandı — ${args.orderId}`;
+  const text = `${statusText}\n${SITE_URL_FALLBACK}/fason/${token}`;
+
+  const result = await enqueuePrerendered({
+    to: args.partnerEmail,
+    subject,
+    html,
+    text,
+    orderId: args.orderId,
+    kind: "approval_decided_partner",
+    category: "fason",
+    idempotencyKey: `approval_decided_partner:${args.requestId}`,
+  });
+
+  return { ok: result.ok, reason: result.suppressed ? "suppressed" : result.error };
 }

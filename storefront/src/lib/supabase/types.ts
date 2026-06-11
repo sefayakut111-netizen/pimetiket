@@ -2394,6 +2394,7 @@ export type Database = {
           order_id: string
           order_item_id: string | null
           partner_id: string | null
+          reminded_at: string | null
           source: string
           status: string
           title: string
@@ -2409,6 +2410,7 @@ export type Database = {
           order_id: string
           order_item_id?: string | null
           partner_id?: string | null
+          reminded_at?: string | null
           source: string
           status?: string
           title: string
@@ -2424,6 +2426,7 @@ export type Database = {
           order_id?: string
           order_item_id?: string | null
           partner_id?: string | null
+          reminded_at?: string | null
           source?: string
           status?: string
           title?: string

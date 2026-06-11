@@ -73,7 +73,7 @@ export async function POST(
 
   const { data: requestRow, error: fetchErr } = await admin
     .from("approval_requests")
-    .select("id, order_id, status, title, blocking")
+    .select("id, order_id, status, title, blocking, source, partner_id")
     .eq("id", reqId)
     .eq("order_id", orderId)
     .maybeSingle();
@@ -88,6 +88,8 @@ export async function POST(
     status: string;
     title: string;
     blocking: boolean;
+    source: string;
+    partner_id: string | null;
   };
 
   if (!canDecideApprovalRequest(request.status)) {
@@ -149,6 +151,52 @@ export async function POST(
       detail: eventDetail,
     } satisfies TablesInsert<"order_events">,
   ]);
+
+  const {
+    sendApprovalDecidedToAdmin,
+    sendApprovalDecidedToPartner,
+  } = await import("@/lib/mail/notifications");
+  void sendApprovalDecidedToAdmin({
+    orderId,
+    requestId: reqId,
+    title: request.title,
+    decision,
+    comment,
+  });
+
+  if (request.source === "partner" && request.partner_id) {
+    const { assertActivePartnerAssignment } = await import(
+      "@/lib/fason/assert-active-partner-assignment"
+    );
+    const asg = await assertActivePartnerAssignment(
+      admin,
+      orderId,
+      request.partner_id,
+      "id, fason_partner_id"
+    );
+    if (asg.ok) {
+      const { data: partnerRow } = await admin
+        .from("fason_partners")
+        .select("contact_email")
+        .eq("id", request.partner_id)
+        .maybeSingle();
+      const partnerEmail = (
+        partnerRow as { contact_email?: string } | null
+      )?.contact_email;
+      if (partnerEmail) {
+        void sendApprovalDecidedToPartner({
+          orderId,
+          requestId: reqId,
+          title: request.title,
+          decision,
+          comment,
+          partnerId: request.partner_id,
+          assignmentId: asg.assignment.id,
+          partnerEmail,
+        });
+      }
+    }
+  }
 
   return NextResponse.json({
     ok: true,

@@ -198,5 +198,24 @@ export async function createApprovalRequest(
     } satisfies TablesInsert<"order_events">,
   ]);
 
+  const { data: orderUserRow } = await admin
+    .from("orders")
+    .select("user_id")
+    .eq("id", orderId)
+    .maybeSingle();
+  const orderUserId = (orderUserRow as { user_id?: string } | null)?.user_id;
+  if (orderUserId) {
+    const { sendApprovalRequestToCustomer } = await import(
+      "@/lib/mail/notifications"
+    );
+    void sendApprovalRequestToCustomer({
+      userId: orderUserId,
+      orderId,
+      requestId,
+      title: input.title.trim(),
+      assetCount: assetRows.length,
+    });
+  }
+
   return { ok: true, requestId, assetCount: assetRows.length };
 }

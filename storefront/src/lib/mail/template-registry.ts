@@ -33,6 +33,9 @@ import { AdminSupportTicketEmail } from "./templates/admin-support-ticket";
 import { AdminAutoRefundEmail } from "./templates/admin-auto-refund";
 import { FasonStatusEmail } from "./templates/fason-status";
 import { FasonCancelledEmail } from "./templates/fason-cancelled";
+import { ApprovalRequestEmail } from "./templates/approval-request";
+import { ApprovalRequestReminderEmail } from "./templates/approval-request-reminder";
+import { AdminApprovalDecidedEmail } from "./templates/admin-approval-decided";
 import { buildUnsubscribeUrl } from "./unsubscribe";
 import { buildDailySummaryFallback } from "./generate-daily-summary";
 
@@ -176,6 +179,21 @@ export const MAIL_TEMPLATES = [
     key: "fason-cancelled",
     label: "Fason İş İptali",
     subject: "İş ataması iptal edildi",
+  },
+  {
+    key: "approval-request",
+    label: "Onay Görseli İsteği",
+    subject: "Onay görseli bekliyor",
+  },
+  {
+    key: "approval-request-reminder",
+    label: "Onay Görseli Hatırlatma",
+    subject: "Onay görseli hatırlatma",
+  },
+  {
+    key: "admin-approval-decided",
+    label: "Onay Kararı (Admin)",
+    subject: "Onay görseli yanıtlandı",
   },
 ] as const;
 
@@ -561,6 +579,49 @@ export async function previewMailTemplate(
       );
       return {
         subject: `İş ataması iptal edildi — ${MOCK_ORDER_ID}`,
+        html,
+        text: "",
+      };
+    }
+    case "approval-request": {
+      const html = await render(
+        ApprovalRequestEmail({
+          orderId: MOCK_ORDER_ID,
+          title: "Baskı önizlemesi",
+          assetCount: 2,
+        })
+      );
+      return {
+        subject: `Onay görseli bekliyor — ${MOCK_ORDER_ID}`,
+        html,
+        text: "",
+      };
+    }
+    case "approval-request-reminder": {
+      const html = await render(
+        ApprovalRequestReminderEmail({
+          orderId: MOCK_ORDER_ID,
+          title: "Baskı önizlemesi",
+          daysPending: 3,
+        })
+      );
+      return {
+        subject: `Onay görseli hatırlatma — ${MOCK_ORDER_ID}`,
+        html,
+        text: "",
+      };
+    }
+    case "admin-approval-decided": {
+      const html = await render(
+        AdminApprovalDecidedEmail({
+          orderId: MOCK_ORDER_ID,
+          title: "Baskı önizlemesi",
+          decisionLabel: "Onaylandı",
+          comment: "Renk tonu uygun.",
+        })
+      );
+      return {
+        subject: `Onay görseli yanıtlandı: Baskı önizlemesi → Onaylandı`,
         html,
         text: "",
       };
