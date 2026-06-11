@@ -1,6 +1,6 @@
 # SİSTEM BAĞIMLILIK HARİTASI (bağlam önbelleği)
 > ÜRETİLMİŞ DOSYA — elle düzenleme. Yenile: `npm run context:map`
-> Üretim: 2026-06-10 · commit a4acd31f · 949 dosya · 2696 iç import ilişkisi
+> Üretim: 2026-06-11 · commit 49458fdf · 966 dosya · 2757 iç import ilişkisi
 > AMAÇ: oturum başında BUNU oku; glob/grep keşfine token yakma. Soru→bölüm: "X sayfası nerede"→§1 · "API var mı/guard'ı ne"→§2 · "merkezi modül"→§3 · "lib'de ne var"→§5
 
 ## §1 Sayfa route'ları (123)
@@ -130,7 +130,7 @@
 | /yorum-yaz/[orderId] | src/app/yorum-yaz/[orderId]/page.tsx |
 | /yorumlar | src/app/yorumlar/page.tsx |
 
-## §2 API uçları (241) — method · guard
+## §2 API uçları (242) — method · guard
 guard: settings/orders/… = assertPermission modülü · admin = assert-admin · partner · auth = login şart · cron = CRON_SECRET · "-" = açık/elle kontrol et
 | Endpoint | M | Guard |
 |---|---|---|
@@ -276,7 +276,7 @@ guard: settings/orders/… = assertPermission modülü · admin = assert-admin �
 | /api/cron/cleanup-temp-designs | GET | - |
 | /api/cron/detect-abandoned-carts | GET | cron |
 | /api/cron/fason-deadline-reminder | GET | cron |
-| /api/cron/instagram-sync | GET | - |
+| /api/cron/instagram-sync | GET | cron |
 | /api/cron/kvkk-delete-audit | GET | cron |
 | /api/cron/paytr-reconciler | GET | admin |
 | /api/cron/poll-shipments | GET | cron |
@@ -350,6 +350,7 @@ guard: settings/orders/… = assertPermission modülü · admin = assert-admin �
 | /api/partner/orders/[id] | GET | - |
 | /api/partner/orders/[id]/items/[itemId]/decide | POST | - |
 | /api/partner/orders/[id]/items/[itemId]/upload-revision | POST | - |
+| /api/partner/orders/[id]/shipping-info | GET | - |
 | /api/partner/orders/[id]/status | POST | - |
 | /api/partner/settings | GET,PATCH | - |
 | /api/partner/settings/verify-email | POST | - |
@@ -379,27 +380,27 @@ guard: settings/orders/… = assertPermission modülü · admin = assert-admin �
 ## §3 Hub modülleri (en çok import edilen 30 — buraya dokunmak = geniş etki)
 | # | Dosya | İçeri bağ |
 |---|---|---|
-| 1 | src/lib/supabase/admin.ts | 166 |
-| 2 | src/components/ui/index.ts | 155 |
+| 1 | src/lib/supabase/admin.ts | 167 |
+| 2 | src/components/ui/index.ts | 158 |
 | 3 | src/lib/cn.ts | 132 |
 | 4 | src/lib/supabase/assert-permission.ts | 128 |
-| 5 | src/components/Icon.tsx | 115 |
-| 6 | src/lib/supabase/types.ts | 95 |
+| 5 | src/components/Icon.tsx | 116 |
+| 6 | src/lib/supabase/types.ts | 96 |
 | 7 | src/lib/supabase/server.ts | 89 |
-| 8 | src/components/Pim.tsx | 66 |
-| 9 | src/lib/storage/design-files.ts | 44 |
-| 10 | src/lib/i18n/context.tsx | 44 |
+| 8 | src/components/Pim.tsx | 67 |
+| 9 | src/lib/storage/design-files.ts | 45 |
+| 10 | src/lib/i18n/context.tsx | 45 |
 | 11 | src/lib/agents/_shared/types.ts | 33 |
 | 12 | src/lib/supabase/client.ts | 33 |
 | 13 | src/lib/customer-order.ts | 32 |
-| 14 | src/lib/customer-cart.ts | 28 |
-| 15 | src/lib/pricing-config-types.ts | 28 |
-| 16 | src/lib/mail/templates/base.tsx | 28 |
-| 17 | src/lib/storage/r2-client.ts | 24 |
+| 14 | src/lib/mail/templates/base.tsx | 29 |
+| 15 | src/lib/customer-cart.ts | 28 |
+| 16 | src/lib/pricing-config-types.ts | 28 |
+| 17 | src/lib/storage/r2-client.ts | 26 |
 | 18 | src/lib/order.ts | 23 |
 | 19 | src/lib/cron-auth.ts | 22 |
-| 20 | src/lib/seo/page-metadata.ts | 20 |
-| 21 | src/lib/cron-logger.ts | 19 |
+| 20 | src/lib/cron-logger.ts | 21 |
+| 21 | src/lib/seo/page-metadata.ts | 20 |
 | 22 | src/lib/pricing-engine/index.ts | 18 |
 | 23 | src/lib/design-file-types.ts | 17 |
 | 24 | src/lib/audit-log-server.ts | 17 |
@@ -413,17 +414,17 @@ guard: settings/orders/… = assertPermission modülü · admin = assert-admin �
 ## §4 Mega dosyalar (satır — refactor adayları / dikkatli düzenle)
 | Dosya | Satır |
 |---|---|
-| public/poc.html (EDİTÖR ÇEKİRDEĞİ — iframe POC) | 5367 |
-| src/lib/supabase/types.ts | 4874 |
-| src/app/etiket/yapilandir/page.tsx | 3488 |
-| src/app/sticker/yapilandir/StickerConfiguratorClient.tsx | 3276 |
+| public/poc.html (EDİTÖR ÇEKİRDEĞİ — iframe POC) | 6000 |
+| src/lib/supabase/types.ts | 4876 |
+| src/app/etiket/yapilandir/page.tsx | 3494 |
+| src/app/sticker/yapilandir/StickerConfiguratorClient.tsx | 3282 |
 | src/app/onay/[orderId]/page.tsx | 2924 |
-| src/app/odeme/page.tsx | 2483 |
+| src/app/odeme/page.tsx | 2473 |
 | src/app/admin/page.tsx | 2297 |
 | src/app/siparis/[id]/page.tsx | 2099 |
-| src/lib/mail/notifications.ts | 1765 |
+| src/components/editor/EditorShell.tsx | 1926 |
+| src/lib/mail/notifications.ts | 1776 |
 | src/app/admin/siparis-ekle/page.tsx | 1695 |
-| src/components/editor/EditorShell.tsx | 1617 |
 | src/components/admin/fason/partner-detail-view.tsx | 1576 |
 | src/components/admin/pricing/RuloCalculator.tsx | 1523 |
 | src/components/admin/pricing/StickerCalculator.tsx | 1510 |
@@ -431,11 +432,11 @@ guard: settings/orders/… = assertPermission modülü · admin = assert-admin �
 | src/app/admin/ai-qc/page.tsx | 1335 |
 
 ## §5 lib/ modül envanteri (dosya sayısı)
-- **lib/mail** (41)
+- **lib/mail** (43)
 - **lib/agents** (33)
+- **lib/editor** (19)
 - **lib/proof** (17)
-- **lib/editor** (15)
-- **lib/fason** (15)
+- **lib/fason** (16)
 - **lib/pim** (11)
 - **lib/seo** (11)
 - **lib/supabase** (11)
@@ -449,9 +450,10 @@ guard: settings/orders/… = assertPermission modülü · admin = assert-admin �
 - **lib/i18n** (4)
 - **lib/instagram** (4)
 - **lib/auth** (3)
+- **lib/kvkk** (3)
+- **lib/print** (3)
 - **lib/admin** (2)
 - **lib/http** (2)
-- **lib/kvkk** (2)
 - **lib/security** (2)
 - **lib/sss** (2)
 - **lib/support** (2)

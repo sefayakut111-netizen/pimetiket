@@ -101,3 +101,5 @@ gsc-*-key.json
 
 # Local Lighthouse audit cache (Claude session)
 .lh-tmp/
+
+testsprite_tests\tmp\config.json
