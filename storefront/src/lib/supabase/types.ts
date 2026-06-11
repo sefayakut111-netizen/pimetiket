@@ -4575,6 +4575,7 @@ export type Database = {
         | "customer.view_360"
         | "partner.capability_verify"
         | "partner.capability_unverify"
+        | "partner.address_viewed"
         | "admin.impersonate_partner"
       coupon_kind: "percent" | "fixed" | "free_ship"
       design_file_status:
@@ -4808,6 +4809,7 @@ export const Constants = {
         "customer.view_360",
         "partner.capability_verify",
         "partner.capability_unverify",
+        "partner.address_viewed",
         "admin.impersonate_partner",
       ],
       coupon_kind: ["percent", "fixed", "free_ship"],

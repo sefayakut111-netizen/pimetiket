@@ -4,6 +4,7 @@ export { ProductionDownloadBar, downloadProductionExport } from "./ProductionDow
 export type { ProductionExportType } from "./ProductionDownloadBar";
 export { PartnerStatusPill } from "./PartnerStatusPill";
 export { PartnerStatusActions } from "./PartnerStatusActions";
+export { PartnerShippingAddressCard } from "./PartnerShippingAddressCard";
 export {
   PartnerAssignmentCard,
   type PartnerAssignmentRow,

@@ -24,6 +24,7 @@ import {
   PartnerStatusActions,
   PartnerStatusPill,
   PartnerProductionLayout,
+  PartnerShippingAddressCard,
   ProductionDownloadBar,
 } from "@/components/partner";
 
@@ -234,17 +235,24 @@ export default function PartnerOrderDetailPage({
         )}
       </p>
 
-      <div className="mt-4 rounded-xl border border-gri-200 bg-white p-4">
-        <p className="mb-3 text-[12px] font-semibold uppercase tracking-wide text-gri-600">
-          Üretim durumu
-        </p>
-        <PartnerStatusActions
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-gri-200 bg-white p-4">
+          <p className="mb-3 text-[12px] font-semibold uppercase tracking-wide text-gri-600">
+            Üretim durumu
+          </p>
+          <PartnerStatusActions
+            orderId={order.id}
+            status={assignmentStatus}
+            onUpdated={(s) => {
+              setAssignmentStatus(s);
+              void loadData();
+            }}
+            onError={(msg) => toast.error(msg)}
+          />
+        </div>
+        <PartnerShippingAddressCard
           orderId={order.id}
-          status={assignmentStatus}
-          onUpdated={(s) => {
-            setAssignmentStatus(s);
-            void loadData();
-          }}
+          assignmentStatus={assignmentStatus}
           onError={(msg) => toast.error(msg)}
         />
       </div>

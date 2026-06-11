@@ -59,6 +59,7 @@ export const ACTION_LABEL: Record<AuditAction, string> = {
   "customer.view_360": "Müşteri 360° profili görüntülendi",
   "partner.capability_verify": "Partner yeteneği doğrulandı",
   "partner.capability_unverify": "Partner yetenek doğrulaması kaldırıldı",
+  "partner.address_viewed": "Partner teslimat adresi görüntüledi",
   "admin.impersonate_partner": "Partner görünümüne geçildi",
 };
 

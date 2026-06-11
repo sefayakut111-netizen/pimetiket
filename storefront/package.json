@@ -27,6 +27,7 @@
     "verify:pricing-consistency": "npx --yes tsx scripts/pricing-config-consistency-regression.runner.ts",
     "seed:hosgeldin10": "node scripts/seed-hosgeldin10-coupon.mjs",
     "verify:hosgeldin10": "npx --yes tsx scripts/verify-hosgeldin10-coupon.runner.ts",
+    "verify:partner-shipping-info": "npx --yes tsx scripts/verify-partner-shipping-info.runner.ts",
     "supabase:types": "supabase gen types typescript --project-id ucmpwxnoaqjpzhijnxtp > src/lib/supabase/types.ts",
     "analyze:deps": "npx madge --json --extensions ts,tsx --ts-config tsconfig.json src/ > deps.json && python scripts/analyze-deps.py",
     "analyze:orphan": "npx madge --orphans --extensions ts,tsx --ts-config tsconfig.json src/",

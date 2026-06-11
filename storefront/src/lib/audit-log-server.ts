@@ -49,7 +49,8 @@ type AuditAction =
   | "auth.logout"
   | "profile.delete"
   | "partner.capability_verify"
-  | "partner.capability_unverify";
+  | "partner.capability_unverify"
+  | "partner.address_viewed";
 
 export interface ServerAuditInput {
   actorId: string | null;
