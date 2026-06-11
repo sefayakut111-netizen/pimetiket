@@ -30,6 +30,7 @@ import { getAdminStatusMeta } from "@/lib/admin-status";
 import { isAdminTestOrderPayment } from "@/lib/admin-test-order";
 import { mapOrderItemToCapability } from "@/components/admin/fason/fason-capabilities";
 import { ProductionDownloadBar } from "@/components/partner/ProductionDownloadBar";
+import { ApprovalRequestsManageBlock } from "@/components/approvals/ApprovalRequestsManageBlock";
 
 const ALL_STATUSES: OrderStatus[] = [...ADMIN_MANUAL_SET_STATUSES];
 
@@ -128,6 +129,7 @@ export default function AdminOrderDetailPage({
   const toast = useToast();
   const { permissions } = useAdminPermissions();
   const canUpdateOrders = canAccessModule(permissions, "orders", "update");
+  const canViewProof = canAccessModule(permissions, "proof", "view");
   const canUpdateProof = canAccessModule(permissions, "proof", "update");
   const canUpdateFason = canAccessModule(permissions, "fason", "update");
   const [order, setOrder] = useState<CustomerOrder | null>(null);
@@ -493,6 +495,19 @@ export default function AdminOrderDetailPage({
                 ))}
               </div>
             </Card>
+
+            {canViewProof ? (
+              <ApprovalRequestsManageBlock
+                orderId={order.id}
+                mode="admin"
+                orderItems={order.items.map((item) => ({
+                  id: item.id,
+                  title: item.title,
+                }))}
+                canCreate={canUpdateProof}
+                canCancel={canUpdateProof}
+              />
+            ) : null}
 
             {/* Prova upload — operator_review ve qc_passed durumları için */}
             {canUpdateProof &&

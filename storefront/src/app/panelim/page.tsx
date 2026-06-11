@@ -31,6 +31,7 @@ import { getMyProfile } from "@/lib/customer-profile";
 import type { OrderStatus } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
 import { NotificationsMini } from "@/components/customer/NotificationsMini";
+import { PendingApprovalBadge } from "@/components/approvals/PendingApprovalBadge";
 import { PanelimAdditionalDesignsRow, PanelimPrimaryPreview } from "@/components/orders/PanelimOrderPreviews";
 import {
   orderHasMetaPreviews,
@@ -1138,6 +1139,7 @@ export default function PanelimPage() {
 
           {/* SIDE */}
           <div className="flex flex-col gap-4">
+            <PendingApprovalBadge />
             <NotificationsMini />
 
             {/* Sadakat kuponları — aktif kupon varsa göster */}

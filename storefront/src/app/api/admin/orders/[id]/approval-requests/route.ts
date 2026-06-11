@@ -1,6 +1,5 @@
 /**
- * POST /api/admin/orders/[id]/approval-requests
- * Admin onay görseli isteği oluşturur (multipart).
+ * GET/POST /api/admin/orders/[id]/approval-requests
  */
 
 import { NextResponse } from "next/server";
@@ -10,6 +9,7 @@ import {
   createApprovalRequest,
   parseApprovalUploadFiles,
 } from "@/lib/approvals/create-approval-request";
+import { listApprovalRequestsForOrder } from "@/lib/approvals/list-approval-requests";
 
 export const runtime = "nodejs";
 
@@ -17,6 +17,39 @@ function parseBlocking(raw: FormDataEntryValue | null): boolean {
   if (raw === null) return false;
   const s = String(raw).trim().toLowerCase();
   return s === "1" || s === "true" || s === "yes";
+}
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: orderId } = await params;
+  if (!orderId) {
+    return NextResponse.json({ error: "ID eksik" }, { status: 400 });
+  }
+
+  const auth = await assertPermission("proof", "view");
+  if (!auth) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const admin = createAdminClient();
+  const { data: orderRow } = await admin
+    .from("orders")
+    .select("id")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!orderRow) {
+    return NextResponse.json({ error: "order_not_found" }, { status: 404 });
+  }
+
+  try {
+    const requests = await listApprovalRequestsForOrder(admin, orderId);
+    return NextResponse.json({ ok: true, requests });
+  } catch (err) {
+    console.error("[admin/approval-requests] list failed:", err);
+    return NextResponse.json({ error: "list_failed" }, { status: 500 });
+  }
 }
 
 export async function POST(

@@ -27,6 +27,8 @@ import {
   PartnerShippingAddressCard,
   ProductionDownloadBar,
 } from "@/components/partner";
+import { ApprovalRequestsManageBlock } from "@/components/approvals/ApprovalRequestsManageBlock";
+import { ACTIVE_ASSIGNMENT_STATUSES } from "@/lib/fason/active-assignment-statuses";
 
 interface CutlinePreview {
   preview_png_url: string | null;
@@ -256,6 +258,14 @@ export default function PartnerOrderDetailPage({
           onError={(msg) => toast.error(msg)}
         />
       </div>
+
+      <ApprovalRequestsManageBlock
+        orderId={order.id}
+        mode="partner"
+        orderItems={items.map((item) => ({ id: item.id, title: item.title }))}
+        visible={ACTIVE_ASSIGNMENT_STATUSES.has(assignmentStatus)}
+        canCreate={ACTIVE_ASSIGNMENT_STATUSES.has(assignmentStatus)}
+      />
 
       {/* Genel karar özeti */}
       <div className="mt-4 rounded-xl border border-gri-200 bg-white px-4 py-3">

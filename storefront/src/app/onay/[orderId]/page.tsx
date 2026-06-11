@@ -50,6 +50,7 @@ import {
 import { buildPocIframeSrc } from "@/lib/proof/build-poc-iframe-src";
 import { shapeToPocMode } from "@/lib/proof/shape-to-poc-mode";
 import { track } from "@/lib/analytics/posthog-events";
+import { ApprovalRequestsSection } from "@/components/approvals/ApprovalRequestsSection";
 
 // ============================================================
 // Types — fn_proof_summary RPC çıktısı
@@ -2714,6 +2715,10 @@ export default function ProofApprovalPage({
             </Card>
           )}
         </section>
+      </div>
+
+      <div className="mt-10 border-t border-gri-200 pt-8">
+        <ApprovalRequestsSection orderId={orderId} />
       </div>
 
       {/* Sabit alt panel — eski kart görünümü, viewport altında */}

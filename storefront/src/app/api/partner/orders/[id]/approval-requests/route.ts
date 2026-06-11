@@ -11,8 +11,57 @@ import {
   createApprovalRequest,
   parseApprovalUploadFiles,
 } from "@/lib/approvals/create-approval-request";
+import { listApprovalRequestsForOrder } from "@/lib/approvals/list-approval-requests";
 
 export const runtime = "nodejs";
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: rawOrderId } = await params;
+  if (!rawOrderId) {
+    return NextResponse.json({ error: "ID eksik" }, { status: 400 });
+  }
+
+  const ctx = await resolvePartnerContext();
+  if (!ctx || ctx.isPreview || !ctx.partnerId) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  const admin = createAdminClient();
+  const partnerId = ctx.partnerId;
+
+  const { data: orderRow } = await admin
+    .from("orders")
+    .select("id")
+    .ilike("id", rawOrderId)
+    .maybeSingle();
+  const order = orderRow as { id: string } | null;
+  if (!order) {
+    return NextResponse.json({ error: "order_not_found" }, { status: 404 });
+  }
+
+  const asg = await assertActivePartnerAssignment(
+    admin,
+    order.id,
+    partnerId,
+    "id"
+  );
+  if (!asg.ok) {
+    return NextResponse.json({ error: "not_your_order" }, { status: 403 });
+  }
+
+  try {
+    const requests = await listApprovalRequestsForOrder(admin, order.id, {
+      partnerId,
+    });
+    return NextResponse.json({ ok: true, requests });
+  } catch (err) {
+    console.error("[partner/approval-requests] list failed:", err);
+    return NextResponse.json({ error: "list_failed" }, { status: 500 });
+  }
+}
 
 function parseBlocking(raw: FormDataEntryValue | null): boolean {
   if (raw === null) return false;

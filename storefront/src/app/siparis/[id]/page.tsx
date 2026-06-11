@@ -38,6 +38,7 @@ import {
 } from "@/lib/order";
 import { useT } from "@/lib/i18n/context";
 import { OrderDesignHistory } from "@/components/design/OrderDesignHistory";
+import { ApprovalRequestsSection } from "@/components/approvals/ApprovalRequestsSection";
 import {
   fetchMyOrderShipment,
   type CustomerShipment,
@@ -1029,6 +1030,8 @@ export default function SiparisDetailPage({
                 </div>
               )}
             </Card>
+
+            <ApprovalRequestsSection orderId={order.id} className="mt-4" />
 
             {/* Sefa 22 May v68 — Üst CTA: paid/awaiting_upload durumunda
                 "Tasarımını yükle" büyük buton. Eskiden bu kart yoktu —
