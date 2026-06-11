@@ -48,6 +48,8 @@ jobs:
           echo "stamp=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           echo "year=$(date -u +'%Y')" >> $GITHUB_OUTPUT
           echo "week=$(date -u +'%V')" >> $GITHUB_OUTPUT
+          SCHEMA_VERSION=$(ls storefront/supabase/migrations/*.sql 2>/dev/null | xargs -n1 basename | sed 's/_.*//' | sort -n | tail -1)
+          echo "schema_version=${SCHEMA_VERSION:-unknown}" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
         run: |
@@ -135,6 +137,7 @@ jobs:
           aws s3 ls "s3://designs/" --endpoint-url "$SUPA_S3_ENDPOINT" --recursive | head -20 || echo "❌ ls FAILED (exit $?)"
 
           # Supabase Storage S3-compatible endpoint — aws s3 sync RECURSIVE (tüm nested dosyalar)
+          STORAGE_FAILED=0
           for BUCKET in designs return-photos review-photos; do
             echo "📦 Sync bucket: $BUCKET"
             mkdir -p "storage-snapshot/${STAMP}/${BUCKET}"
@@ -145,17 +148,60 @@ jobs:
             set -e
             FILE_COUNT=$(find "storage-snapshot/${STAMP}/${BUCKET}" -type f | wc -l)
             echo "  → $BUCKET: exit=$SYNC_EXIT, $FILE_COUNT dosya"
+            if [ "$SYNC_EXIT" -ne 0 ]; then
+              echo "❌ $BUCKET sync başarısız (exit $SYNC_EXIT)"
+              STORAGE_FAILED=1
+            fi
           done
+
+          if [ "$STORAGE_FAILED" -ne 0 ]; then
+            echo "❌ Storage sync hatalı — backup job FAIL"
+            exit 1
+          fi
 
           # Tek tar.gz + checksum
           tar -czf "storage-snapshot-${STAMP}.tar.gz" -C storage-snapshot "${STAMP}"
           sha256sum "storage-snapshot-${STAMP}.tar.gz" > "storage-snapshot-${STAMP}.sha256"
           ls -lh "storage-snapshot-${STAMP}.tar.gz"
-          # DOĞRULAMA: designs boş değilse tar > birkaç KB olmalı
           TAR_SIZE=$(stat -c%s "storage-snapshot-${STAMP}.tar.gz")
           echo "📊 storage.tar.gz boyut: ${TAR_SIZE} byte"
-          if [ "$TAR_SIZE" -lt 1000 ]; then
-            echo "⚠️ UYARI: storage.tar.gz çok küçük (${TAR_SIZE}B) — tasarım dosyaları indirilememiş olabilir!"
+          if [ "$TAR_SIZE" -lt 1048576 ]; then
+            echo "❌ storage.tar.gz < 1MB (${TAR_SIZE}B) — tasarım dosyaları indirilememiş, job FAIL"
+            exit 1
+          fi
+
+      - name: Sync R2 archive prefixes to backup bucket
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          STAMP: ${{ steps.date.outputs.stamp }}
+          YEAR: ${{ steps.date.outputs.year }}
+          WEEK: ${{ steps.date.outputs.week }}
+        run: |
+          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          ARCHIVE_BUCKET="pim-etiket-archive"
+          DEST_PREFIX="weekly/${YEAR}/W${WEEK}-${STAMP}/r2-archive"
+          ARCHIVE_FAILED=0
+
+          for PREFIX in customer-cutlines partners; do
+            echo "📦 R2 archive sync: ${ARCHIVE_BUCKET}/${PREFIX}/ → ${R2_BUCKET}/${DEST_PREFIX}/${PREFIX}/"
+            set +e
+            aws s3 sync "s3://${ARCHIVE_BUCKET}/${PREFIX}" "s3://${R2_BUCKET}/${DEST_PREFIX}/${PREFIX}" \
+              --endpoint-url "$ENDPOINT" --no-progress
+            SYNC_EXIT=$?
+            set -e
+            if [ "$SYNC_EXIT" -ne 0 ]; then
+              echo "❌ R2 archive sync failed for ${PREFIX} (exit $SYNC_EXIT)"
+              ARCHIVE_FAILED=1
+            fi
+          done
+
+          if [ "$ARCHIVE_FAILED" -ne 0 ]; then
+            echo "❌ R2 archive mirror başarısız — backup job FAIL"
+            exit 1
           fi
 
       - name: Upload to R2
@@ -168,6 +214,7 @@ jobs:
           STAMP: ${{ steps.date.outputs.stamp }}
           YEAR: ${{ steps.date.outputs.year }}
           WEEK: ${{ steps.date.outputs.week }}
+          SCHEMA_VERSION: ${{ steps.date.outputs.schema_version }}
         run: |
           ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
           PREFIX="weekly/${YEAR}/W${WEEK}-${STAMP}"
@@ -198,7 +245,8 @@ jobs:
             "week": "${WEEK}",
             "schemas": ["public", "auth", "storage"],
             "buckets": ["designs", "return-photos", "review-photos"],
-            "schema_version": "027",
+            "r2_archive_prefixes": ["customer-cutlines", "partners"],
+            "schema_version": "${SCHEMA_VERSION}",
             "created_at": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           }
           EOF

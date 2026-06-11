@@ -22,10 +22,16 @@ import { assertCronAuth } from "@/lib/cron-auth";
 import { withCronRun } from "@/lib/cron-logger";
 import { logServerAudit } from "@/lib/audit-log-server";
 import {
+  listR2Objects,
+  listR2ObjectsDetailed,
+} from "@/lib/storage/r2-client";
+import {
   deleteR2Keys,
   isR2StorageKey,
   normalizeR2Key,
 } from "@/lib/storage/purge-r2";
+
+const EDITOR_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const dynamic = "force-dynamic";
 
@@ -134,6 +140,36 @@ export async function GET(req: Request) {
     const r2Result = await deleteR2Keys(r2Keys);
     r2Deleted = r2Result.deleted;
     r2Errors = r2Result.errors;
+
+    // Süresi dolan siparişlerin print/{orderId}/ önbelleği
+    const printKeys: string[] = [];
+    for (const orderId of orderIds) {
+      const keys = await listR2Objects(`print/${orderId}/`);
+      printKeys.push(...keys);
+    }
+    if (printKeys.length > 0) {
+      const printResult = await deleteR2Keys(printKeys);
+      r2Deleted += printResult.deleted;
+      r2Errors += printResult.errors;
+    }
+  }
+
+  // ---- 2c) 30 günden eski editor-drafts/ ----
+  try {
+    const draftCutoff = Date.now() - EDITOR_DRAFT_MAX_AGE_MS;
+    const draftItems = await listR2ObjectsDetailed("editor-drafts/");
+    const staleDraftKeys = draftItems
+      .filter(
+        (o) => o.lastModified && o.lastModified.getTime() < draftCutoff
+      )
+      .map((o) => o.key);
+    if (staleDraftKeys.length > 0) {
+      const draftResult = await deleteR2Keys(staleDraftKeys);
+      r2Deleted += draftResult.deleted;
+      r2Errors += draftResult.errors;
+    }
+  } catch (err) {
+    console.warn("[purge-expired-designs] editor-drafts purge skip:", err);
   }
 
   // ---- 3) Pim sohbet anonimleştirme (stub — tablo gelince çalışır) ----

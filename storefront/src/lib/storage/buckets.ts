@@ -9,11 +9,19 @@
 export const SUPABASE_STORAGE_BUCKETS = {
   designs: "designs",
   designPreviews: "design-previews",
-  /** Legacy/override; birincil cutline SVG Cloudflare R2'de */
-  cutlines: "cutlines",
   reviewPhotos: "review-photos",
-  gallery: "gallery",
-  fasonContracts: "fason-contracts",
+  /** Admin galeri görselleri: public-assets/gallery/{uuid}.ext */
+  publicAssets: "public-assets",
+} as const;
+
+/** R2 depolama prefix'leri (pim-etiket-archive bucket) */
+export const R2_STORAGE_PREFIXES = {
+  customers: "customers/",
+  customersHot: "customers-hot/",
+  customerCutlines: "customer-cutlines/",
+  editorDrafts: "editor-drafts/",
+  print: "print/",
+  partners: "partners/",
 } as const;
 
 export type SupabaseStorageBucket =

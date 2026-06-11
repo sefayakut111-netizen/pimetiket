@@ -9,7 +9,9 @@ export function isR2StorageKey(path: string | null | undefined): boolean {
   return (
     path.startsWith("customers/") ||
     path.startsWith("customer-cutlines/") ||
-    path.startsWith("customers-hot/")
+    path.startsWith("customers-hot/") ||
+    path.startsWith("editor-drafts/") ||
+    path.startsWith("print/")
   );
 }
 

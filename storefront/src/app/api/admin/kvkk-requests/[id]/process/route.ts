@@ -2,8 +2,7 @@
  * POST /api/admin/kvkk-requests/[id]/process
  *
  * Admin KVKK talebini "processing" → "completed" / "rejected" durumuna
- * götürür. Asıl silme/export mekaniği bu endpoint'te YOK — admin manuel
- * yapar (Resend + Storage temizliği gelene kadar).
+ * götürür. complete → depolama otomatik temizlenir (KVKK storage-purge).
  *
  * Body: { action: 'complete' | 'reject', note?: string }
  */
@@ -13,6 +12,10 @@ import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
+import {
+  purgeKvkkUserStorage,
+  shouldPurgeKvkkStorage,
+} from "@/lib/kvkk/storage-purge";
 import {
   deletePimConversationForUser,
   scopeIncludesPimChat,
@@ -89,17 +92,40 @@ export async function POST(
 
   const nextStatus = action === "complete" ? "completed" : "rejected";
 
-  if (
-    action === "complete" &&
-    row.kind === "partial_delete" &&
-    scopeIncludesPimChat(row.scope)
-  ) {
-    const del = await deletePimConversationForUser(admin, row.user_id);
-    if (!del.ok) {
-      return NextResponse.json(
-        { error: del.error ?? "Pim sohbet silinemedi" },
-        { status: 500 }
-      );
+  if (action === "complete") {
+    if (
+      row.kind === "partial_delete" &&
+      scopeIncludesPimChat(row.scope)
+    ) {
+      const del = await deletePimConversationForUser(admin, row.user_id);
+      if (!del.ok) {
+        return NextResponse.json(
+          { error: del.error ?? "Pim sohbet silinemedi" },
+          { status: 500 }
+        );
+      }
+    }
+
+    if (
+      shouldPurgeKvkkStorage(row.kind, row.scope) &&
+      (row.kind === "account_delete" || row.kind === "partial_delete")
+    ) {
+      const purge = await purgeKvkkUserStorage({
+        admin,
+        userId: row.user_id,
+        kind: row.kind,
+        scope: row.scope,
+        actorId: auth.user.id,
+        actorType: "admin",
+        kvkkRequestId: id,
+        reason: `KVKK talebi tamamlandı: ${row.kind}`,
+      });
+      if (!purge.ok) {
+        return NextResponse.json(
+          { error: purge.error ?? "Depolama temizliği başarısız" },
+          { status: 500 }
+        );
+      }
     }
   }
 

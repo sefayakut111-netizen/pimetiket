@@ -1,7 +1,7 @@
 /**
  * POST /api/customer/kvkk-archive-delete
  *
- * KVKK m.11/e — R2 cold storage temizliği.
+ * KVKK m.11/e — R2 + Supabase depolama temizliği.
  * Y3: Yalnızca onaylı silme talebi + grace süresi dolduktan sonra çalışır.
  * Admin (service) başkası adına grace gate'i atlayabilir.
  */
@@ -10,12 +10,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { assertKvkkR2DeleteEligible } from "@/lib/kvkk/delete-eligibility";
+import { purgeKvkkUserStorage } from "@/lib/kvkk/storage-purge";
 import { assertPermission } from "@/lib/supabase/assert-permission";
-import {
-  deleteFromR2,
-  listR2Objects,
-  r2KeyBuilders,
-} from "@/lib/storage/r2-client";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -87,43 +83,30 @@ export async function POST(req: NextRequest) {
       reason: "KVKK m.11/e — kişisel veri silme talebi",
     });
 
-    const prefix = r2KeyBuilders.customerPrefix(targetUserId);
-    const keys = await listR2Objects(prefix);
-
-    const deleteResults = [];
-    for (const key of keys) {
-      const r = await deleteFromR2(key);
-      deleteResults.push({ key, success: r.success });
-    }
-
-    await serviceClient.from("archive_events").insert({
-      event_type: "permanent_deleted",
-      resource_type: "customer_bundle",
-      resource_id: targetUserId,
-      user_id: targetUserId,
-      actor_id: user.id,
-      actor_type: adminActing ? "admin" : "user",
-      archive_path: prefix,
-      reason: "KVKK silme tamamlandı — R2 cold storage temizliği",
-      metadata: {
-        deleted_keys: keys.length,
-        failed_deletes: deleteResults.filter((d) => !d.success).length,
-        kind: deleteKind,
-      },
+    const purge = await purgeKvkkUserStorage({
+      admin: serviceClient,
+      userId: targetUserId,
+      kind: deleteKind,
+      actorId: user.id,
+      actorType: adminActing ? "admin" : "user",
+      reason: "KVKK silme tamamlandı — depolama temizliği",
     });
 
-    await serviceClient
-      .from("profiles")
-      .update({
-        archive_status: "deleted",
-        archive_path: null,
-      })
-      .eq("id", targetUserId);
+    if (!purge.ok) {
+      return NextResponse.json(
+        {
+          error: purge.error ?? "Depolama temizliği kısmen başarısız",
+          supabaseDeleted: purge.supabaseDeleted,
+          r2Deleted: purge.r2Deleted,
+        },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      deletedKeys: keys.length,
-      failedDeletes: deleteResults.filter((d) => !d.success).length,
+      supabaseDeleted: purge.supabaseDeleted,
+      r2Deleted: purge.r2Deleted,
       message: "KVKK silme tamamlandı, arşiv temizlendi",
     });
   } catch (err) {

@@ -72,7 +72,7 @@ Browser localStorage ──► Supabase Storage ──► Supabase DB (metadata)
 | Olay | Dosya | Nerede saklanır |
 |------|-------|----------------|
 | Müşteri `/siparis/[orderId]/tasarim-yukle` sayfasını açar | — | — |
-| Dosya seçer (PDF/PNG/JPG/AI/PSD/EPS, max 30 MB) | `etiket-v3.pdf` | **`designs/PE-2026-1234/{uuid}.pdf`** |
+| Dosya seçer (PDF/PNG/JPG/AI/PSD/SVG, max 30 MB) | `etiket-v3.pdf` | **`designs/PE-2026-1234/{uuid}.pdf`** |
 | Upload tamamlanır (`upload-init` → PUT → `upload-complete`) | SHA-256 hash hesaplanır | `design_files` tablosuna kayıt |
 | AI ön-kontrol tetiklenir | — | `orders.status → qc_pending`, `runOrderDesignQC` |
 
@@ -88,7 +88,7 @@ status               -- uploaded → qc_pending → qc_passed | qc_flagged
 ```
 **API:** `POST /api/design/upload-init` → client PUT (signed URL) → `POST /api/design/upload-complete`
 
-**İzin verilen formatlar (kod):** PDF, PNG, JPG, AI, PSD, EPS — SVG kaldırıldı (Sefa v54). Kaynak: [`design-files.ts`](../src/lib/storage/design-files.ts)
+**İzin verilen formatlar (kod):** PDF, PNG, JPG, AI, PSD, SVG — EPS desteklenmez. Kaynak: [`design-files.ts`](../src/lib/storage/design-files.ts)
 
 ---
 
@@ -113,7 +113,7 @@ status               -- uploaded → qc_pending → qc_passed | qc_flagged
 ### Aşama E — Cutline POC (kesim çizgisi üretimi)
 
 **Konum:** **Cloudflare R2: `customer-cutlines/`** + **Tablo: `cutline_designs`**
-(Supabase `cutlines/` bucket legacy/override için; birincil depo R2.)
+(Birincil cutline depo R2 — Supabase `cutlines/` bucket kullanılmıyor.)
 
 | Olay | Dosya nereye gider? |
 |------|---------------------|
@@ -218,12 +218,13 @@ Fason bu JSON'u alıp dosyaları çeker, üretime alır.
 | Bucket | Public? | Limit | Kim yazar? | Lifecycle |
 |--------|---------|-------|------------|-----------|
 | **`designs`** | ❌ Signed URL | 30 MB | Müşteri (sipariş için), Admin | 24 ay rolling → R2 → KVKK purge |
-| **`cutlines`** | ❌ Signed URL | ~5 MB | Admin override (legacy) | designs ile aynı |
 | **R2 `customer-cutlines/`** | ❌ Signed URL | ~5 MB | POC / save-edit | designs ile aynı |
+| **R2 `editor-drafts/`** | ❌ Signed URL | ~5 MB | /editor pre-order cutline | 30 gün sonra cron purge |
+| **R2 `print/`** | ❌ Signed URL | PDF | production-export cache | designs expiry ile purge |
 | **`design-previews`** | ✅ Public | 5 MB | Müşteri (sepet thumbnail) | Sepet temizlenince orphan |
 | **`review-photos`** | ✅ Public | 5 MB | Müşteri (delivered+7gün) | KVKK m.5/1 — sonsuz tutulur |
-| **`gallery`** | ✅ Public | 10 MB | Admin (anasayfa galeri) | Süresiz |
-| **`fason-contracts`** | ❌ Signed URL | 10 MB | Admin (üretici sözleşmesi) | Süresiz (yasal) |
+| **`public-assets/gallery/`** | ✅ Public | 10 MB | Admin (anasayfa galeri) | Süresiz |
+| **R2 `partners/`** | ❌ Signed URL | 10 MB | Admin (fason sözleşmesi PDF) | Süresiz (yasal) |
 
 > ⚠️ **Cloudflare R2 bucket:** `pim-etiket-archive` — 90 gün hareketsiz müşterilerin tüm dosyaları toplu olarak buraya taşınır (cold storage).
 
