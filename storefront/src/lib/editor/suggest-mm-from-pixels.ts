@@ -4,6 +4,30 @@ import { roundEditorMm } from "@/lib/editor/coords";
 
 const DEFAULT_DPI = 300;
 
+/** Uzun kenar sabit (varsayılan 50 mm), kısa kenar piksel oranına göre — editör ilk yükleme. */
+export function suggestMmFromAspectLongEdge(
+  widthPx: number,
+  heightPx: number,
+  longEdgeMm = 50
+): { widthMm: number; heightMm: number; aspect: number } {
+  if (widthPx <= 0 || heightPx <= 0) {
+    return { widthMm: longEdgeMm, heightMm: longEdgeMm, aspect: 1 };
+  }
+  const aspect = widthPx / heightPx;
+  if (widthPx >= heightPx) {
+    return {
+      widthMm: roundEditorMm(longEdgeMm),
+      heightMm: roundEditorMm(longEdgeMm / aspect),
+      aspect,
+    };
+  }
+  return {
+    widthMm: roundEditorMm(longEdgeMm * aspect),
+    heightMm: roundEditorMm(longEdgeMm),
+    aspect,
+  };
+}
+
 export function suggestMmFromPixels(
   widthPx: number,
   heightPx: number,

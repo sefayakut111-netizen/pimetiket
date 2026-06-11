@@ -26,6 +26,7 @@ import { roundEditorMm } from "@/lib/editor/coords";
 import {
   effectivePrintDpi,
   printDpiStatus,
+  suggestMmFromAspectLongEdge,
 } from "@/lib/editor/suggest-mm-from-pixels";
 import {
   DIE_CUT_BY_ID,
@@ -207,7 +208,12 @@ export default function EditorShell() {
   const [imageScalePct, setImageScalePct] = useState(100);
   const baseWidthMmRef = useRef(DEFAULT_WIDTH_MM);
   const baseHeightMmRef = useRef(DEFAULT_HEIGHT_MM);
+  const userSizeTouchedRef = useRef(false);
   const scaleEchoSuppressUntilRef = useRef(0);
+  const [mmLabelProbe, setMmLabelProbe] = useState<{
+    widthMm: number;
+    heightMm: number;
+  } | null>(null);
   const [offsetMm, setOffsetMm] = useState(0);
   const [smoothness, setSmoothness] = useState(0);
   const [cornerRadiusMm, setCornerRadiusMm] = useState(0);
@@ -380,9 +386,12 @@ export default function EditorShell() {
   );
 
   const applyCoordinatedSize = useCallback(
-    (w: number, h: number) => {
+    (w: number, h: number, options?: { fromUser?: boolean }) => {
       const nw = roundEditorMm(w);
       const nh = roundEditorMm(h);
+      if (options?.fromUser) {
+        userSizeTouchedRef.current = true;
+      }
       setWidthMm(nw);
       setHeightMm(nh);
       const pct = scalePctFromWidth(nw);
@@ -470,6 +479,7 @@ export default function EditorShell() {
   }, [postToPoc]);
 
   const applyTemplateState = useCallback((tpl: DieCutTemplate) => {
+    userSizeTouchedRef.current = true;
     setWidthMm(tpl.widthMm);
     setHeightMm(tpl.heightMm);
     baseWidthMmRef.current = tpl.widthMm;
@@ -577,18 +587,46 @@ export default function EditorShell() {
         } else if (data.source === "raster") {
           setCanRemoveBg(true);
         }
-        if (typeof data.width === "number" && data.width > 0) {
-          setImagePixelW(data.width);
+        const pixelW =
+          typeof data.width === "number" && data.width > 0 ? data.width : 0;
+        const pixelH =
+          typeof data.height === "number" && data.height > 0 ? data.height : 0;
+        if (pixelW > 0) setImagePixelW(pixelW);
+        if (pixelH > 0) setImagePixelH(pixelH);
+
+        if (
+          !userSizeTouchedRef.current &&
+          pixelW > 0 &&
+          pixelH > 0 &&
+          !sablonPrefilledRef.current
+        ) {
+          const suggested = suggestMmFromAspectLongEdge(pixelW, pixelH);
+          setAspect(suggested.aspect);
+          setLockAspect(true);
+          baseWidthMmRef.current = suggested.widthMm;
+          baseHeightMmRef.current = suggested.heightMm;
+          applyCoordinatedSize(suggested.widthMm, suggested.heightMm);
+          toast.info(
+            `Boyutu dosyana uydurduk: ${suggested.widthMm}×${suggested.heightMm} mm — istediğin gibi değiştirebilirsin.`
+          );
         }
-        if (typeof data.height === "number" && data.height > 0) {
-          setImagePixelH(data.height);
-        }
+
         setDirty(true);
         setPocStatus({
           state: "loaded",
           message: "Tasarım yüklendi — kontur hesaplanıyor…",
         });
         setShowCircleContourSuggest(false);
+      } else if (data.type === "pim-mm-labels") {
+        if (
+          typeof data.widthMm === "number" &&
+          typeof data.heightMm === "number"
+        ) {
+          setMmLabelProbe({
+            widthMm: data.widthMm,
+            heightMm: data.heightMm,
+          });
+        }
       } else if (data.type === "pim-circle-contour-suggest") {
         if (cutMode === "circle" && cutSource === "sekil") {
           setShowCircleContourSuggest(true);
@@ -625,21 +663,7 @@ export default function EditorShell() {
           ) {
             setCutMode(meta.mode);
           }
-          if (typeof meta.width_mm === "number" && meta.width_mm > 0) {
-            setWidthMm(meta.width_mm);
-          }
-          if (typeof meta.height_mm === "number" && meta.height_mm > 0) {
-            setHeightMm(meta.height_mm);
-          }
-          const resolvedW =
-            typeof meta.width_mm === "number" && meta.width_mm > 0
-              ? meta.width_mm
-              : widthMm;
-          const resolvedH =
-            typeof meta.height_mm === "number" && meta.height_mm > 0
-              ? meta.height_mm
-              : heightMm;
-          setBaseFromSize(resolvedW, resolvedH, imageScalePct);
+          setBaseFromSize(widthMm, heightMm, imageScalePct);
         }
         setPocStatus({
           state: "loaded",
@@ -744,7 +768,7 @@ export default function EditorShell() {
       window.removeEventListener("message", handler);
       if (timeoutHandle) window.clearTimeout(timeoutHandle);
     };
-  }, [applyPendingSablon, applyCoordinatedScale, setBaseFromSize, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm, imageScalePct, cutMode, cutSource, markCutlinePending, reportCutlineFailure, toast]);
+  }, [applyPendingSablon, applyCoordinatedScale, applyCoordinatedSize, setBaseFromSize, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm, imageScalePct, cutMode, cutSource, markCutlinePending, reportCutlineFailure, toast]);
 
   useEffect(() => {
     if (!designLoaded || cutlineReady || cutlineError) return;
@@ -782,7 +806,7 @@ export default function EditorShell() {
     const w = roundEditorMm(raw);
     const h =
       lockAspect && aspect > 0 ? roundEditorMm(w / aspect) : heightMm;
-    applyCoordinatedSize(w, h);
+    applyCoordinatedSize(w, h, { fromUser: true });
   };
 
   const handleHeightChange = (raw: number) => {
@@ -790,7 +814,7 @@ export default function EditorShell() {
     const h = roundEditorMm(raw);
     const w =
       lockAspect && aspect > 0 ? roundEditorMm(h * aspect) : widthMm;
-    applyCoordinatedSize(w, h);
+    applyCoordinatedSize(w, h, { fromUser: true });
   };
 
   const handleLockAspectChange = (on: boolean) => {
@@ -1196,6 +1220,11 @@ export default function EditorShell() {
       className="editor-workspace flex flex-col bg-gri-50 px-4 md:px-6 lg:h-[calc(100dvh-56px)] lg:overflow-hidden lg:px-8"
       data-editor-workspace
     >
+      {mmLabelProbe ? (
+        <span data-testid="editor-mm-labels" className="sr-only">
+          {mmLabelProbe.widthMm}×{mmLabelProbe.heightMm}
+        </span>
+      ) : null}
       <div className="mx-auto flex w-full max-w-[1600px] flex-col lg:h-full lg:min-h-0 lg:overflow-hidden">
       <EditorCoachmark
         open={showCoach}

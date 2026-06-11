@@ -2358,6 +2358,7 @@ window.addEventListener('message', (e) => {
 // Auto-load: designUrl varsa OpenCV hazır olunca fetch + handleFile
 // Sefa 22 May v68 — Verbose logging + canvas üzerine görsel hata mesajı.
 let pimAutoLoadPending = false;
+let pimLastMmLabelsKey = '';
 
 function pimNotifyLoaded() {
   const w = imageMetadata?.originalW ?? (currentMat ? currentMat.cols : 0);
@@ -2439,10 +2440,12 @@ function pimFitEditorPreviewToFrame() {
 /** Pre-order editör — mm değişince metadata güncelle (viewZoom çarpanı kaldırıldı) */
 function pimEditorOnOrderSizeChange() {
   const dims = getOrderDimsMm();
-  if (!PIM_PARAMS.standalone || !dims) return;
+  if ((!PIM_PARAMS.standalone && !PIM_PARAMS.editorShell) || !dims) return;
   if (imageMetadata) {
     imageMetadata.orderWidthMm = dims.w;
     imageMetadata.orderHeightMm = dims.h;
+    imageMetadata.widthMm = dims.w.toFixed(1);
+    imageMetadata.heightMm = dims.h.toFixed(1);
   }
   updateCutlineSizeRow();
   updateMetadataDisplay();
@@ -2523,14 +2526,20 @@ async function pimAutoLoadDesign() {
   }
 }
 
-// Ready sinyali — DOM yüklendiğinde gönder
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    pimPostToParent({ type: 'pim-poc-ready' });
-  });
-} else {
+// Ready sinyali — DOM yüklendiğinde gönder (+ kısa retry: parent listener race)
+function pimEmitPocReady() {
   pimPostToParent({ type: 'pim-poc-ready' });
 }
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', pimEmitPocReady);
+} else {
+  pimEmitPocReady();
+}
+let pimReadyRetryCount = 0;
+const pimReadyRetryTimer = setInterval(() => {
+  pimEmitPocReady();
+  if (++pimReadyRetryCount >= 8) clearInterval(pimReadyRetryTimer);
+}, 400);
 
 // ============================================================
 // OPENCV.JS BAŞLATMA
@@ -2680,6 +2689,7 @@ uploadZone.addEventListener('drop', (e) => {
 async function handleFile(file) {
   pimAutoSaveDone = false;
   pimVisionFallbackSent = false;
+  pimLastMmLabelsKey = '';
   if (PIM_PARAMS.editorShell || PIM_PARAMS.standalone) {
     pimPostToParent({ type: 'pim-poc-loading' });
   }
@@ -4431,6 +4441,13 @@ function renderContentLayers(ctx) {
   }
 
   // ============================================================
+  // 1b. STICKER TABANI — yalnızca ekran önizlemesi (export'a sızmaz)
+  // ============================================================
+  if (layers.cut && currentPaths.length > 0) {
+    pimDrawStickerPreviewBase(ctx);
+  }
+
+  // ============================================================
   // 2. GÖRSEL — sourceImage + imageTransform (alpha blend)
   // ============================================================
   if (sourceImage) {
@@ -4506,6 +4523,7 @@ function render() {
     ctx.setTransform(vp.scale, 0, 0, vp.scale, vp.offsetX, vp.offsetY);
     renderContentLayers(ctx);
     ctx.restore();
+    pimDrawEditorMmLabelsScreen(ctx, vp);
     return;
   }
 
@@ -4516,16 +4534,132 @@ function render() {
   renderContentLayers(ctx);
 }
 
-function drawPaths(ctx, paths) {
+function forEachPathEntry(paths, fn) {
   for (const entry of paths) {
+    if (!entry) continue;
+    fn(entry);
+  }
+}
+
+function fillPaths(ctx, paths) {
+  forEachPathEntry(paths, (entry) => {
+    if (entry.kind === 'arc') {
+      const path2d = new Path2D(entry.d);
+      ctx.fill(path2d);
+      return;
+    }
+    const path = entry.kind === 'poly' ? entry.points : entry;
+    if (!path || path.length < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(path[0][0], path[0][1]);
+    for (let i = 1; i < path.length; i++) {
+      ctx.lineTo(path[i][0], path[i][1]);
+    }
+    ctx.closePath();
+    ctx.fill();
+  });
+}
+
+/** Ekran önizlemesi — export/SVG/print'e sızmaz (yalnızca renderContentLayers) */
+function pimDrawStickerPreviewBase(ctx) {
+  if (!currentPaths || currentPaths.length === 0) return;
+  if (!PIM_PARAMS.editorShell && !PIM_PARAMS.standalone) return;
+  ctx.save();
+  ctx.shadowColor = 'rgba(15, 23, 42, 0.18)';
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 3;
+  ctx.fillStyle = '#ffffff';
+  fillPaths(ctx, currentPaths);
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  fillPaths(ctx, currentPaths);
+  ctx.restore();
+}
+
+function computePathsCanvasBBox(paths) {
+  if (!paths || paths.length === 0) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  const extend = (x, y) => {
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  };
+  forEachPathEntry(paths, (entry) => {
+    if (entry.kind === 'arc' && entry.d) {
+      const bb = pimComputeEmbeddedPathBBox(entry.d);
+      if (bb) {
+        extend(bb.minX, bb.minY);
+        extend(bb.minX + bb.width, bb.minY + bb.height);
+      } else if (typeof entry.x === 'number') {
+        extend(entry.x, entry.y);
+        extend(entry.x + entry.w, entry.y + entry.h);
+      }
+      return;
+    }
+    const path = entry.kind === 'poly' ? entry.points : entry;
+    if (!path || path.length < 2) return;
+    for (const pt of path) {
+      if (pt && pt.length >= 2) extend(pt[0], pt[1]);
+    }
+  });
+  if (!Number.isFinite(minX) || maxX <= minX || maxY <= minY) return null;
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+}
+
+/** Editör kabuğu — kesim bbox üstünde/solunda mm etiketleri (ekran uzayı, zoom'dan bağımsız) */
+function pimDrawEditorMmLabelsScreen(ctx, vp) {
+  if (!PIM_PARAMS.editorShell) return;
+  const dims = getOrderDimsMm();
+  if (!dims || !currentPaths || currentPaths.length === 0) return;
+  const bbox = computePathsCanvasBBox(currentPaths);
+  if (!bbox || !vp) return;
+
+  const scale = vp.scale;
+  const topX = ((bbox.minX + bbox.maxX) / 2) * scale + vp.offsetX;
+  const topY = bbox.minY * scale + vp.offsetY - 5;
+  const leftX = bbox.minX * scale + vp.offsetX - 6;
+  const leftY = ((bbox.minY + bbox.maxY) / 2) * scale + vp.offsetY;
+  const wLabel = `${Number(dims.w).toFixed(Number(dims.w) % 1 === 0 ? 0 : 1)} mm`;
+  const hLabel = `${Number(dims.h).toFixed(Number(dims.h) % 1 === 0 ? 0 : 1)} mm`;
+
+  ctx.save();
+  ctx.font = '600 11px system-ui, -apple-system, Segoe UI, sans-serif';
+  ctx.fillStyle = 'rgba(75, 85, 99, 0.92)';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(wLabel, topX, topY);
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(hLabel, leftX, leftY);
+  ctx.restore();
+
+  const labelKey = dims.w + 'x' + dims.h;
+  if (pimLastMmLabelsKey !== labelKey) {
+    pimLastMmLabelsKey = labelKey;
+    pimPostToParent({
+      type: 'pim-mm-labels',
+      widthMm: dims.w,
+      heightMm: dims.h,
+    });
+  }
+}
+
+function drawPaths(ctx, paths) {
+  forEachPathEntry(paths, (entry) => {
     if (entry.kind === 'arc') {
       ctx.beginPath();
       const path2d = new Path2D(entry.d);
       ctx.stroke(path2d);
-      continue;
+      return;
     }
     const path = entry.kind === 'poly' ? entry.points : entry;
-    if (!path || path.length < 2) continue;
+    if (!path || path.length < 2) return;
     ctx.beginPath();
     ctx.moveTo(path[0][0], path[0][1]);
     for (let i = 1; i < path.length; i++) {
@@ -4533,7 +4667,7 @@ function drawPaths(ctx, paths) {
     }
     ctx.closePath();
     ctx.stroke();
-  }
+  });
 }
 
 // ============================================================
