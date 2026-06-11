@@ -8,6 +8,26 @@
  */
 
 import { test, expect } from "@playwright/test";
+
+/** Playwright test fixture `playwright` — yerel tip (tsc uyumu). */
+type PlaywrightWorker = {
+  request: {
+    newContext(options: {
+      storageState?: string;
+      baseURL?: string;
+    }): Promise<{
+      post(
+        url: string,
+        options?: { multipart?: Record<string, unknown> }
+      ): Promise<{
+        ok: () => boolean;
+        status: () => number;
+        json: () => Promise<unknown>;
+      }>;
+      dispose(): Promise<void>;
+    }>;
+  };
+};
 import { createClient } from "@supabase/supabase-js";
 import path from "node:path";
 import fs from "node:fs";
@@ -87,11 +107,11 @@ async function createTestOrder(userId: string): Promise<string> {
 }
 
 async function adminCreateApprovalRequest(
-  playwright: import("@playwright/test").Playwright,
+  playwright: object,
   orderId: string,
   title: string
 ): Promise<string> {
-  const ctx = await playwright.request.newContext({
+  const ctx = await (playwright as PlaywrightWorker).request.newContext({
     storageState: ADMIN_STATE,
     baseURL: BASE_URL,
   });
@@ -114,7 +134,7 @@ async function adminCreateApprovalRequest(
       request_id?: string;
       error?: string;
     };
-    expect(res.ok(), body.error ?? res.status()).toBeTruthy();
+    expect(res.ok(), body.error ?? String(res.status())).toBeTruthy();
     expect(body.request_id).toBeTruthy();
     return body.request_id!;
   } finally {
