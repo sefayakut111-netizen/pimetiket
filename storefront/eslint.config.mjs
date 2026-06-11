@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Sefa 21 May v68: scripts/ Node CommonJS — require() yasak değil
     "scripts/**",
+    // Vendor bundle'lar (opencv.js vb.) — lint kapsamı dışı
+    "public/vendor/**",
   ]),
   // Sefa 21 May v68 (CI ilk run cleanup): Bu kuralları "warn" yap —
   // CI yeşil kalsın, regression sigortası çalışsın. Aşamalı temizlik

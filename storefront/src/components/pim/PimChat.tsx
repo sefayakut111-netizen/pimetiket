@@ -13,7 +13,14 @@
  * (AdminShell zaten ayrı).
  */
 
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
@@ -127,22 +134,29 @@ export function PimChat() {
     }
   }, []);
 
+  const chatTransport = useMemo(
+    () =>
+      // eslint-disable-next-line react-hooks/refs -- memoryRef yalnızca prepareSendMessagesRequest callback'inde okunur
+      new DefaultChatTransport({
+        api: "/api/pim/chat",
+        prepareSendMessagesRequest({ messages }) {
+          const mem = memoryRef.current;
+          const pageContext = extractPageContext(pathname);
+          return {
+            body: {
+              messages,
+              persona,
+              memory: memorySnapshotForPrompt(mem),
+              pageContext,
+            },
+          };
+        },
+      }),
+    [pathname, persona]
+  );
+
   const { messages, sendMessage, status, setMessages } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/pim/chat",
-      prepareSendMessagesRequest({ messages }) {
-        const mem = memoryRef.current;
-        const pageContext = extractPageContext(pathname);
-        return {
-          body: {
-            messages,
-            persona,
-            memory: memorySnapshotForPrompt(mem),
-            pageContext,
-          },
-        };
-      },
-    }),
+    transport: chatTransport,
     onFinish: ({ message }) => {
       void (async () => {
         const text = extractText(message);

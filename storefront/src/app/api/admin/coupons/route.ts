@@ -119,7 +119,7 @@ async function fetchAnalytics(
   }
 
   const rows = uses ?? [];
-  let totalUsage = rows.length;
+  const totalUsage = rows.length;
   let totalDiscount = 0;
   const byCoupon = new Map<string, { count: number; discount: number }>();
   const byDate = new Map<string, { count: number; discount: number }>();

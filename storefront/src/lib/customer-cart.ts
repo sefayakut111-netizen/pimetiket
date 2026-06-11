@@ -409,7 +409,7 @@ export async function mergeGuestCartIntoDb(): Promise<{
   const dbItems = await dbList(user.id);
   let dbCount = dbItems.length;
   let dropped = 0;
-  let merged = 0;
+  const merged = 0;
   let added = 0;
 
   function mergeKey(it: CustomerCartItem): string {

@@ -92,6 +92,37 @@ const CANCEL_REASONS = [
 type SortKey = "date" | "total" | "customer" | "status";
 type SortDir = "asc" | "desc";
 
+function OrdersSortableHeader({
+  label,
+  sortField,
+  sortKey,
+  sortDir,
+  onToggle,
+}: {
+  label: string;
+  sortField: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onToggle: (key: SortKey) => void;
+}) {
+  const isActive = sortKey === sortField;
+  return (
+    <th
+      className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700 cursor-pointer select-none hover:text-lacivert"
+      onClick={() => onToggle(sortField)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {isActive && (
+          <span className="text-pim-mercan">
+            {sortDir === "asc" ? "↑" : "↓"}
+          </span>
+        )}
+      </span>
+    </th>
+  );
+}
+
 function downloadCsv(rows: AdminOrder[], filePrefix: string) {
   const header = "ID,Müşteri,Ürün,Adet,Tutar,Durum,Partner,Tarih\n";
   const lines = rows
@@ -637,31 +668,6 @@ function AdminSiparislerPageInner() {
     void applyBulkStatus();
   }, [bulkStatus, applyBulkStatus]);
 
-  const SortableHeader = ({
-    label,
-    sortField,
-  }: {
-    label: string;
-    sortField: SortKey;
-  }) => {
-    const isActive = sortKey === sortField;
-    return (
-      <th
-        className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700 cursor-pointer select-none hover:text-lacivert"
-        onClick={() => toggleSort(sortField)}
-      >
-        <span className="inline-flex items-center gap-1">
-          {label}
-          {isActive && (
-            <span className="text-pim-mercan">
-              {sortDir === "asc" ? "↑" : "↓"}
-            </span>
-          )}
-        </span>
-      </th>
-    );
-  };
-
   return (
     <main className="py-8 pb-20">
       <div className="mx-auto max-w-[1280px] px-4 md:px-8">
@@ -1010,16 +1016,40 @@ function AdminSiparislerPageInner() {
                 <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
                   Sipariş
                 </th>
-                <SortableHeader label="Müşteri" sortField="customer" />
+                <OrdersSortableHeader
+                  label="Müşteri"
+                  sortField="customer"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onToggle={toggleSort}
+                />
                 <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
                   Ürün
                 </th>
-                <SortableHeader label="Tutar" sortField="total" />
-                <SortableHeader label="Durum" sortField="status" />
+                <OrdersSortableHeader
+                  label="Tutar"
+                  sortField="total"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onToggle={toggleSort}
+                />
+                <OrdersSortableHeader
+                  label="Durum"
+                  sortField="status"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onToggle={toggleSort}
+                />
                 <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
                   Partner
                 </th>
-                <SortableHeader label="Tarih" sortField="date" />
+                <OrdersSortableHeader
+                  label="Tarih"
+                  sortField="date"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onToggle={toggleSort}
+                />
                 <th className="px-4 py-3 font-semibold text-[11.5px] uppercase tracking-[0.04em] text-gri-700">
                   Durum güncelle
                 </th>

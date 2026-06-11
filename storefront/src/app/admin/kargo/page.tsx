@@ -53,6 +53,37 @@ type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 30;
 
+function KargoSortableHeader({
+  label,
+  sortField,
+  sortKey,
+  sortDir,
+  onToggle,
+}: {
+  label: string;
+  sortField: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onToggle: (key: SortKey) => void;
+}) {
+  const isActive = sortKey === sortField;
+  return (
+    <th
+      className="px-3 py-3 text-left font-semibold cursor-pointer select-none hover:text-lacivert"
+      onClick={() => onToggle(sortField)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {isActive && (
+          <span className="text-pim-mercan">
+            {sortDir === "asc" ? "↑" : "↓"}
+          </span>
+        )}
+      </span>
+    </th>
+  );
+}
+
 const STATUS_META: Record<
   Exclude<StatusFilter, "all" | "active">,
   { tr: string; emoji: string; color: string; bg: string }
@@ -316,31 +347,6 @@ export default function AdminKargoPage() {
       setSelected(new Set(sorted.map((s) => s.assignment_id)));
     }
   }
-
-  const SortableHeader = ({
-    label,
-    sortField,
-  }: {
-    label: string;
-    sortField: SortKey;
-  }) => {
-    const isActive = sortKey === sortField;
-    return (
-      <th
-        className="px-3 py-3 text-left font-semibold cursor-pointer select-none hover:text-lacivert"
-        onClick={() => toggleSort(sortField)}
-      >
-        <span className="inline-flex items-center gap-1">
-          {label}
-          {isActive && (
-            <span className="text-pim-mercan">
-              {sortDir === "asc" ? "↑" : "↓"}
-            </span>
-          )}
-        </span>
-      </th>
-    );
-  };
 
   function exportCsv() {
     const header =
@@ -700,10 +706,34 @@ export default function AdminKargoPage() {
                   />
                 </th>
                 <th className="px-3 py-3 text-left font-semibold">Sipariş</th>
-                <SortableHeader label="Müşteri" sortField="customer" />
-                <SortableHeader label="Takip no" sortField="tracking" />
-                <SortableHeader label="Durum" sortField="status" />
-                <SortableHeader label="Son güncelleme" sortField="date" />
+                <KargoSortableHeader
+                  label="Müşteri"
+                  sortField="customer"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onToggle={toggleSort}
+                />
+                <KargoSortableHeader
+                  label="Takip no"
+                  sortField="tracking"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onToggle={toggleSort}
+                />
+                <KargoSortableHeader
+                  label="Durum"
+                  sortField="status"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onToggle={toggleSort}
+                />
+                <KargoSortableHeader
+                  label="Son güncelleme"
+                  sortField="date"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onToggle={toggleSort}
+                />
                 <th className="px-3 py-3 text-right font-semibold">İşlem</th>
               </tr>
             </thead>

@@ -28,6 +28,45 @@ import {
   useDeliveryDays,
 } from "@/hooks/useDeliveryDays";
 
+type OrderSuccessStepState = "done" | "active" | "waiting";
+
+function OrderSuccessStepIcon({
+  state,
+  num,
+}: {
+  state: OrderSuccessStepState;
+  num: number;
+}) {
+  if (state === "done") {
+    return (
+      <span className="grid place-items-center w-7 h-7 rounded-full bg-yesil text-white font-bold text-[13px] shrink-0">
+        <Icon.Check size={14} />
+      </span>
+    );
+  }
+  if (state === "active") {
+    return (
+      <span className="grid place-items-center w-7 h-7 rounded-full bg-pim-mercan text-white font-bold text-[13px] shrink-0">
+        {num}
+      </span>
+    );
+  }
+  return (
+    <span className="grid place-items-center w-7 h-7 rounded-full bg-gri-200 text-gri-500 font-bold text-[13px] shrink-0">
+      {num}
+    </span>
+  );
+}
+
+function orderSuccessStepState(
+  num: number,
+  activeStep: number
+): OrderSuccessStepState {
+  if (num < activeStep) return "done";
+  if (num === activeStep) return "active";
+  return "waiting";
+}
+
 const EXTRA = {
   tr: {
     failTitle: "Ödeme alınamadı",
@@ -628,40 +667,6 @@ function OdemeSonucInner() {
                         ? 5 // hepsi done
                         : 4; // proof_approved, in_production, shipped, vs.
 
-              function StepIcon({
-                state,
-                num,
-              }: {
-                state: "done" | "active" | "waiting";
-                num: number;
-              }) {
-                if (state === "done") {
-                  return (
-                    <span className="grid place-items-center w-7 h-7 rounded-full bg-yesil text-white font-bold text-[13px] shrink-0">
-                      <Icon.Check size={14} />
-                    </span>
-                  );
-                }
-                if (state === "active") {
-                  return (
-                    <span className="grid place-items-center w-7 h-7 rounded-full bg-pim-mercan text-white font-bold text-[13px] shrink-0">
-                      {num}
-                    </span>
-                  );
-                }
-                return (
-                  <span className="grid place-items-center w-7 h-7 rounded-full bg-gri-200 text-gri-500 font-bold text-[13px] shrink-0">
-                    {num}
-                  </span>
-                );
-              }
-
-              function stateFor(num: number): "done" | "active" | "waiting" {
-                if (num < activeStep) return "done";
-                if (num === activeStep) return "active";
-                return "waiting";
-              }
-
               const os = t.orderSuccess;
               const step2Title =
                 s === "proof_generating"
@@ -720,22 +725,28 @@ function OdemeSonucInner() {
               return (
                 <>
                   <li className="flex gap-3.5 items-start">
-                    <StepIcon state={stateFor(1)} num={1} />
+                    <OrderSuccessStepIcon
+                      state={orderSuccessStepState(1, activeStep)}
+                      num={1}
+                    />
                     <div>
                       <div className="font-semibold text-base">
-                        {stateFor(1) === "done"
+                        {orderSuccessStepState(1, activeStep) === "done"
                           ? os.step1DoneTitle
                           : t.orderSuccess.step1Title}
                       </div>
                       <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
-                        {stateFor(1) === "done"
+                        {orderSuccessStepState(1, activeStep) === "done"
                           ? os.step1DoneDesc
                           : t.orderSuccess.step1Desc}
                       </p>
                     </div>
                   </li>
                   <li className="flex gap-3.5 items-start">
-                    <StepIcon state={stateFor(2)} num={2} />
+                    <OrderSuccessStepIcon
+                      state={orderSuccessStepState(2, activeStep)}
+                      num={2}
+                    />
                     <div>
                       <div className="font-semibold text-base">{step2Title}</div>
                       <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">
@@ -744,7 +755,10 @@ function OdemeSonucInner() {
                     </div>
                   </li>
                   <li className="flex gap-3.5 items-start">
-                    <StepIcon state={stateFor(3)} num={3} />
+                    <OrderSuccessStepIcon
+                      state={orderSuccessStepState(3, activeStep)}
+                      num={3}
+                    />
                     <div className="flex-1">
                       <div className="font-semibold text-base">
                         {t.orderSuccess.step2Title}
@@ -754,7 +768,7 @@ function OdemeSonucInner() {
                       </p>
                       {/* Sefa 22 May v68: Step 3 aktif olunca inline buton —
                           müşteri direkt prova sayfasına gitsin. */}
-                      {stateFor(3) === "active" && (
+                      {orderSuccessStepState(3, activeStep) === "active" && (
                         <div className="mt-2.5">
                           <Button
                             variant="primary"
@@ -768,7 +782,10 @@ function OdemeSonucInner() {
                     </div>
                   </li>
                   <li className="flex gap-3.5 items-start">
-                    <StepIcon state={stateFor(4)} num={4} />
+                    <OrderSuccessStepIcon
+                      state={orderSuccessStepState(4, activeStep)}
+                      num={4}
+                    />
                     <div>
                       <div className="font-semibold text-base">{step4Title}</div>
                       <p className="text-[13px] text-gri-700 mt-0.5 leading-relaxed">

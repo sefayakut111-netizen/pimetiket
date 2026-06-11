@@ -106,7 +106,7 @@ export async function GET(
     findings: QcFinding[] | null;
   } | null;
 
-  let effectiveDpi: number | null =
+  const effectiveDpi: number | null =
     qcRow?.analysis?.effectiveDpi != null
       ? Number(qcRow.analysis.effectiveDpi)
       : null;

@@ -5,6 +5,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
 
 export default function RootGlobalError({
@@ -72,7 +73,7 @@ export default function RootGlobalError({
               >
                 Tekrar dene
               </button>
-              <a
+              <Link
                 href="/"
                 style={{
                   padding: "10px 20px",
@@ -85,7 +86,7 @@ export default function RootGlobalError({
                 }}
               >
                 Anasayfa
-              </a>
+              </Link>
             </div>
           </div>
         </main>
