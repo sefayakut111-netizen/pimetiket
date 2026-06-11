@@ -326,8 +326,15 @@ function buildAutomationFlags(ctx: {
     {
       id: "instagram_sync",
       label: "Instagram sync",
-      status: "cancelled",
-      detail: "Marka kararı ile iptal — route ölü kod.",
+      status: process.env.INSTAGRAM_ACCESS_TOKEN?.trim()
+        ? "active"
+        : "inactive",
+      detail: process.env.INSTAGRAM_ACCESS_TOKEN?.trim()
+        ? "Günlük cron — ana sayfa feed slotları güncellenir."
+        : "env bekliyor: INSTAGRAM_ACCESS_TOKEN",
+      activationStep: process.env.INSTAGRAM_ACCESS_TOKEN?.trim()
+        ? undefined
+        : "Meta Developer → long-lived INSTAGRAM_ACCESS_TOKEN",
     },
   ];
 

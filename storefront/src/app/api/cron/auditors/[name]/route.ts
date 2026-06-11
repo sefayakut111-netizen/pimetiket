@@ -2,9 +2,9 @@
  * GET /api/cron/auditors/[name]
  *
  * Vercel Cron tetikleyici. vercel.json'da schedule tanımlı:
- *   - /api/cron/auditors/security       (saatlik)
- *   - /api/cron/auditors/finance        (günlük 09:00)
- *   - /api/cron/auditors/workflow       (4 saatlik)
+ *   - /api/cron/auditors/security       (günlük 01:00 UTC)
+ *   - /api/cron/auditors/finance        (günlük 06:00 UTC)
+ *   - /api/cron/auditors/workflow       (günlük 05:00 UTC)
  *   - ... (Adım 5-7'de gelecek)
  *
  * Güvenlik:

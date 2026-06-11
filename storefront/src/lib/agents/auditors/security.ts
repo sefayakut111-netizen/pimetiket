@@ -1,7 +1,7 @@
 /**
  * SecurityAuditor — 🛡️ Sistem Güvenliği Denetçisi
  *
- * Saatlik çalışır. 5 kontrol alanı:
+ * Günlük 01:00 UTC cron. 5 kontrol alanı:
  *
  *   A. Brute force tespit (auth audit log)
  *   B. PayTR webhook spoof attempt (hash invalid sayısı)
@@ -29,17 +29,17 @@ import * as Sentry from "@sentry/nextjs";
 // Tunables — istersen DB tablosuna taşınabilir (Sefa karar verir)
 // ============================================================
 const TUNE = {
-  /** Aynı IP'den son N dakikada başarısız giriş eşiği */
+  /** Aynı IP'den son 24 saatte başarısız giriş eşiği */
   bruteForceFailedLoginsThreshold: 10,
-  bruteForceWindowMinutes: 15,
+  bruteForceWindowMinutes: 24 * 60,
 
-  /** PayTR webhook hash invalid eşiği son 1 saat */
+  /** PayTR webhook hash invalid eşiği son 24 saat */
   paytrSpoofThreshold: 5,
-  paytrSpoofWindowMinutes: 60,
+  paytrSpoofWindowMinutes: 24 * 60,
 
-  /** Yeni hesap kayıt hızı (saatlik) */
+  /** Yeni hesap kayıt hızı (günlük pencere) */
   newAccountThreshold: 50,
-  newAccountWindowMinutes: 60,
+  newAccountWindowMinutes: 24 * 60,
 
   /** Service role kullanım eşiği (saatlik) */
   serviceRoleAnomalyMultiplier: 3, // ortalamanın 3× üstü
@@ -157,7 +157,7 @@ export class SecurityAuditor extends AuditorBase {
       return this.critical(
         "brute_force",
         `${row.ip} → ${row.count} başarısız giriş`,
-        `Son ${TUNE.bruteForceWindowMinutes} dakikada **${row.ip}** IP'sinden **${row.email}** hesabına ${row.count} başarısız giriş denemesi yapıldı. Brute force pattern'i.`,
+        `Son 24 saatte **${row.ip}** IP'sinden **${row.email}** hesabına ${row.count} başarısız giriş denemesi yapıldı. Brute force pattern'i.`,
         {
           ip: row.ip,
           email: row.email,
@@ -203,7 +203,7 @@ export class SecurityAuditor extends AuditorBase {
       type: "notify_sefa",
       payload: {
         subject: "PayTR webhook spoof denemesi tespit",
-        message: `Son ${TUNE.paytrSpoofWindowMinutes} dakikada ${rows.length} adet hash_invalid POST geldi. Saldırı veya yanlış config olabilir.\n\nÖrnek intent ID'ler: ${rows.slice(0, 5).map((r) => r.id).join(", ")}`,
+        message: `Son 24 saatte ${rows.length} adet hash_invalid POST geldi. Saldırı veya yanlış config olabilir.\n\nÖrnek intent ID'ler: ${rows.slice(0, 5).map((r) => r.id).join(", ")}`,
         urgency: "warning",
       },
       title: "PayTR spoof denemesi bildirimi gönder",
@@ -214,7 +214,7 @@ export class SecurityAuditor extends AuditorBase {
       this.warning(
         "paytr_spoof",
         `${rows.length} PayTR webhook spoof denemesi`,
-        `Son ${TUNE.paytrSpoofWindowMinutes} dakikada **${rows.length}** adet PayTR webhook'una **hash_invalid** ile POST geldi. Normalde 0-1 arası olmalı. Saldırı veya yanlış secret olabilir.`,
+        `Son 24 saatte **${rows.length}** adet PayTR webhook'una **hash_invalid** ile POST geldi. Normalde 0-1 arası olmalı. Saldırı veya yanlış secret olabilir.`,
         {
           count: rows.length,
           windowMinutes: TUNE.paytrSpoofWindowMinutes,
@@ -244,7 +244,7 @@ export class SecurityAuditor extends AuditorBase {
       type: "notify_sefa",
       payload: {
         subject: "Bot kayıt saldırısı şüphesi",
-        message: `Son ${TUNE.newAccountWindowMinutes} dakikada ${count} yeni hesap kaydı oluştu. Bu normalin çok üstünde — bot saldırısı olabilir.\n\nÖneri: /admin/musteriler altında son kayıtları incele, şüpheliler için lock_admin_account aksiyonu kullan.`,
+        message: `Son 24 saatte ${count} yeni hesap kaydı oluştu. Bu normalin çok üstünde — bot saldırısı olabilir.\n\nÖneri: /admin/musteriler altında son kayıtları incele, şüpheliler için lock_admin_account aksiyonu kullan.`,
         urgency: "critical",
       },
       title: "Bot kayıt saldırısı bildirimi",
@@ -254,7 +254,7 @@ export class SecurityAuditor extends AuditorBase {
     return [
       this.critical(
         "new_account_flood",
-        `${count} yeni hesap son ${TUNE.newAccountWindowMinutes} dakikada`,
+        `${count} yeni hesap son 24 saatte`,
         `Pim Etiket normalde saatte 1-5 yeni kayıt alır. Bu pencerede **${count}** yeni hesap oluştu. Captcha bypass veya bot saldırısı belirtisi.`,
         {
           count,

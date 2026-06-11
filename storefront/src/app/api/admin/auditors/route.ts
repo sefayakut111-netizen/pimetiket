@@ -75,7 +75,7 @@ export async function GET() {
   const rows = (runsData ?? []) as unknown as LatestRunViewRow[];
   const runMap = new Map(rows.map((r) => [r.auditor_name, r]));
 
-  // 9 agent için sıralı çıktı (boş olanlar default kayıtla)
+  // 10 agent için sıralı çıktı (boş olanlar default kayıtla)
   const auditors: AuditorLatestRunSummary[] = AUDITOR_NAMES.map(
     (name: AuditorName) => {
       const row = runMap.get(name);

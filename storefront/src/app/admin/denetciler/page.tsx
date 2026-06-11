@@ -1,11 +1,11 @@
 /**
  * /admin/denetciler — Domain denetçi agent dashboard'u
  *
- * Sefa kuralı (16 May v3): 9 agent için tek bakış noktası.
+ * Sefa kuralı (16 May v3): 10 agent için tek bakış noktası.
  *
  * Layout:
  *   - Üst: pending action özet bar (kritik onaylar varsa kırmızı)
- *   - Orta: 9 kart grid (her agent için durum)
+ *   - Orta: 10 kart grid (her agent için durum)
  *   - Alt: son 24 saat aktivite timeline (Adım 8'de gelecek)
  *
  * Adım 2'de: kartlar boş olabilir (henüz hiçbir agent çalışmadı).
@@ -48,66 +48,87 @@ function severityChipClass(critical: number, warning: number) {
   return "bg-yesil-soft/40 text-yesil ring-yesil/30";
 }
 
-// vercel.json'daki cron schedule'ı insan-okunur metne çevir
+// vercel.json cron schedule (UTC) → TR etiket (UTC+3) + UTC bazlı next-run
 const CRON_SCHEDULE: Record<string, { label: string; nextRun: () => string }> = {
   security: {
-    label: "Günlük 01:00",
-    nextRun: () => nextDailyAt(1, 0),
+    label: "Günlük 04:00 TR",
+    nextRun: () => nextDailyAtUtc(1, 0),
   },
   finance: {
-    label: "Z-raporu · Gece 00:00",
-    nextRun: () => nextDailyAt(0, 0),
+    label: "Z-raporu · 09:00 TR",
+    nextRun: () => nextDailyAtUtc(6, 0),
   },
   workflow: {
-    label: "Günlük 05:00",
-    nextRun: () => nextDailyAt(5, 0),
+    label: "Günlük 08:00 TR",
+    nextRun: () => nextDailyAtUtc(5, 0),
   },
   ai_cost: {
-    label: "Günlük 09:30",
-    nextRun: () => nextDailyAt(9, 30),
+    label: "Günlük 12:30 TR",
+    nextRun: () => nextDailyAtUtc(9, 30),
   },
   compliance: {
-    label: "Günlük 10:00",
-    nextRun: () => nextDailyAt(10, 0),
+    label: "Günlük 13:30 TR",
+    nextRun: () => nextDailyAtUtc(10, 30),
   },
   data_hygiene: {
-    label: "Pazar 03:00",
-    nextRun: () => nextWeeklyAt(0, 3, 0),
+    label: "Pazar 06:00 TR",
+    nextRun: () => nextWeeklyAtUtc(0, 3, 0),
   },
   customer_health: {
-    label: "Pazartesi 10:00",
-    nextRun: () => nextWeeklyAt(1, 10, 0),
+    label: "Pazartesi 13:00 TR",
+    nextRun: () => nextWeeklyAtUtc(1, 10, 0),
   },
   seo: {
-    label: "Çarşamba 11:00",
-    nextRun: () => nextWeeklyAt(3, 11, 0),
+    label: "Çarşamba 14:00 TR",
+    nextRun: () => nextWeeklyAtUtc(3, 11, 0),
   },
   brand: {
-    label: "Cuma 14:00",
-    nextRun: () => nextWeeklyAt(5, 14, 0),
+    label: "Cuma 17:00 TR",
+    nextRun: () => nextWeeklyAtUtc(5, 14, 0),
   },
   app_health: {
-    label: "Günlük 06:00 UTC",
-    nextRun: () => nextDailyAt(6, 0),
+    label: "Günlük 09:00 TR",
+    nextRun: () => nextDailyAtUtc(6, 0),
   },
 };
 
-function nextDailyAt(hour: number, minute: number): string {
+function nextDailyAtUtc(hour: number, minute: number): string {
   const now = new Date();
-  const next = new Date();
-  next.setHours(hour, minute, 0, 0);
-  if (next <= now) next.setDate(next.getDate() + 1);
-  const diffMs = next.getTime() - now.getTime();
-  return formatDiff(diffMs);
+  const next = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      hour,
+      minute,
+      0,
+      0
+    )
+  );
+  if (next.getTime() <= now.getTime()) {
+    next.setUTCDate(next.getUTCDate() + 1);
+  }
+  return formatDiff(next.getTime() - now.getTime());
 }
 
-function nextWeeklyAt(weekday: number, hour: number, minute: number): string {
+function nextWeeklyAtUtc(weekday: number, hour: number, minute: number): string {
   const now = new Date();
-  const next = new Date();
-  next.setHours(hour, minute, 0, 0);
-  const daysUntil = (weekday - now.getDay() + 7) % 7;
-  next.setDate(now.getDate() + daysUntil);
-  if (next <= now) next.setDate(next.getDate() + 7);
+  const next = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      hour,
+      minute,
+      0,
+      0
+    )
+  );
+  let daysUntil = (weekday - now.getUTCDay() + 7) % 7;
+  if (daysUntil === 0 && next.getTime() <= now.getTime()) {
+    daysUntil = 7;
+  }
+  next.setUTCDate(next.getUTCDate() + daysUntil);
   return formatDiff(next.getTime() - now.getTime());
 }
 
@@ -379,7 +400,7 @@ export default function DenetcilerDashboardPage() {
                   ? "bg-gri-100 text-gri-500 cursor-not-allowed"
                   : "bg-white ring-1 ring-gri-200 text-lacivert hover:ring-pim-mercan"
               )}
-              title="9 agent özetini içeren günlük brifing mailini şimdi at"
+              title="10 agent özetini içeren günlük brifing mailini şimdi at"
             >
               {sendingDigest ? "Gonder..." : "Digest gonder"}
             </button>
@@ -467,7 +488,7 @@ export default function DenetcilerDashboardPage() {
           </Card>
         )}
 
-        {/* 9 agent grid */}
+        {/* 10 agent grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {auditors.map((a) => {
             const isEmpty = !a.latestRunId;

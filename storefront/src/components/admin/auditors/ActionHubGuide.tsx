@@ -3,7 +3,7 @@
  *
  * Sefa 17 May: "orada bulunan hataların aksiyonunu nereden yapmamız lazım?"
  *
- * 9 agent kümülatif olarak bulgular üretiyor. Aksiyon hub hiyerarşisi:
+ * 10 agent kümülatif olarak bulgular üretiyor. Aksiyon hub hiyerarşisi:
  *
  *   1. Dashboard            — Genel bakış (bu sayfa)
  *   2. /bekleyen            — Senin onayını bekleyen aksiyonlar (kritik)

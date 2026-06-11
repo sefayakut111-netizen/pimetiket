@@ -102,3 +102,56 @@ export async function isAutoRefundCronHealthy(
 
   return Date.now() - new Date(ts).getTime() < AUTO_REFUND_MAX_AGE_MS;
 }
+
+export interface CronStaleEntry {
+  name: string;
+  label: string;
+  lastSuccessAt: string | null;
+  maxStaleMs: number;
+}
+
+/** CRON_REGISTRY schedule'dan tolerans (ms) — günlük 26h, haftalık 8g, aylık 35g */
+export function maxStaleMsFromSchedule(schedule: string): number {
+  const parts = schedule.trim().split(/\s+/);
+  if (parts.length < 5) return 26 * 3_600_000;
+  const [, , dom, , dow] = parts;
+  if (dom !== "*") return 35 * 86_400_000;
+  if (dow !== "*") return 8 * 86_400_000;
+  return 26 * 3_600_000;
+}
+
+/** Son başarılı cron_runs kaydı toleransı aşan registry girdileri */
+export async function findStaleCrons(
+  admin: SupabaseClient
+): Promise<CronStaleEntry[]> {
+  const stale: CronStaleEntry[] = [];
+
+  for (const entry of CRON_REGISTRY) {
+    const maxStaleMs = maxStaleMsFromSchedule(entry.schedule);
+    const cutoff = new Date(Date.now() - maxStaleMs).toISOString();
+
+    const { data: runs } = await admin
+      .from("cron_runs")
+      .select("status, started_at, finished_at")
+      .eq("cron_name", entry.name)
+      .eq("status", "success")
+      .order("started_at", { ascending: false })
+      .limit(1);
+
+    const last = (runs ?? [])[0] as
+      | { started_at?: string; finished_at?: string | null }
+      | undefined;
+    const lastTs = last?.finished_at ?? last?.started_at ?? null;
+
+    if (!lastTs || lastTs < cutoff) {
+      stale.push({
+        name: entry.name,
+        label: entry.label,
+        lastSuccessAt: lastTs,
+        maxStaleMs,
+      });
+    }
+  }
+
+  return stale;
+}

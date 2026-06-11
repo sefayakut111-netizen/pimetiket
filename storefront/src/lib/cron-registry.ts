@@ -19,6 +19,7 @@ export const CRON_REGISTRY = [
   { name: "admin-daily-summary", schedule: "0 6 * * *", label: "Günlük özet" },
   { name: "fason-deadline-reminder", schedule: "0 6 * * *", label: "Fason teslim hatırlatma" },
   { name: "auditors-daily-digest", schedule: "0 8 * * *", label: "Denetçi rapor" },
+  { name: "instagram-sync", schedule: "0 7 * * *", label: "Instagram feed sync" },
   { name: "auditors-ai_cost", schedule: "30 9 * * *", label: "Denetçi: AI maliyet" },
   { name: "auditors-compliance", schedule: "30 10 * * *", label: "Denetçi: uyumluluk" },
   { name: "detect-abandoned-carts", schedule: "0 10 * * *", label: "Terk sepet" },

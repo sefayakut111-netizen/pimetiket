@@ -4,7 +4,8 @@
  * Haftalık Çarşamba 11:00. Görünürlük + teknik SEO kontrolleri.
  *
  * Kontroller: sitemap (+ malzeme landing URL'leri), blog hacmi, yasal sayfalar,
- * llms.txt, robots (AI retrieval), Search Console env, sitemap ping (Google/Bing).
+ * llms.txt, robots (AI retrieval), Search Console env.
+ * IndexNow/GSC ping yalnız seo-indexing cron'unda (çifte ping önlenir).
  *
  * NOT: GSC Performance API (sorgu/tıklama) OAuth gerektirir — ayrı faz.
  */
@@ -12,7 +13,6 @@
 import { AuditorBase } from "../_shared/base";
 import type { AuditorFinding, AuditorRunResult } from "../_shared/types";
 import { MATERIAL_SLUGS } from "@/lib/seo/materials";
-import { pingAllSearchEngines } from "@/lib/seo/search-engine-ping";
 import { fetchGscTopQueries } from "@/lib/seo/gsc-performance";
 import { getSiteUrl } from "@/lib/site-url";
 import { getSiteImage } from "@/lib/site-images";
@@ -78,12 +78,6 @@ export class SeoAuditor extends AuditorBase {
     const pwaIcons = await this.checkPwaIcons();
     findings.push(...pwaIcons.findings);
     metrics.pwaIcons = pwaIcons.metrics;
-
-    if (sitemap.metrics.reachable) {
-      const ping = await this.pingSearchEngines();
-      findings.push(...ping.findings);
-      metrics.sitemapPing = ping.metrics;
-    }
 
     const counts = countFindings(findings);
     return {
@@ -503,46 +497,6 @@ export class SeoAuditor extends AuditorBase {
       );
     }
     return { findings, metrics: { total: paths.length, broken: broken.length } };
-  }
-
-  private async pingSearchEngines() {
-    const findings: AuditorFinding[] = [];
-    if (process.env.SEO_SKIP_SITEMAP_PING === "1") {
-      return { findings, metrics: { skipped: true } };
-    }
-    const results = await pingAllSearchEngines();
-    for (const r of results) {
-      const deprecated = r.status === 404 || r.status === 410;
-      if (r.ok) {
-        findings.push(
-          this.info(
-            `sitemap_ping_${r.engine}`,
-            `${r.engine} sitemap ping ✓`,
-            `HTTP ${r.status} — ${r.detail.slice(0, 80)}`,
-            { status: r.status }
-          )
-        );
-      } else if (deprecated) {
-        findings.push(
-          this.info(
-            `sitemap_ping_${r.engine}_deprecated`,
-            `${r.engine} legacy ping kapalı (HTTP ${r.status})`,
-            "Google/Bing ping endpoint'leri kaldırıldı. Search Console → Sitemaps → `sitemap.xml` manuel gönder / yenile.",
-            { status: r.status }
-          )
-        );
-      } else {
-        findings.push(
-          this.warning(
-            `sitemap_ping_${r.engine}_failed`,
-            `${r.engine} sitemap ping başarısız`,
-            `HTTP ${r.status} — ${r.detail}`,
-            { status: r.status }
-          )
-        );
-      }
-    }
-    return { findings, metrics: { results } };
   }
 }
 

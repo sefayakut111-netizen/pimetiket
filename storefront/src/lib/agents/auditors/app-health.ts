@@ -1,11 +1,12 @@
 /**
  * AppHealthAuditor — 🩺 Uygulama Sağlığı (smoke + sipariş anomali)
  *
- * Günde 2 kez çalışır. E2E değil — kritik endpoint'ler + DB state anomali.
+ * Günlük 06:00 UTC cron. E2E değil — kritik endpoint'ler + DB state anomali.
  *
  * A) Endpoint health (müşteri + pricing + admin query)
  * B) Sipariş akışı stuck tespiti
- * C) R2 yedek sentinel (opsiyonel)
+ * C) R2 yedek sentinel
+ * D) CRON_REGISTRY staleness (cron_runs)
  */
 
 import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
@@ -16,6 +17,8 @@ import type {
   AuditorRunResult,
   Severity,
 } from "../_shared/types";
+import { getAuditorNotifyEmails } from "@/lib/admin-recipients";
+import { findStaleCrons } from "@/lib/cron-health";
 import { getSiteUrl } from "@/lib/site-url";
 import { isResendConfigured, sendMail } from "@/lib/mail/resend";
 import type { ScopeName } from "@/lib/pricing-config-types";
@@ -69,6 +72,10 @@ export class AppHealthAuditor extends AuditorBase {
     const backup = await this.checkBackupSentinel();
     findings.push(...backup.findings);
     metrics.backup = backup.metrics;
+
+    const cronStale = await this.checkCronStaleness();
+    findings.push(...cronStale.findings);
+    metrics.cronStaleness = cronStale.metrics;
 
     const counts = countBySeverity(findings);
     const summary =
@@ -295,20 +302,58 @@ export class AppHealthAuditor extends AuditorBase {
     return { findings, metrics };
   }
 
+  private async checkCronStaleness() {
+    const findings: AuditorFinding[] = [];
+    const stale = await findStaleCrons(this.admin);
+
+    for (const entry of stale) {
+      const hours = Math.round(entry.maxStaleMs / 3_600_000);
+      findings.push(
+        this.critical(
+          "cron_stale",
+          `${entry.label} cron'u çalışmıyor`,
+          `**${entry.name}** son ${hours} saat içinde başarılı cron_runs kaydı yok. Son başarı: ${entry.lastSuccessAt ?? "hiç"}.`,
+          {
+            cronName: entry.name,
+            label: entry.label,
+            lastSuccessAt: entry.lastSuccessAt,
+            maxStaleHours: hours,
+          }
+        )
+      );
+    }
+
+    return {
+      findings,
+      metrics: { staleCount: stale.length, staleNames: stale.map((s) => s.name) },
+    };
+  }
+
   private async checkBackupSentinel() {
     const findings: AuditorFinding[] = [];
-    const accountId =
-      process.env.R2_BACKUP_ACCOUNT_ID ?? process.env.R2_ACCOUNT_ID;
-    const accessKey =
-      process.env.R2_BACKUP_ACCESS_KEY_ID ?? process.env.R2_ACCESS_KEY_ID;
-    const secretKey =
-      process.env.R2_BACKUP_SECRET_ACCESS_KEY ?? process.env.R2_SECRET_ACCESS_KEY;
+    const accountId = process.env.R2_BACKUP_ACCOUNT_ID?.trim();
+    const accessKey = process.env.R2_BACKUP_ACCESS_KEY_ID?.trim();
+    const secretKey = process.env.R2_BACKUP_SECRET_ACCESS_KEY?.trim();
     const bucket = process.env.R2_BACKUP_BUCKET ?? "pimetiket-backups";
 
     if (!accountId || !accessKey || !secretKey) {
+      findings.push(
+        this.warning(
+          "backup_env_missing",
+          "DR yedeği izlenemiyor — backup env eksik",
+          "R2_BACKUP_ACCOUNT_ID, R2_BACKUP_ACCESS_KEY_ID ve R2_BACKUP_SECRET_ACCESS_KEY tanımlı değil — yedek sentinel devre dışı.",
+          {
+            required: [
+              "R2_BACKUP_ACCOUNT_ID",
+              "R2_BACKUP_ACCESS_KEY_ID",
+              "R2_BACKUP_SECRET_ACCESS_KEY",
+            ],
+          }
+        )
+      );
       return {
         findings,
-        metrics: { configured: false, skipped: true },
+        metrics: { configured: false, envMissing: true },
       };
     }
 
@@ -514,10 +559,7 @@ export async function sendDedupedAppHealthMail(
     if (prevFp === fp) return false;
   }
 
-  const recipients = (process.env.ADMIN_NOTIFICATION_EMAIL ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.includes("@"));
+  const recipients = await getAuditorNotifyEmails();
 
   if (recipients.length === 0 || !isResendConfigured()) return false;
 

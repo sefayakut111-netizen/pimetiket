@@ -1,7 +1,7 @@
 /**
  * GET /api/cron/auditors/daily-digest
  *
- * Sefa için TEK mail — tüm 9 agent'ın son run özetini birleştirir.
+ * Sefa için TEK mail — tüm 10 agent'ın son run özetini birleştirir.
  *
  * Cron: günlük sabah 08:00 (finance + ai_cost + compliance'den önce).
  *
@@ -28,6 +28,7 @@ import {
   type RunStatus,
 } from "@/lib/agents/_shared/types";
 import { unsnoozeExpiredActions } from "@/lib/agents/_shared/unsnooze";
+import { getAuditorNotifyEmails } from "@/lib/admin-recipients";
 
 /** Bu süreden uzun çalışmayan denetçiler stale sayılır */
 const STALE_AUDITOR_DAYS = 7;
@@ -100,7 +101,7 @@ export async function GET(req: Request) {
   const rows = (data ?? []) as unknown as LatestRunRow[];
   const runMap = new Map(rows.map((r) => [r.auditor_name, r]));
 
-  // 9 agent için sıralı liste
+  // 10 agent için sıralı liste
   const summaries: AuditorLatestRunSummary[] = AUDITOR_NAMES.map((name) => {
     const r = runMap.get(name);
     return {
@@ -162,10 +163,7 @@ export async function GET(req: Request) {
         };
       }
 
-      const recipients = (process.env.AUDITOR_NOTIFY_EMAILS ?? "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s.includes("@"));
+      const recipients = await getAuditorNotifyEmails();
 
       if (recipients.length === 0) {
         return {

@@ -1,7 +1,7 @@
 /**
  * WorkflowAuditor — ⚙️ İş Akışı Uzmanı
  *
- * 4 saatlik çalışır. Operasyon darboğazlarını yakalar.
+ * Günlük 05:00 UTC cron. Operasyon darboğazlarını yakalar.
  *
  * 5 kontrol:
  *   A. Status takılıkları (proof_generating > 6h, human_review > 48h)
