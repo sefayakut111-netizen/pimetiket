@@ -1,1 +1,0 @@
-`@CURSOR-GOREVLER-ONAY-SAYFASI-V2.md` bu dosyadaki 6 sorunu önce düzelt, sonra `@CURSOR-GOREVLER-ONAY-SAYFASI.md` dosyasındaki kalan görevleri sırayla uygula. Genel UX/UI analizini de (A-E bölümü) yap, sorun bulursan düzelt.

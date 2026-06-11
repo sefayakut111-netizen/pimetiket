@@ -1,1 +1,0 @@
-`@CURSOR-GOREVLER-TASARIM-YONETIMI.md` bu dosyadaki görevleri sırayla uygula. Görev 1'den başla. Ayrıca `@CURSOR-GOREVLER-TASARIM-PROMOTE-FIX.md` dosyasındaki debug adımlarını da önce uygula — designTempId'nin nerede koptuğunu bul ve düzelt.
