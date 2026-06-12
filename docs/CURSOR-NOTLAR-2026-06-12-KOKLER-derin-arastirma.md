@@ -14,7 +14,10 @@
 ### Choke-point gerçeği
 Kod tabanında **3 idiom bir arada**: row `FOR UPDATE` (ödeme/kupon/fason RPC'leri), partial unique index (refund/returns/fason-assign/outbox), lock-free CAS (`fn_finalize_proof`'ta `UPDATE...WHERE status=... + ROW_COUNT`). Desen **evde var ama tutarsız uygulanıyor.**
 
-### ⚠️ İki YIKICI TOCTOU (yeni — tek `.eq()` yetmez, transaction/RPC gerekir)
+### 🔴🔴 EN KRİTİK TOCTOU — denetçi aksiyon execute'u (para/sipariş mutasyonu çift çalışıyor)
+- **`agents/_shared/proposal.ts:141-178` + `admin/auditors/pending/[id]/decide:185`:** `pending.status==="approved"` okunur → **yan-etki handler'ı ÇALIŞIR** (`:141` — sipariş iptal / intent expire / kupon uzatma = para/sipariş mutasyonu) → status SONRA yazılır (`:178`), claim yok. İki eşzamanlı execute handler'ı **ÇİFT çalıştırır** → çift iptal/iade/kupon-uzatma. (Tekil handler'lardan `cancel-no-design` kendi `.eq("status","paid")` CAS'iyle kısmen korunuyor ama `extend-coupon-expiry` korumasız → çift-uzatma.) **Çözüm:** execute öncesi `approved→executing` CAS claim veya `withAdvisoryLock("auditor-action:"+id, {skipIfLocked})`. Bu, KÖK-1+KÖK-4'ün birleşik en yüksek-etki noktası.
+
+### ⚠️ İki YIKICI TOCTOU (tek `.eq()` yetmez, transaction/RPC gerekir)
 - **`admin/staff/[userId]/route.ts:93` (PATCH) + `:162` (DELETE):** "son super_admin" invariant'ı (count≤1 kontrolü) ile demote/sil arası yarış → iki eşzamanlı demote **sıfır super_admin** bırakıp tüm sistemi kilitleyebilir. App-level read-then-write; **transactional RPC** gerekir. (KRİTİK — kalıcı yetki kaybı)
 - **`admin/kvkk-requests/[id]/process/route.ts:132`:** yıkıcı yan-etkiler (storage purge, chat delete) status UPDATE'inden **ÖNCE** çalışıyor → çift-process veriyi **iki kez siler**. `.eq("status", row.status)` + 0 satırda yan-etki iptali. (KRİTİK — geri dönüşsüz)
 
@@ -118,6 +121,10 @@ Silme/promote/arşiv adımlarını **idempotent + doğrulamalı** yap: fiziksel 
 - `resume-order-pipeline.ts:24` `lastResumeAt` cooldown → çift QC schedule.
 - (Cache'ler benign: pricing-config, pricebook, maintenance.)
 
+### Idempotency iddia eden ama korumasız (yeni)
+- **`loyalty/reprint-coupon/route.ts:74-92`:** docstring "idempotent" der ama `coupons.description`'da unique index YOK (yalnız non-unique `coupons_code_idx`) → iki paralel istek aynı sipariş için **2 reprint kuponu = çift indirim** (para). → `coupons(source_order_id) where kind='reprint'` kolonu+partial unique + 23505 yakala.
+- **`me/returns:75-89`:** DB unique (Mig 125) var ama kodda 23505 yakalanmıyor → yarışta 409 yerine generic 500.
+
 ### Eksik/doğrulanacak unique index
 - **MISSING:** `cron_runs` `(cron_name) WHERE status='running'` — KÖK-4'ün ana kökü.
 - **`order_events`** idempotency key yok ("constraint" migration'ları yalnız event_type CHECK'i) → çift status event.
@@ -171,6 +178,7 @@ Silme/promote/arşiv adımlarını **idempotent + doğrulamalı** yap: fiziksel 
 | # | Altyapı | Kapattığı | Etki |
 |---|---|---|---|
 | 1 | **`fn_transition_order_status` chokepoint** (KÖK-2) | 27 yazar + 17 TOCTOU + matris-dışı geçiş + event drift | 🔴 Çekirdek akış |
+| 1b | **Denetçi execute claim** (`proposal.ts` — `approved→executing` CAS / advisory lock) | çift iptal/iade/kupon-uzatma | 🔴 Para — tek nokta, tüm auditor aksiyonları |
 | 2 | **`withCronRun`'a advisory lock** (KÖK-4) | 22 cron tek-instance | 🟠 Tüm arka plan |
 | 3 | **`casUpdate` helper + CI grep-guard** (KÖK-1) | ~48 TOCTOU (orders dışı: archive/restore/qc/idempotency) | 🟠 Veri bütünlüğü |
 | 4 | **Guard choke-point'leri** (KÖK-5) | mail/AI/magic-byte/meta bypass'ları | 🟠 Güvenlik+para |
