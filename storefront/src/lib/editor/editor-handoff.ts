@@ -30,9 +30,11 @@ export interface PocCutlineMeta {
 
 export interface PocEditorSavedPayload {
   type: "pim-editor-saved";
-  svg: string;
-  meta: PocCutlineMeta;
-  preview_png_base64: string | null;
+  svg?: string;
+  meta?: PocCutlineMeta;
+  preview_png_base64?: string | null;
+  error?: boolean;
+  reason?: string;
 }
 
 export interface PocDesignFilePayload {

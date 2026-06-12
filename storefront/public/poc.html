@@ -1944,10 +1944,11 @@ const PIM_PARAMS = (() => {
       embeddedCutline: sp.get('embeddedCutline'),
       embeddedSource: sp.get('embeddedSource'),
       editorShell: sp.get('editorShell') === '1',
+      bridgeTest: sp.get('bridgeTest') || '',
       layers: (sp.get('layers') || '').split(',').filter(Boolean),
     };
   } catch (e) {
-    return { headless: false, autoSave: false, embed: false, standalone: false, hideUpload: false, lockMaterial: false, hideDpi: false, partnerMode: false, orderWidthMm: 0, orderHeightMm: 0, mode: 'contour', embeddedCutline: null, embeddedSource: null };
+    return { headless: false, autoSave: false, embed: false, standalone: false, hideUpload: false, lockMaterial: false, hideDpi: false, partnerMode: false, orderWidthMm: 0, orderHeightMm: 0, mode: 'contour', embeddedCutline: null, embeddedSource: null, bridgeTest: '' };
   }
 })();
 
@@ -2138,6 +2139,55 @@ function pimPostToParent(payload) {
   } catch (e) {
     /* sessiz fail */
   }
+}
+
+function pimReportCutlineAutoFailed(reason, retryable) {
+  if (!PIM_PARAMS.editorShell && !PIM_PARAMS.standalone && !PIM_PARAMS.embed) return;
+  pimPostToParent({
+    type: 'pim-cutline-auto-failed',
+    reason,
+    error: reason,
+    retryable: retryable !== false,
+  });
+}
+
+function pimReportPocLoadFailed(reason, retryable) {
+  if (!PIM_PARAMS.editorShell && !PIM_PARAMS.standalone) return;
+  pimPostToParent({
+    type: 'pim-poc-load-failed',
+    reason,
+    retryable: !!retryable,
+  });
+}
+
+function pimPostEditorSavedError(reason) {
+  pimPostToParent({
+    type: 'pim-editor-saved',
+    error: true,
+    reason,
+  });
+}
+
+let pimPendingHandleFile = null;
+
+function pimTryFlushPendingHandleFile() {
+  if (!pimPendingHandleFile) return;
+  const file = pimPendingHandleFile;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const isPdf = file.type === 'application/pdf' || ext === 'pdf';
+  const isAi = ext === 'ai';
+  const isPsd = ext === 'psd' || file.type === 'image/vnd.adobe.photoshop';
+  if (!cvReady) return;
+  if (isPsd && typeof agPsd === 'undefined') return;
+  if ((isPdf || isAi) && !pdfJsReady) return;
+  pimPendingHandleFile = null;
+  void handleFile(file);
+}
+
+function pimQueuePendingHandleFile(file, reason) {
+  pimPendingHandleFile = file;
+  hideLoading();
+  pimReportPocLoadFailed(reason, true);
 }
 
 // Parent'tan komut dinle (layer toggle vb)
@@ -2419,7 +2469,10 @@ function pimEditorDefaultPlacement() {
 
 function pimNotifyCutlineReady() {
   if (!PIM_PARAMS.editorShell && !PIM_PARAMS.standalone && !PIM_PARAMS.embed) return;
-  if (!currentPaths || currentPaths.length === 0) return;
+  if (!currentPaths || currentPaths.length === 0) {
+    pimReportCutlineAutoFailed('0-path', true);
+    return;
+  }
   pimPostToParent({
     type: 'pim-cutline-ready',
     pathCount: currentPaths.length,
@@ -2530,10 +2583,31 @@ async function pimAutoLoadDesign() {
 function pimEmitPocReady() {
   pimPostToParent({ type: 'pim-poc-ready' });
 }
+function pimRunBridgeTestHook() {
+  if (PIM_PARAMS.bridgeTest !== 'zero-path' || !PIM_PARAMS.editorShell) return;
+  pimPostToParent({
+    type: 'pim-poc-loaded',
+    source: 'raster',
+    width: 100,
+    height: 100,
+    canRemoveBg: false,
+    fileName: 'bridge-test.png',
+  });
+  pimReportCutlineAutoFailed('0-path', true);
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', pimEmitPocReady);
+  document.addEventListener('DOMContentLoaded', () => {
+    pimEmitPocReady();
+    if (PIM_PARAMS.bridgeTest === 'zero-path') {
+      setTimeout(pimRunBridgeTestHook, 50);
+    }
+  });
 } else {
   pimEmitPocReady();
+  if (PIM_PARAMS.bridgeTest === 'zero-path') {
+    setTimeout(pimRunBridgeTestHook, 50);
+  }
 }
 let pimReadyRetryCount = 0;
 const pimReadyRetryTimer = setInterval(() => {
@@ -2549,6 +2623,7 @@ function onOpenCvReady() {
   if (typeof updateLibStatus === 'function') {
     updateLibStatus();
   }
+  pimTryFlushPendingHandleFile();
   // Pim entegrasyon — designUrl varsa auto-load (Sefa 22 May v68 Faz 4)
   // OpenCV + PDF + PSD hepsi ready olmasa bile raster için cvReady yeterli.
   // PDF/AI/PSD için handleFile zaten ready'i bekler ve uyarı verir.
@@ -2695,10 +2770,12 @@ async function handleFile(file) {
   }
   if (pimRejectFileSize(file)) {
     hideLoading();
+    pimReportPocLoadFailed('file_too_large', false);
     return;
   }
   if (!cvReady) {
-    showStatus('OpenCV henüz hazır değil, lütfen bekleyin...', 'warn');
+    pimQueuePendingHandleFile(file, 'opencv_not_ready');
+    showStatus('OpenCV henüz hazır değil, lütfen bekleyin...', 'block');
     return;
   }
 
@@ -2710,11 +2787,15 @@ async function handleFile(file) {
   const isImage = file.type.startsWith('image/') && !isPsd;
 
   if (pimIsUnsupportedRasterFormat(file, ext)) {
+    hideLoading();
+    pimReportPocLoadFailed('unsupported_format', false);
     showStatus('Bu formatı desteklemiyoruz — PNG veya JPG olarak kaydedip tekrar dene.', 'err');
     return;
   }
 
   if (!isPdf && !isAi && !isPsd && !isImage) {
+    hideLoading();
+    pimReportPocLoadFailed('unsupported_format', false);
     showStatus('Desteklenmeyen dosya tipi. PNG, JPG, PDF, AI veya PSD yükleyin.', 'err');
     return;
   }
@@ -2728,7 +2809,8 @@ async function handleFile(file) {
       return;
     }
     if (typeof agPsd === 'undefined') {
-      showStatus('PSD motoru henüz yükleniyor, biraz bekleyin...', 'warn');
+      pimQueuePendingHandleFile(file, 'psd_motor_not_ready');
+      showStatus('PSD motoru henüz yükleniyor, biraz bekleyin...', 'block');
       return;
     }
     void handlePsdFile(file);
@@ -2746,7 +2828,8 @@ async function handleFile(file) {
       }
     }
     if (!pdfJsReady) {
-      showStatus('PDF motoru henüz yükleniyor, biraz bekleyin...', 'warn');
+      pimQueuePendingHandleFile(file, 'pdf_motor_not_ready');
+      showStatus('PDF motoru henüz yükleniyor, biraz bekleyin...', 'block');
       return;
     }
     void handlePdfFile(file, isAi);
@@ -5210,14 +5293,20 @@ function pimIsStandaloneMode() {
 }
 
 function pimSaveToParentStandalone() {
-  if (!currentMat) return false;
+  if (!currentMat) {
+    showStatus('Önce bir görsel yükleyin', 'block');
+    pimPostEditorSavedError('no_image');
+    return false;
+  }
   if (!currentPaths || currentPaths.length === 0) {
-    showStatus('Önce bir görsel yükleyin', 'warn');
+    showStatus('Bıçak yolu üretilemedi — farklı görsel veya kesim şekli dene', 'block');
+    pimPostEditorSavedError('0-path');
     return false;
   }
   const svg = pimBuildCutlineSvg();
   if (!svg) {
     showStatus('SVG üretilemedi', 'err');
+    pimPostEditorSavedError('svg_build_failed');
     return false;
   }
   pimPostToParent({
@@ -5231,14 +5320,20 @@ function pimSaveToParentStandalone() {
 }
 
 function pimSaveToParent() {
-  if (!currentMat) return false;
+  if (!currentMat) {
+    showStatus('Önce bir görsel yükleyin', 'block');
+    pimPostEditorSavedError('no_image');
+    return false;
+  }
   if (!currentPaths || currentPaths.length === 0) {
-    showStatus('Önce bir görsel yükleyin', 'warn');
+    showStatus('Bıçak yolu üretilemedi — farklı görsel veya kesim şekli dene', 'block');
+    pimPostEditorSavedError('0-path');
     return false;
   }
   const svg = pimBuildCutlineSvg();
   if (!svg) {
     showStatus('SVG üretilemedi', 'err');
+    pimPostEditorSavedError('svg_build_failed');
     return false;
   }
   pimPostToParent({
@@ -5803,7 +5898,7 @@ function pimSaveEmbeddedCutline() {
   const pathD = PIM_PARAMS.embeddedCutline;
   if (!pathD) {
     pimAutoSaveDone = true;
-    pimPostToParent({ type: 'pim-cutline-auto-failed', error: 'no_embedded_cutline' });
+    pimReportCutlineAutoFailed('no_embedded_cutline', false);
     return;
   }
   const safeD = String(pathD).replace(/"/g, "'");
@@ -5862,14 +5957,14 @@ function pimTryAutoSave() {
 
   if (!currentPaths || currentPaths.length === 0) {
     pimAutoSaveDone = true;
-    pimPostToParent({ type: 'pim-cutline-auto-failed', error: 'no_contours' });
+    pimReportCutlineAutoFailed('no_contours', true);
     return;
   }
 
   const svg = pimBuildCutlineSvg();
   if (!svg) {
     pimAutoSaveDone = true;
-    pimPostToParent({ type: 'pim-cutline-auto-failed', error: 'svg_build_failed' });
+    pimReportCutlineAutoFailed('svg_build_failed', true);
     return;
   }
 
@@ -5927,7 +6022,9 @@ function showStatus(msg, level = 'warn') {
   // Standalone / embed — geçici bildirim için statusBox
   const box = document.getElementById('statusBox');
   if (box) {
-    box.innerHTML = `<div class="status ${level === 'err' ? 'err' : level === 'ok' ? 'ok' : 'warn'}">${msg}</div>`;
+    const statusClass =
+      level === 'err' || level === 'block' ? 'err' : level === 'ok' ? 'ok' : 'warn';
+    box.innerHTML = `<div class="status ${statusClass}">${msg}</div>`;
     setTimeout(() => runPreflight(), 3000);
   }
 }
@@ -5944,11 +6041,13 @@ function showStatus(msg, level = 'warn') {
     pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.js';
     pdfJsReady = true;
     updateLibStatus();
+    pimTryFlushPendingHandleFile();
   }
 
   function pimMarkPsdReady() {
     psdReady = true;
     updateLibStatus();
+    pimTryFlushPendingHandleFile();
   }
 
   function pimLibLoadTimedOut() {

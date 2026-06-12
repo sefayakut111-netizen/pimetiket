@@ -296,10 +296,16 @@ export default function StudioEditorClient() {
         postToPoc({ type: "pim-request-export" });
       } else if (data.type === "pim-editor-saved") {
         const payload = data as unknown as PocEditorSavedPayload;
+        if (payload.error) {
+          setCutlineStatus(
+            `Kayıt hatası: ${String(payload.reason ?? "bilinmeyen")}`
+          );
+          return;
+        }
         setState((prev) => ({
           ...prev,
-          cutlineSvg: payload.svg,
-          cutlineMeta: payload.meta,
+          cutlineSvg: payload.svg ?? null,
+          cutlineMeta: payload.meta ?? null,
         }));
         setCutlineStatus("Bıçak SVG kaydedildi (3b hazır)");
       } else if (

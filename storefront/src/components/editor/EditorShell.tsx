@@ -58,8 +58,10 @@ import {
 } from "@/components/editor/EditorBgRemovePrompt";
 import { validateEditorUploadFile } from "@/lib/editor/file-limits";
 import {
+  humanizeCutlineFailReason,
+  humanizeLoadFailReason,
   humanizePocError,
-  isKnownPocErrorCode,
+  humanizeSaveFailReason,
 } from "@/lib/editor/poc-error-messages";
 import type { PimEditorCommand } from "@/lib/editor/pim-command-schema";
 
@@ -699,34 +701,57 @@ export default function EditorShell() {
         const msg = String(data.msg ?? "");
         const level = String(data.level ?? "warn");
         if (!msg) return;
-        if (level === "err") {
+        if (level === "err" || level === "block") {
           setPocStatus({ state: "error", message: msg });
-          toast.error(msg);
+          if (level === "err") toast.error(msg);
         } else if (level === "ok") {
           setPocStatus({ state: "loaded", message: msg });
           window.setTimeout(() => setPocStatus(null), 2500);
         } else {
           setPocStatus({ state: "ready", message: msg });
         }
+      } else if (data.type === "pim-poc-load-failed") {
+        const reason = String(data.reason ?? "load_failed");
+        const retryable = Boolean(data.retryable);
+        const msg = humanizeLoadFailReason(reason);
+        if (retryable) {
+          setPocStatus({ state: "loading", message: msg });
+          setDesignLoaded(false);
+          markCutlinePending();
+        } else {
+          setPocStatus({ state: "error", message: msg });
+          toast.error(msg);
+        }
       } else if (data.type === "pim-poc-error") {
         const errMsg = String(data.error ?? "(boş)");
         console.error("[editor] poc error:", errMsg);
         const humanMsg = humanizePocError(errMsg);
-        if (designLoadedRef.current && !isKnownPocErrorCode(errMsg)) {
-          reportCutlineFailure(`${CUTLINE_FAIL_MESSAGE} (${errMsg})`);
-        } else {
-          setPocStatus({
-            state: "error",
-            message: humanMsg,
-          });
-          toast.error(humanMsg);
+        setPocStatus({ state: "error", message: humanMsg });
+        toast.error(humanMsg);
+        if (exportWaitRef.current) {
+          exportWaitRef.current(null);
+          exportWaitRef.current = null;
         }
       } else if (data.type === "pim-cutline-auto-failed") {
-        const errMsg = String(data.error ?? "kontur_uretilemedi");
-        reportCutlineFailure(`${CUTLINE_FAIL_MESSAGE} (${errMsg})`);
+        const reason = String(data.reason ?? data.error ?? "kontur_uretilemedi");
+        reportCutlineFailure(humanizeCutlineFailReason(reason));
+        if (exportWaitRef.current) {
+          exportWaitRef.current(null);
+          exportWaitRef.current = null;
+        }
       } else if (data.type === "pim-editor-saved") {
         const payload = data as unknown as PocEditorSavedPayload;
-        setPocMeta(payload.meta);
+        if (payload.error) {
+          const msg = humanizeSaveFailReason(
+            String(payload.reason ?? "save_failed")
+          );
+          exportWaitRef.current?.(null);
+          exportWaitRef.current = null;
+          setPocStatus({ state: "error", message: msg });
+          toast.error(msg);
+          return;
+        }
+        if (payload.meta) setPocMeta(payload.meta);
         exportWaitRef.current?.(payload);
         exportWaitRef.current = null;
       } else if (data.type === "pim-design-file") {
@@ -1125,7 +1150,17 @@ export default function EditorShell() {
       tempDesignId: string,
       payload: PocEditorSavedPayload
     ): Promise<string | null> => {
-      const meta = payload.meta;
+      const meta: PocCutlineMeta = payload.meta ?? {
+        source: "raster",
+        mode: "contour",
+        offset_mm: null,
+        smoothness: null,
+        dpi: null,
+        width_mm: widthMm,
+        height_mm: heightMm,
+        cutline_width_mm: null,
+        cutline_height_mm: null,
+      };
       const res = await fetch("/api/editor/save", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1169,7 +1204,7 @@ export default function EditorShell() {
         toast.error("Bıçak dışa aktarılamadı — tekrar dene");
         return;
       }
-      setPocMeta(exported.meta);
+      if (exported.meta) setPocMeta(exported.meta);
 
       const file = await requestDesignFile();
       if (!file) {
@@ -1193,8 +1228,8 @@ export default function EditorShell() {
         mimeType: uploaded.mimeType,
         sizeBytes: uploaded.sizeBytes,
         editorCutlineDraftId: resolvedDraftId,
-        widthMm: exported.meta.width_mm ?? widthMm,
-        heightMm: exported.meta.height_mm ?? heightMm,
+        widthMm: exported.meta?.width_mm ?? widthMm,
+        heightMm: exported.meta?.height_mm ?? heightMm,
       });
 
       router.push(

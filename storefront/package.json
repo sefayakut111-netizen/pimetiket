@@ -22,6 +22,7 @@
     "verify:qc-tokens": "node scripts/verify-qc-tokens.mjs",
     "verify:editor-geometry": "npx --yes tsx scripts/editor-export-geometry-regression.runner.ts",
     "verify:editor-geometry-prod": "npx --yes tsx scripts/editor-export-geometry-prod.runner.ts",
+    "verify:editor-bridge": "npx --yes tsx scripts/editor-bridge-contract.runner.ts",
     "verify:print-pdf": "npx --yes tsx scripts/print-pdf-regression.runner.ts",
     "verify:print-pdf-cache": "npx --yes tsx scripts/print-pdf-cache-regression.runner.ts",
     "verify:shipped-mail-dedup": "npx --yes tsx scripts/verify-shipped-mail-dedup.runner.ts",

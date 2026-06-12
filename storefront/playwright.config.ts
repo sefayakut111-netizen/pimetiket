@@ -98,7 +98,7 @@ export default defineConfig({
     // Konfigüratör matrisi — auth gerektirmez (public yapılandırıcı)
     {
       name: "product",
-      testMatch: /customer-(product-matrix|sarim-step-order)\.spec\.ts/,
+      testMatch: /(customer-(product-matrix|sarim-step-order)|editor-bridge-contract)\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
       },
