@@ -47,7 +47,7 @@ sonraki 8 katman/cross-cutting ekseninde, son 1 admin-only CRUD yüzeyi — böy
 | **M4** | Onay / Prova Akışı | `onay/[orderId]`, `orders/[id]/proof/*`, `lib/proof` (17), `approvals`, `finalize` | D1 D2 D5 D6 | 🔴 en yeni | ✅ **BİTTİ** (M4 notu, 12 bulgu) | **P1** |
 | **M5** | Sipariş Yaşam Döngüsü & Durum Makinesi | `orders/[id]/advance-status/cancel`, `order-events-server`, `lib/order.ts`, `customer-order.ts`, `siparis/[id]` | D1 D4 D5 D2 | 🔴 çekirdek | ✅ **BİTTİ** (M5 notu, 19 bulgu) | **P1** |
 | **M6** | Fason / Üretim Partneri | `api/partner/*`, `api/fason/*`, `admin/fason/*`, `lib/fason` (16) | D6 D1 D4 | 🔴 | ✅ **BİTTİ** (2 not + sim) | — |
-| **M7** | Kargo & Sevkiyat | `admin/shipments/*`, `lib/shipping` (5), `poll-shipments`, `tracking`, `label` | D2 D3 D4 | 🟠 | ⏳ | **P3** |
+| **M7** | Kargo & Sevkiyat | `admin/shipments/*`, `lib/shipping` (5), `poll-shipments`, `tracking`, `label` | D2 D3 D4 | 🟠 | ✅ **BİTTİ** (M7 notu, 14 bulgu) | **P3** |
 | **M8** | İade & Geri Ödeme | `api/me/returns`, `admin/returns`, `payment/refund`, `auto-refund`, `iade-talep` | D7 D4 D1 D6 | 🔴 para | ✅ **BİTTİ** (M8 notu, 17 bulgu) | **P2** |
 
 ### Katman ekseni (cross-cutting)
@@ -57,11 +57,11 @@ sonraki 8 katman/cross-cutting ekseninde, son 1 admin-only CRUD yüzeyi — böy
 | **M9** | Kimlik, Oturum & RBAC | `auth`, `mfa/2fa`, `partner otp`, `auth-bridge`, `middleware`, `role`, `assert-permission`, `admin-rbac`, `impersonate`, `staff` · **+ tüm ~120 admin route'unda `assertPermission` scope süpürmesi** | D6 D4 D3 | 🔴 | ✅ **BİTTİ** (M9 notu, 14 bulgu; RBAC süpürmesi temiz, "-" açık uç yok) | **P2** |
 | **M10** | Veritabanı Katmanı (RLS + RPC + Migration) | `supabase/migrations` (**176**, docs bayat), RLS politikaları, kritik RPC gövdeleri (`fn_*`), `types.ts` ↔ kod drift | D6 D5 D4 D7 | 🔴 **en büyük kör nokta** | ✅ **BİTTİ** (M10 notu, ~15 bulgu) | **P1** |
 | **M11** | Depolama & Dosya Zinciri (R2) | `lib/storage` (9), `r2-client`, `design-files`, `buckets`, signed URL, upload-init→complete zinciri | D2 D3 D5 D6 | 🟠 | ✅ **BİTTİ** (M11 notu, 14 bulgu) | **P2** |
-| **M12** | Mail, Bildirim & Outbox | `lib/mail` (43), `notifications.ts`, `process-mail-outbox`, `suppression`, `webhooks/resend`, `enqueue` | D4 D3 D2 | 🟠 | ⏳ | **P3** |
-| **M13** | Cron & Arka Plan İşleri | 22 cron ucu, `cron-auth`, `cron-logger`, idempotency, çift-çalışma | D4 D3 D1 | 🟠 | ⏳ | **P3** |
-| **M14** | KVKK & Veri Yaşam Döngüsü | `kvkk-requests`, `archive-inactive`, `purge-expired-designs`, `cleanup-*` cron, `lib/kvkk`, silme zinciri | D5 D6 D1 | 🟠 yasal | ⏳ | **P3** |
+| **M12** | Mail, Bildirim & Outbox | `lib/mail` (43), `notifications.ts`, `process-mail-outbox`, `suppression`, `webhooks/resend`, `enqueue` | D4 D3 D2 | 🟠 | ✅ **BİTTİ** (M12 notu, 14 bulgu) | **P3** |
+| **M13** | Cron & Arka Plan İşleri | 22 cron ucu, `cron-auth`, `cron-logger`, idempotency, çift-çalışma | D4 D3 D1 | 🟠 | ✅ **BİTTİ** (M13 notu, 15 bulgu — kök: tek-instance kilidi yok) | **P3** |
+| **M14** | KVKK & Veri Yaşam Döngüsü | `kvkk-requests`, `archive-inactive`, `purge-expired-designs`, `cleanup-*` cron, `lib/kvkk`, silme zinciri | D5 D6 D1 | 🔴 yasal | ✅ **BİTTİ** (M14 notu, 12 bulgu — DB PII silinmiyor!) | **P3** |
 | **M15** | AI / Pim Ajanları & Denetçiler | `lib/agents` (33), `pim/chat`, `design-qc`, `auditors`, `cutline-generate`, `lib/pim` (11) | D2 D3 D7 | 🟡 | ⏳ | **P4** |
-| **M16** | Dış Entegrasyon Dayanıklılığı | `http/external-timeouts`, PayTR/OpenAI/Resend/Instagram/GSC/Netgsm çağrıları — timeout/retry/circuit | D3 D4 D2 | 🟠 | ⏳ | **P3** |
+| **M16** | Dış Entegrasyon Dayanıklılığı | `http/external-timeouts`, PayTR/OpenAI/Resend/Instagram/GSC/Netgsm çağrıları — timeout/retry/circuit | D3 D4 D2 | 🟠 | ✅ **BİTTİ** (M16 notu, 12 bulgu) | **P3** |
 | **M17** | Admin İçerik / CRUD Yüzeyleri (öksüz) | `admin/blog`, `gallery`, `icerik`, `site-images`, `subscribers`, `traffic/gsc/realtime`, `product-cards` — hiçbir sipariş akışına ait olmayan admin-only CRUD | D5 D6 D2 | 🟡 (çoğu basit CRUD) | ⏳ | **P4** |
 
 > **Admin operasyonları** (akışa bağlı) ayrı modül değil — ait oldukları akış modülünde denetlenir:
