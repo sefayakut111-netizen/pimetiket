@@ -1848,6 +1848,12 @@
 let cvReady = false;
 let pdfJsReady = false;
 let psdReady = false;
+let pimCvWorker = null;
+let pimUseCvWorker = false;
+let pimCvWorkerRequests = new Map();
+let pimCvRequestId = 0;
+let pimCutlineComputeJob = 0;
+let pimPaddedCanvas = null;
 const PIM_MAX_FILE_BYTES = 30 * 1024 * 1024;
 const PIM_MAX_MEGAPIXELS = 40_000_000;
 const PIM_LIB_LOAD_TIMEOUT_MS = 30_000;
@@ -2298,8 +2304,8 @@ window.addEventListener('message', (e) => {
         if (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) {
           pimFitEditorPreviewToFrame();
         }
-        generateCutline();
-        generateWhitePlan();
+        void generateCutline();
+        void generateWhitePlan();
         render();
         if (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) {
           pimAutoFitViewZoomToWrap();
@@ -2455,7 +2461,7 @@ function pimEditorDefaultPlacement() {
   pimUserMovedImage = false;
   const frame = getPlacementFrame();
   if (frame) {
-    applyPlacementPreset('contain');
+    void applyPlacementPreset('contain');
   } else {
     resetImageTransform();
     render();
@@ -2616,17 +2622,97 @@ const pimReadyRetryTimer = setInterval(() => {
 }, 400);
 
 // ============================================================
-// OPENCV.JS BAŞLATMA
+// OPENCV — Web Worker (statik /public) + main-thread fallback
 // ============================================================
+function pimIsCvMatStub(mat) {
+  return mat && mat._pimStub;
+}
+
+function pimDeleteCurrentMat() {
+  if (!currentMat) return;
+  if (!pimIsCvMatStub(currentMat) && typeof currentMat.delete === 'function') {
+    currentMat.delete();
+  }
+  currentMat = null;
+}
+
+function pimGetPaddedImageData() {
+  if (!pimPaddedCanvas) return null;
+  const ctx = pimPaddedCanvas.getContext('2d');
+  return ctx.getImageData(0, 0, pimPaddedCanvas.width, pimPaddedCanvas.height);
+}
+
+function pimCvRequest(type, payload) {
+  return new Promise(function (resolve, reject) {
+    if (!pimUseCvWorker || !pimCvWorker) {
+      reject(new Error('cv_worker_unavailable'));
+      return;
+    }
+    const requestId = ++pimCvRequestId;
+    pimCvWorkerRequests.set(requestId, { resolve, reject });
+    pimCvWorker.postMessage({ type, requestId, ...payload });
+  });
+}
+
+function pimInitCvMainThreadFallback() {
+  pimUseCvWorker = false;
+  console.warn('[pim-poc] OpenCV worker kullanılamıyor — main-thread fallback');
+  if (typeof cv !== 'undefined' && cv.Mat) {
+    cvReady = true;
+    onOpenCvReady();
+    return;
+  }
+  if (document.querySelector('script[data-pim-opencv-main]')) return;
+  const script = document.createElement('script');
+  script.src = '/vendor/opencv.js';
+  script.async = true;
+  script.setAttribute('data-pim-opencv-main', '1');
+  document.body.appendChild(script);
+}
+
+function pimInitCvWorker() {
+  if (typeof Worker === 'undefined') {
+    pimInitCvMainThreadFallback();
+    return;
+  }
+  try {
+    pimCvWorker = new Worker('/vendor/pim-cv-worker.js');
+    pimCvWorker.onmessage = function (e) {
+      const msg = e.data || {};
+      if (msg.type === 'cv-ready') {
+        cvReady = true;
+        pimUseCvWorker = true;
+        console.log('[pim-poc] OpenCV Web Worker aktif (pimUseCvWorker=true)');
+        if (typeof updateLibStatus === 'function') updateLibStatus();
+        pimTryFlushPendingHandleFile();
+        onOpenCvReady();
+        return;
+      }
+      if (msg.requestId) {
+        const pending = pimCvWorkerRequests.get(msg.requestId);
+        if (!pending) return;
+        pimCvWorkerRequests.delete(msg.requestId);
+        if (msg.error) pending.reject(new Error(msg.error));
+        else pending.resolve(msg);
+      }
+    };
+    pimCvWorker.onerror = function () {
+      pimInitCvMainThreadFallback();
+    };
+    setTimeout(function () {
+      if (!cvReady) pimInitCvMainThreadFallback();
+    }, 45_000);
+  } catch (err) {
+    pimInitCvMainThreadFallback();
+  }
+}
+
 function onOpenCvReady() {
-  cvReady = true;
+  if (!cvReady) cvReady = true;
   if (typeof updateLibStatus === 'function') {
     updateLibStatus();
   }
   pimTryFlushPendingHandleFile();
-  // Pim entegrasyon — designUrl varsa auto-load (Sefa 22 May v68 Faz 4)
-  // OpenCV + PDF + PSD hepsi ready olmasa bile raster için cvReady yeterli.
-  // PDF/AI/PSD için handleFile zaten ready'i bekler ve uyarı verir.
   if (PIM_PARAMS.designUrl) {
     // Material set
     if (PIM_PARAMS.material) {
@@ -2660,10 +2746,10 @@ function onOpenCvReady() {
   }
 }
 
-// OpenCV.js initialization module
 var Module = {
-  onRuntimeInitialized: onOpenCvReady
+  onRuntimeInitialized: onOpenCvReady,
 };
+pimInitCvWorker();
 
 // ============================================================
 // DOSYA YÜKLEME
@@ -3136,7 +3222,7 @@ function pimEmbedPlacementPreset() {
 
 function pimApplyEmbedDefaultPlacement() {
   if (!PIM_PARAMS.embed || !getPlacementFrame()) return false;
-  applyPlacementPreset(pimEmbedPlacementPreset());
+  void applyPlacementPreset(pimEmbedPlacementPreset());
   return true;
 }
 
@@ -3305,8 +3391,8 @@ function resetEditorSettings() {
   if (!currentMat || !sourceImage) return;
   resetImageTransform();
   if (PIM_PARAMS.embed) {
-    generateCutline();
-    generateWhitePlan();
+    void generateCutline();
+    void generateWhitePlan();
     if (!pimApplyEmbedDefaultPlacement()) {
       render();
     }
@@ -3315,8 +3401,8 @@ function resetEditorSettings() {
     pimScheduleAutoSave();
     pimScheduleHeightReport();
   } else {
-    generateCutline();
-    generateWhitePlan();
+    void generateCutline();
+    void generateWhitePlan();
     if (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) {
       pimEditorDefaultPlacement();
     } else {
@@ -3409,7 +3495,7 @@ function pimDrawWhitePlanOnCtx(ctx, options) {
 }
 
 /** Dolu piksel maskesinden centroid + max radyal uzaklık (canvas koordinatı) */
-function computeContentRadialMetrics() {
+async function computeContentRadialMetrics() {
   if (!imageMetadata) return null;
   const ox = imageMetadata.contentOffsetX;
   const oy = imageMetadata.contentOffsetY;
@@ -3426,7 +3512,36 @@ function computeContentRadialMetrics() {
     bboxDiag,
   };
 
-  if (currentMat && typeof cv !== 'undefined' && cvReady) {
+  if (currentMat && cvReady && pimUseCvWorker && pimPaddedCanvas) {
+    try {
+      const imageData = pimGetPaddedImageData();
+      if (imageData) {
+        const workerMsg = await pimCvRequest('compute-radial-metrics', {
+          imageData: {
+            data: imageData.data,
+            width: imageData.width,
+            height: imageData.height,
+          },
+          bboxDiag,
+        });
+        const m = workerMsg.result || {};
+        if (m.method === 'diagonal') return diagonalFallback;
+        if (m.rContent > 0) {
+          return {
+            contentCx: m.contentCx,
+            contentCy: m.contentCy,
+            rContent: m.rContent,
+            method: m.method,
+            bboxDiag,
+          };
+        }
+      }
+    } catch (e) {
+      /* fallback below */
+    }
+  }
+
+  if (currentMat && typeof cv !== 'undefined' && cvReady && !pimIsCvMatStub(currentMat)) {
     let mask = null;
     try {
       const maskResult = buildMask(currentMat);
@@ -3517,8 +3632,8 @@ function computeContentRadialMetrics() {
 }
 
 /** Daire modu — içerik-farkında radyal contain (görsel kesilmez) */
-function applyCircleRadialContain(frame, artW, artH) {
-  const metrics = computeContentRadialMetrics();
+async function applyCircleRadialContain(frame, artW, artH) {
+  const metrics = await computeContentRadialMetrics();
   if (!metrics || metrics.rContent <= 0) return false;
 
   const rCircle = Math.min(frame.w, frame.h) / 2;
@@ -3576,7 +3691,7 @@ function pimMaybeSuggestContourForCircle() {
   });
 }
 
-function applyPlacementPreset(preset) {
+async function applyPlacementPreset(preset) {
   if (!imageMetadata || !sourceImage) return;
   resetImageTransform();
   const frame = getPlacementFrame();
@@ -3604,7 +3719,7 @@ function applyPlacementPreset(preset) {
     imageTransform.y = frame.cy - artCy;
   } else if (preset === 'contain') {
     if (currentMode === 'circle' && useFixedCutlineFrame()) {
-      if (!applyCircleRadialContain(frame, artW, artH)) {
+      if (!(await applyCircleRadialContain(frame, artW, artH))) {
         imageTransform.scale = Math.min(frameW / artW, frameH / artH);
         const artCx = imageMetadata.contentOffsetX + artW / 2;
         const artCy = imageMetadata.contentOffsetY + artH / 2;
@@ -3737,14 +3852,41 @@ async function pimDownloadProductionExport(type) {
   }
 }
 
-function processImage(img, file) {
+async function processImage(img, file) {
   // Önce downscale (800px cap), sonra alpha trim — tam çözünürlükte piksel döngüsü donmayı önler
   const maxSize = 800;
   const scaled = downscaleImageSource(img, maxSize);
-  const trimmed = trimTransparentBounds(scaled.canvas);
-  const srcCanvas = trimmed.canvas;
-  const srcW = trimmed.w;
-  const srcH = trimmed.h;
+  let srcCanvas;
+  let srcW;
+  let srcH;
+  if (pimUseCvWorker) {
+    try {
+      const scaledCtx = scaled.canvas.getContext('2d');
+      const scaledId = scaledCtx.getImageData(0, 0, scaled.w, scaled.h);
+      const trimMsg = await pimCvRequest('trim-image', { imageData: scaledId });
+      srcW = trimMsg.width;
+      srcH = trimMsg.height;
+      srcCanvas = document.createElement('canvas');
+      srcCanvas.width = srcW;
+      srcCanvas.height = srcH;
+      const trimmedId = new ImageData(
+        new Uint8ClampedArray(trimMsg.imageData.data),
+        trimMsg.imageData.width,
+        trimMsg.imageData.height
+      );
+      srcCanvas.getContext('2d').putImageData(trimmedId, 0, 0);
+    } catch (err) {
+      const trimmed = trimTransparentBounds(scaled.canvas);
+      srcCanvas = trimmed.canvas;
+      srcW = trimmed.w;
+      srcH = trimmed.h;
+    }
+  } else {
+    const trimmed = trimTransparentBounds(scaled.canvas);
+    srcCanvas = trimmed.canvas;
+    srcW = trimmed.w;
+    srcH = trimmed.h;
+  }
   const w = srcW;
   const h = srcH;
   const scale = w / img.width;
@@ -3759,6 +3901,7 @@ function processImage(img, file) {
   const tempCtx = tempCanvas.getContext('2d');
   tempCtx.clearRect(0, 0, paddedW, paddedH);
   tempCtx.drawImage(srcCanvas, padding, padding, w, h);
+  pimPaddedCanvas = tempCanvas;
 
   // sourceImage — trim + scale edilmiş görsel (transform ile çizilir)
   sourceImage = document.createElement('canvas');
@@ -3770,8 +3913,20 @@ function processImage(img, file) {
   pimLastCircleRadialFit = null;
   resetImageTransform();
 
-  if (currentMat) currentMat.delete();
-  currentMat = cv.imread(tempCanvas);
+  pimDeleteCurrentMat();
+  if (pimUseCvWorker) {
+    const padId = tempCtx.getImageData(0, 0, paddedW, paddedH);
+    let hasAlpha = false;
+    for (let i = 3; i < padId.data.length; i += 4) {
+      if (padId.data[i] < 250) {
+        hasAlpha = true;
+        break;
+      }
+    }
+    currentMat = { cols: paddedW, rows: paddedH, channels: 4, _pimStub: true };
+  } else {
+    currentMat = cv.imread(tempCanvas);
+  }
 
   const dpi = parseInt(document.getElementById('dpiSlider').value, 10);
   const orderDims = getOrderDimsMm();
@@ -3800,7 +3955,15 @@ function processImage(img, file) {
     heightMm: heightMm,
     orderWidthMm: orderDims ? orderDims.w : null,
     orderHeightMm: orderDims ? orderDims.h : null,
-    hasAlpha: currentMat.channels() === 4
+    hasAlpha: pimIsCvMatStub(currentMat)
+      ? (function () {
+          const id = tempCtx.getImageData(0, 0, paddedW, paddedH);
+          for (let i = 3; i < id.data.length; i += 4) {
+            if (id.data[i] < 250) return true;
+          }
+          return false;
+        })()
+      : currentMat.channels() === 4,
   };
 
   // Show UI
@@ -3813,8 +3976,8 @@ function processImage(img, file) {
   document.getElementById('approvalOverlay').classList.remove('show');
 
   updateMetadataDisplay();
-  generateCutline();
-  generateWhitePlan();
+  await generateCutline();
+  await generateWhitePlan();
   if (pimApplyEmbedDefaultPlacement()) {
     /* geometrik → contain, contour → center */
   } else if (
@@ -3832,7 +3995,6 @@ function processImage(img, file) {
   if (PIM_PARAMS.embed || PIM_PARAMS.designUrl || PIM_PARAMS.editorShell) {
     pimNotifyLoaded();
   }
-  pimNotifyCutlineReady();
   if (PIM_PARAMS.editorShell) {
     pimScheduleEditorShellFit();
   }
@@ -3844,11 +4006,11 @@ function processImage(img, file) {
 let pimCutlineRefreshTimer = null;
 
 /** Slider sürüklerken OpenCV'yi her input'ta değil, kısa gecikmeyle çalıştır. */
-function pimRunCutlineRefresh() {
+async function pimRunCutlineRefresh() {
   pimCutlineRefreshTimer = null;
   if (!currentMat) return;
-  generateCutline();
-  generateWhitePlan();
+  await generateCutline();
+  await generateWhitePlan();
   render();
   updateMetadataDisplay();
   generatePimComment();
@@ -3867,25 +4029,131 @@ function pimScheduleCutlineRefresh(immediate) {
   pimCutlineRefreshTimer = setTimeout(pimRunCutlineRefresh, 80);
 }
 
-function generateCutline() {
+function pimApplyMaskMetaFromWorker(maskMeta) {
+  if (!imageMetadata || !maskMeta) return;
+  imageMetadata.alphaUseful = maskMeta.isAlphaUseful;
+  imageMetadata.detectedBg = maskMeta.detectedBg;
+}
+
+function pimApplyCutlineFromWorker(workerResult, offsetPx, bleedPx, safePx) {
+  if (useFixedCutlineFrame()) {
+    cutlineFrame = buildFixedCutlineFrame();
+    if (cutlineFrame) {
+      const { cx, cy, w, h } = cutlineFrame;
+      const dpi = parseInt(document.getElementById('dpiSlider').value, 10);
+      const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
+      if (currentMode === 'rect') {
+        const baseRect = { x: cx - w / 2, y: cy - h / 2, w, h };
+        const cornerRadiusPx = cutlineCornerRadiusMm > 0 ? cutlineCornerRadiusMm * pxPerMm : 0;
+        const r = expandRect(baseRect, offsetPx);
+        currentPaths = [rectToPath(r, Math.max(0, cornerRadiusPx + offsetPx))];
+        bleedPaths = [rectToPath(expandRect(baseRect, offsetPx + bleedPx), Math.max(0, cornerRadiusPx + offsetPx + bleedPx))];
+        safePaths = [rectToPath(expandRect(baseRect, offsetPx - safePx), Math.max(0, cornerRadiusPx + offsetPx - safePx))];
+      } else {
+        const r = Math.min(w, h) / 2;
+        currentPaths = [circleToPath(cx, cy, r + offsetPx)];
+        bleedPaths = [circleToPath(cx, cy, r + offsetPx + bleedPx)];
+        safePaths = [circleToPath(cx, cy, Math.max(1, r + offsetPx - safePx))];
+      }
+    } else {
+      currentPaths = [];
+      bleedPaths = [];
+      safePaths = [];
+    }
+    return;
+  }
+  const result = workerResult && workerResult.result ? workerResult.result : workerResult;
+  if (currentMode === 'rect') {
+    const rect = result.rect;
+    if (rect) {
+      const r = expandRect(rect, offsetPx);
+      currentPaths = [rectToPath(r)];
+      bleedPaths = [rectToPath(expandRect(rect, offsetPx + bleedPx))];
+      safePaths = [rectToPath(expandRect(rect, offsetPx - safePx))];
+    } else {
+      currentPaths = [];
+      bleedPaths = [];
+      safePaths = [];
+    }
+  } else if (currentMode === 'circle') {
+    const circle = result.circle;
+    if (circle) {
+      currentPaths = [circleToPath(circle.cx, circle.cy, circle.r + offsetPx)];
+      bleedPaths = [circleToPath(circle.cx, circle.cy, circle.r + offsetPx + bleedPx)];
+      safePaths = [circleToPath(circle.cx, circle.cy, Math.max(1, circle.r + offsetPx - safePx))];
+    } else {
+      currentPaths = [];
+      bleedPaths = [];
+      safePaths = [];
+    }
+  } else if (result.paths) {
+    currentPaths = result.paths.current || [];
+    bleedPaths = result.paths.bleed || [];
+    safePaths = result.paths.safe || [];
+  } else {
+    currentPaths = [];
+    bleedPaths = [];
+    safePaths = [];
+  }
+}
+
+async function generateCutline() {
   if (!currentMat || !cvReady) return;
+  const jobId = ++pimCutlineComputeJob;
 
   const offsetMm = parseFloat(document.getElementById('offsetSlider').value);
   const smoothness = parseFloat(document.getElementById('smoothSlider').value);
   const dpi = parseInt(document.getElementById('dpiSlider').value);
-
-  // === Kayma toleransı (sıfır kesim koruması) ===
-  // Kullanıcı 0 mm seçerse, kesim makinesinin ~0.3mm kayma toleransını
-  // telafi etmek için bıçak otomatik 0.3mm içerden kesilir.
-  // Bu sayede kenarlarda görselin dışı (şeffaf/beyaz folyo) görünmez.
   const slipToleranceMm = 0.3;
-  const effectiveOffsetMm = (offsetMm === 0) ? -slipToleranceMm : offsetMm;
-
-  // mm → piksel dönüşümü (scaled görüntüde)
+  const effectiveOffsetMm = offsetMm === 0 ? -slipToleranceMm : offsetMm;
   const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
-  const offsetPx = Math.round(effectiveOffsetMm * pxPerMm);  // negatif olabilir
+  const offsetPx = Math.round(effectiveOffsetMm * pxPerMm);
   const bleedPx = Math.round(2.0 * pxPerMm);
   const safePx = Math.round(2.0 * pxPerMm);
+
+  if (pimUseCvWorker && pimPaddedCanvas) {
+    try {
+      const imageData = pimGetPaddedImageData();
+      if (!imageData) throw new Error('no_image_data');
+      const workerMsg = await pimCvRequest('compute-cutline', {
+        imageData: {
+          data: imageData.data,
+          width: imageData.width,
+          height: imageData.height,
+        },
+        params: {
+          mode: currentMode,
+          offsetPx,
+          bleedPx,
+          safePx,
+          smoothness,
+        },
+      });
+      if (jobId !== pimCutlineComputeJob) return;
+      pimApplyMaskMetaFromWorker(workerMsg.result && workerMsg.result.maskMeta);
+      pimApplyCutlineFromWorker(workerMsg, offsetPx, bleedPx, safePx);
+    } catch (err) {
+      if (jobId !== pimCutlineComputeJob) return;
+      console.error('[pim-poc] worker cutline failed', err);
+      pimReportCutlineAutoFailed('worker_error', true);
+      return;
+    }
+  } else {
+    generateCutlineMainThreadSync(offsetPx, bleedPx, safePx, smoothness);
+  }
+
+  if (!useFixedCutlineFrame()) {
+    cutlineFrame = null;
+  }
+  pimScheduleAutoSave();
+  runPreflight();
+  pimNotifyCutlineReady();
+}
+
+function generateCutlineMainThreadSync(offsetPx, bleedPx, safePx, smoothness) {
+  if (!currentMat || !cvReady || pimIsCvMatStub(currentMat)) return;
+  const dpi = parseInt(document.getElementById('dpiSlider').value, 10);
+  const pxPerMm = (dpi / 25.4) * imageMetadata.scale;
 
   // STEP 1: Akıllı mask oluştur (adaptive threshold + morfolojik temizleme)
   const maskResult = buildMask(currentMat);
@@ -3950,28 +4218,15 @@ function generateCutline() {
     safePaths = generateOffsetPaths(mask, offsetPx - safePx, smoothness, false);
   }
 
-  if (!useFixedCutlineFrame()) {
-    cutlineFrame = null;
-  }
-
   mask.delete();
-  pimScheduleAutoSave();
-  runPreflight();
-  pimNotifyCutlineReady();
 }
 
 // ============================================================
 // BEYAZ PLAN ÜRETİMİ (white underbase)
 // ============================================================
-// Şeffaf/metalize/holografik malzemede tasarımın altına basılan beyaz mürekkep katmanı.
-// 3 mod:
-//   - 'full'   : tüm baskı alanını kapla (hafif inset)
-//   - 'smart'  : sadece koyu/canlı renklerin altına (brightness threshold)
-//   - 'custom' : müşterinin kendi tasarladığı white spot color (PDF/PSD'den)
-
-function generateWhitePlan() {
+function generateWhitePlanMainThreadSync() {
   whitePlanPaths = [];
-  if (!currentMat || !cvReady) return;
+  if (!currentMat || !cvReady || pimIsCvMatStub(currentMat)) return;
   if (whitePlanMode === 'off') return;
   if (materialType === 'paper') return;
 
@@ -3979,62 +4234,33 @@ function generateWhitePlan() {
     whitePlanMode = hasCustomWhitePlan ? 'smart' : 'full';
   }
 
-  // Beyaz plan = görsel silueti (buildMask) — geometrik kesimde de siluet
   const maskResult = buildMask(currentMat);
   let baseMask = maskResult.mask;
 
-  const pxPerMm = (imageMetadata.dpi / 25.4) * imageMetadata.scale;
-
-  // ============================================================
-  // SMART MOD: sadece koyu/canlı pikseller AND silüet
-  // ============================================================
   if (whitePlanMode === 'smart') {
     const gray = new cv.Mat();
     cv.cvtColor(currentMat, gray, cv.COLOR_RGBA2GRAY);
     const darkMask = new cv.Mat();
     cv.threshold(gray, darkMask, 200, 255, cv.THRESH_BINARY_INV);
-
     const smartMask = new cv.Mat();
     cv.bitwise_and(baseMask, darkMask, smartMask);
-
     baseMask.delete();
     baseMask = smartMask;
     gray.delete();
     darkMask.delete();
-  }
-  // ============================================================
-  // FULL MOD: beyaz plan görselin TAM SİLÜETİ
-  // ============================================================
-  // baseMask zaten silüet — ekstra dilate/erode yok.
-  // Bıçak silüetin offsetMm dışında kesilir, aralarındaki şeffaf folyo kalır.
-  else if (whitePlanMode === 'full') {
-    // baseMask olduğu gibi kullanılır
-  }
-  // ============================================================
-  // AI MOD: bağımsız küçük parçalara duyarlı, gerekirse bg removal
-  // ============================================================
-  // Mevcut alpha temizse direkt kullan, değilse bg removal arka planda.
-  // minArea filtresi çok düşük → küçük detaylar yakalanır.
-  else if (whitePlanMode === 'ai') {
-    // baseMask zaten oluştu — AI modunda minArea filtresi düşürülecek (aşağıda)
-    // Eğer görselin alpha'sı kullanışsızsa kullanıcıya bg removal öner
+  } else if (whitePlanMode === 'ai') {
     if (!imageMetadata.alphaUseful && currentFileSource === 'raster') {
-      // Bu durumda generateWhitePlan'in tek başına yapacağı sınırlı.
-      // setTimeout ile prompt göster — bg removal yap, sonra yeniden çağrılır
       maybeOfferBgRemovalForAi();
     }
   }
 
-  // Kontur çıkarma
   const contours = new cv.MatVector();
   const hierarchy = new cv.Mat();
   cv.findContours(baseMask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
   const totalArea = baseMask.rows * baseMask.cols;
-  // AI modunda küçük bağımsız parçalara duyarlı — eşik %20 kat daha düşük
   const minArea = whitePlanMode === 'ai'
-    ? Math.max(20, totalArea * 0.0005)   // %0.05 — küçük detayları yakala
-    : Math.max(100, totalArea * 0.003);  // %0.3 — gürültü filtresi
+    ? Math.max(20, totalArea * 0.0005)
+    : Math.max(100, totalArea * 0.003);
 
   for (let i = 0; i < contours.size(); i++) {
     const c = contours.get(i);
@@ -4053,6 +4279,43 @@ function generateWhitePlan() {
   contours.delete();
   hierarchy.delete();
   baseMask.delete();
+}
+
+async function generateWhitePlan() {
+  whitePlanPaths = [];
+  if (!currentMat || !cvReady) return;
+  if (whitePlanMode === 'off') return;
+  if (materialType === 'paper') return;
+
+  if (whitePlanMode === 'custom') {
+    whitePlanMode = hasCustomWhitePlan ? 'smart' : 'full';
+  }
+
+  if (pimUseCvWorker && pimPaddedCanvas) {
+    try {
+      const imageData = pimGetPaddedImageData();
+      if (!imageData) throw new Error('no_image_data');
+      const workerMsg = await pimCvRequest('compute-white-plan', {
+        imageData: {
+          data: imageData.data,
+          width: imageData.width,
+          height: imageData.height,
+        },
+        params: { whitePlanMode },
+      });
+      whitePlanPaths = (workerMsg.result && workerMsg.result.paths) || [];
+      if (workerMsg.result && workerMsg.result.maskMeta) {
+        pimApplyMaskMetaFromWorker(workerMsg.result.maskMeta);
+      }
+      if (whitePlanMode === 'ai' && !imageMetadata.alphaUseful && currentFileSource === 'raster') {
+        maybeOfferBgRemovalForAi();
+      }
+      return;
+    } catch (err) {
+      console.error('[pim-poc] worker white-plan failed', err);
+    }
+  }
+  generateWhitePlanMainThreadSync();
 }
 
 // AI modu seçildiğinde, görselin temiz alpha'sı yoksa bg removal öner
@@ -5413,8 +5676,8 @@ function pimOnCutModeChanged(mode) {
         pimEditorDefaultPlacement();
       }
     }
-    generateCutline();
-    generateWhitePlan();
+    void generateCutline();
+    void generateWhitePlan();
     render();
     if (PIM_PARAMS.editorShell) {
       pimScheduleEditorShellFit();
@@ -5474,7 +5737,7 @@ document.querySelectorAll('.material-btn').forEach(btn => {
     updateWhiteNote();
 
     if (currentMat) {
-      generateWhitePlan();
+      void generateWhitePlan();
       render();
       generatePimComment();
     }
@@ -5490,7 +5753,7 @@ document.querySelectorAll('.white-mode-btn').forEach(btn => {
     whitePlanMode = btn.dataset.wmode;
     updateWhiteNote();
     if (currentMat) {
-      generateWhitePlan();
+      void generateWhitePlan();
       // Beyaz katmanı otomatik aç ki görsünler
       if (whitePlanMode !== 'off' && materialType !== 'paper') {
         layers.white = true;
@@ -6106,8 +6369,7 @@ function showStatus(msg, level = 'warn') {
   }
 </script>
 
-<!-- OpenCV.js (local — public/vendor, CDN bağımlılığı yok; ~9MB) -->
-<script async src="/vendor/opencv.js"></script>
+<!-- OpenCV.js yalnızca worker-fallback'te dinamik yüklenir (pimInitCvMainThreadFallback) -->
 
 </body>
 </html>

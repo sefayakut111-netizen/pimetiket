@@ -76,6 +76,12 @@ async function runBridgeContractTest() {
     "poc.html load-failed sinyali eksik"
   );
   assert(
+    readFileSync(join(process.cwd(), "public/vendor/pim-cv-worker.js"), "utf8").includes(
+      "compute-cutline"
+    ),
+    "pim-cv-worker.js eksik"
+  );
+  assert(
     humanizeCutlineFailReason("0-path").includes("bıçak yolu"),
     "humanizeCutlineFailReason(0-path)"
   );
