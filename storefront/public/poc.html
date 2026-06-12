@@ -448,7 +448,7 @@
     background: transparent;
     border-radius: 6px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-    touch-action: none;
+    touch-action: pan-y;
   }
 
   .empty-state {
@@ -2765,6 +2765,8 @@ async function handleFile(file) {
         return;
       }
       currentFileSource = 'raster';
+      hasCustomWhitePlan = false;
+      detectedCutContourNames = [];
       currentFile = file;
       processImage(img, file);
       // Raster dosya yüklenince BG kaldırma butonu görünür olsun
@@ -4443,7 +4445,7 @@ function renderContentLayers(ctx) {
   // ============================================================
   // 1b. STICKER TABANI — yalnızca ekran önizlemesi (export'a sızmaz)
   // ============================================================
-  if (layers.cut && currentPaths.length > 0) {
+  if (currentPaths.length > 0) {
     pimDrawStickerPreviewBase(ctx);
   }
 

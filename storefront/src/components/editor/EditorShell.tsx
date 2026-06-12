@@ -462,10 +462,9 @@ export default function EditorShell() {
   }, [postToPoc, syncSizeToPoc, markCutlinePending]);
 
   const handleRemoveBg = useCallback(() => {
-    captureUndoSnapshot();
     setRemovingBg(true);
     postToPoc({ type: "pim-trigger-bg-remove" });
-  }, [postToPoc, captureUndoSnapshot]);
+  }, [postToPoc]);
 
   const handleBgRemoveAccept = useCallback(() => {
     postToPoc({ type: "pim-bg-remove-accept" });
@@ -574,6 +573,8 @@ export default function EditorShell() {
         setFileName(null);
         setCanRemoveBg(false);
         setRemovingBg(false);
+        undoSnapshotRef.current = null;
+        setCanUndo(false);
       } else if (data.type === "pim-poc-loaded") {
         loaded = true;
         markCutlinePending();
@@ -1447,6 +1448,15 @@ export default function EditorShell() {
               mobileAccordion ? "block" : "hidden lg:block"
             )}
           >
+            {bgRemovePreview ? (
+              <div className="mb-3">
+                <EditorBgRemovePrompt
+                  preview={bgRemovePreview}
+                  onAccept={handleBgRemoveAccept}
+                  onReject={handleBgRemoveReject}
+                />
+              </div>
+            ) : null}
             {toolTab === "gorsel" ? (
               <>
                 <EditorPanelSection title="Dosya yükle" first>
@@ -1489,15 +1499,6 @@ export default function EditorShell() {
                     onRemoveBg={handleRemoveBg}
                   />
                   </div>
-                  {bgRemovePreview ? (
-                    <div className="mt-3">
-                      <EditorBgRemovePrompt
-                        preview={bgRemovePreview}
-                        onAccept={handleBgRemoveAccept}
-                        onReject={handleBgRemoveReject}
-                      />
-                    </div>
-                  ) : null}
                   {designLoaded &&
                   pocMeta?.source !== "vector" &&
                   pocMeta?.source !== "vector-with-cutline" ? (
