@@ -60,9 +60,9 @@ sonraki 8 katman/cross-cutting ekseninde, son 1 admin-only CRUD yüzeyi — böy
 | **M12** | Mail, Bildirim & Outbox | `lib/mail` (43), `notifications.ts`, `process-mail-outbox`, `suppression`, `webhooks/resend`, `enqueue` | D4 D3 D2 | 🟠 | ✅ **BİTTİ** (M12 notu, 14 bulgu) | **P3** |
 | **M13** | Cron & Arka Plan İşleri | 22 cron ucu, `cron-auth`, `cron-logger`, idempotency, çift-çalışma | D4 D3 D1 | 🟠 | ✅ **BİTTİ** (M13 notu, 15 bulgu — kök: tek-instance kilidi yok) | **P3** |
 | **M14** | KVKK & Veri Yaşam Döngüsü | `kvkk-requests`, `archive-inactive`, `purge-expired-designs`, `cleanup-*` cron, `lib/kvkk`, silme zinciri | D5 D6 D1 | 🔴 yasal | ✅ **BİTTİ** (M14 notu, 12 bulgu — DB PII silinmiyor!) | **P3** |
-| **M15** | AI / Pim Ajanları & Denetçiler | `lib/agents` (33), `pim/chat`, `design-qc`, `auditors`, `cutline-generate`, `lib/pim` (11) | D2 D3 D7 | 🟡 | ⏳ | **P4** |
+| **M15** | AI / Pim Ajanları & Denetçiler | `lib/agents` (33), `pim/chat`, `design-qc`, `auditors`, `cutline-generate`, `lib/pim` (11) | D2 D3 D7 | 🟡 | ✅ **BİTTİ** (M15 notu, 16 bulgu) | **P4** |
 | **M16** | Dış Entegrasyon Dayanıklılığı | `http/external-timeouts`, PayTR/OpenAI/Resend/Instagram/GSC/Netgsm çağrıları — timeout/retry/circuit | D3 D4 D2 | 🟠 | ✅ **BİTTİ** (M16 notu, 12 bulgu) | **P3** |
-| **M17** | Admin İçerik / CRUD Yüzeyleri (öksüz) | `admin/blog`, `gallery`, `icerik`, `site-images`, `subscribers`, `traffic/gsc/realtime`, `product-cards` — hiçbir sipariş akışına ait olmayan admin-only CRUD | D5 D6 D2 | 🟡 (çoğu basit CRUD) | ⏳ | **P4** |
+| **M17** | Admin İçerik / CRUD Yüzeyleri (öksüz) | `admin/blog`, `gallery`, `icerik`, `site-images`, `subscribers`, `traffic/gsc/realtime`, `product-cards` — hiçbir sipariş akışına ait olmayan admin-only CRUD | D5 D6 D2 | 🟡 (çoğu basit CRUD) | ✅ **BİTTİ** (M17 notu, 14 bulgu) | **P4** |
 
 > **Admin operasyonları** (akışa bağlı) ayrı modül değil — ait oldukları akış modülünde denetlenir:
 > manuel sipariş/bypass-checkout → M2/M5, fason admin → M6, fiyat admin → M1, refund → M8.
