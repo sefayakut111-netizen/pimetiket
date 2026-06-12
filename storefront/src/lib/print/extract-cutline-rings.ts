@@ -2,7 +2,92 @@ import type { PathRing } from "@/lib/editor/cutline/types";
 
 type Pt = { x: number; y: number };
 
-/** SVG path d → nokta listesi (M/L/H/V/C/Z; arc C benzeri örnekleme). */
+const ARC_SAMPLES = 8;
+
+function vecAngle(ux: number, uy: number, vx: number, vy: number): number {
+  const sign = ux * vy - uy * vx < 0 ? -1 : 1;
+  const dot = ux * vx + uy * vy;
+  const denom = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+  if (denom === 0) return 0;
+  return sign * Math.acos(Math.max(-1, Math.min(1, dot / denom)));
+}
+
+/** SVG elliptical arc (endpoint parametrization) → örneklenmiş noktalar (başlangıç hariç). */
+function sampleSvgEllipticalArc(
+  x0: number,
+  y0: number,
+  rx: number,
+  ry: number,
+  phiDeg: number,
+  largeArc: number,
+  sweep: number,
+  x1: number,
+  y1: number
+): Pt[] {
+  if (!Number.isFinite(rx) || !Number.isFinite(ry) || rx === 0 || ry === 0) {
+    return [{ x: x1, y: y1 }];
+  }
+
+  const phi = (phiDeg * Math.PI) / 180;
+  const cosPhi = Math.cos(phi);
+  const sinPhi = Math.sin(phi);
+
+  let rxAbs = Math.abs(rx);
+  let ryAbs = Math.abs(ry);
+
+  const dx2 = (x0 - x1) / 2;
+  const dy2 = (y0 - y1) / 2;
+  const x1p = cosPhi * dx2 + sinPhi * dy2;
+  const y1p = -sinPhi * dx2 + cosPhi * dy2;
+
+  const lambda =
+    (x1p * x1p) / (rxAbs * rxAbs) + (y1p * y1p) / (ryAbs * ryAbs);
+  if (lambda > 1) {
+    const s = Math.sqrt(lambda);
+    rxAbs *= s;
+    ryAbs *= s;
+  }
+
+  const sign = largeArc !== sweep ? 1 : -1;
+  const sq = Math.max(
+    0,
+    (rxAbs * rxAbs * ryAbs * ryAbs -
+      rxAbs * rxAbs * y1p * y1p -
+      ryAbs * ryAbs * x1p * x1p) /
+      (rxAbs * rxAbs * y1p * y1p + ryAbs * ryAbs * x1p * x1p)
+  );
+  const coef = sign * Math.sqrt(sq);
+  const cxp = coef * ((rxAbs * y1p) / ryAbs);
+  const cyp = coef * (-(ryAbs * x1p) / rxAbs);
+
+  const cx = cosPhi * cxp - sinPhi * cyp + (x0 + x1) / 2;
+  const cy = sinPhi * cxp + cosPhi * cyp + (y0 + y1) / 2;
+
+  const theta1 = vecAngle(1, 0, (x1p - cxp) / rxAbs, (y1p - cyp) / ryAbs);
+  let dTheta = vecAngle(
+    (x1p - cxp) / rxAbs,
+    (y1p - cyp) / ryAbs,
+    (-x1p - cxp) / rxAbs,
+    (-y1p - cyp) / ryAbs
+  );
+
+  if (sweep === 0 && dTheta > 0) dTheta -= 2 * Math.PI;
+  if (sweep === 1 && dTheta < 0) dTheta += 2 * Math.PI;
+
+  const out: Pt[] = [];
+  for (let i = 1; i <= ARC_SAMPLES; i++) {
+    const theta = theta1 + (dTheta * i) / ARC_SAMPLES;
+    const cosT = Math.cos(theta);
+    const sinT = Math.sin(theta);
+    out.push({
+      x: cx + rxAbs * cosT * cosPhi - ryAbs * sinT * sinPhi,
+      y: cy + rxAbs * cosT * sinPhi + ryAbs * sinT * cosPhi,
+    });
+  }
+  return out;
+}
+
+/** SVG path d → nokta listesi (M/L/H/V/C/A/Z; arc örneklenir). */
 function parseSvgPathToPoints(d: string): Pt[] {
   const tokens =
     d.match(/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g)?.map((t) => t.trim()) ??
@@ -71,16 +156,29 @@ function parseSvgPathToPoints(d: string): Pt[] {
       }
       case "A":
       case "a": {
-        readNum();
-        readNum();
-        readNum();
-        readNum();
-        readNum();
+        const rx = readNum();
+        const ry = readNum();
+        const phi = readNum();
+        const fA = readNum();
+        const fS = readNum();
         const x = readNum();
         const y = readNum();
-        cx = cmd === "a" ? cx + x : x;
-        cy = cmd === "a" ? cy + y : y;
-        points.push({ x: cx, y: cy });
+        const endX = cmd === "a" ? cx + x : x;
+        const endY = cmd === "a" ? cy + y : y;
+        const arcPts = sampleSvgEllipticalArc(
+          cx,
+          cy,
+          rx,
+          ry,
+          phi,
+          fA,
+          fS,
+          endX,
+          endY
+        );
+        for (const p of arcPts) points.push(p);
+        cx = endX;
+        cy = endY;
         break;
       }
       case "Z":
@@ -104,7 +202,28 @@ function parseSvgViewFrame(
   svgText: string,
   labelWidthMm: number,
   labelHeightMm: number
-): { minX: number; minY: number; vbW: number; vbH: number } {
+): {
+  minX: number;
+  minY: number;
+  vbW: number;
+  vbH: number;
+  widthMm: number;
+  heightMm: number;
+} {
+  let widthMm = labelWidthMm;
+  let heightMm = labelHeightMm;
+
+  const wMatch = svgText.match(/\bwidth\s*=\s*["']([^"']+)["']/i);
+  const hMatch = svgText.match(/\bheight\s*=\s*["']([^"']+)["']/i);
+  const wAttr = wMatch ? parseSvgDimAttr(wMatch[1]) : null;
+  const hAttr = hMatch ? parseSvgDimAttr(hMatch[1]) : null;
+  if (wMatch?.[1]?.toLowerCase().includes("mm") && wAttr != null) {
+    widthMm = wAttr;
+  }
+  if (hMatch?.[1]?.toLowerCase().includes("mm") && hAttr != null) {
+    heightMm = hAttr;
+  }
+
   const vbMatch = svgText.match(/viewBox\s*=\s*["']([^"']+)["']/i);
   if (vbMatch) {
     const parts = vbMatch[1]
@@ -122,32 +241,79 @@ function parseSvgViewFrame(
         minY: parts[1]!,
         vbW: parts[2]!,
         vbH: parts[3]!,
+        widthMm,
+        heightMm,
       };
     }
   }
 
-  const wMatch = svgText.match(/\bwidth\s*=\s*["']([^"']+)["']/i);
-  const hMatch = svgText.match(/\bheight\s*=\s*["']([^"']+)["']/i);
-  const w = wMatch ? parseSvgDimAttr(wMatch[1]) : null;
-  const h = hMatch ? parseSvgDimAttr(hMatch[1]) : null;
-  if (w != null && h != null) {
-    return { minX: 0, minY: 0, vbW: w, vbH: h };
+  if (wAttr != null && hAttr != null && !wMatch?.[1]?.toLowerCase().includes("mm")) {
+    return {
+      minX: 0,
+      minY: 0,
+      vbW: wAttr,
+      vbH: hAttr,
+      widthMm,
+      heightMm,
+    };
   }
 
-  return { minX: 0, minY: 0, vbW: labelWidthMm, vbH: labelHeightMm };
+  return {
+    minX: 0,
+    minY: 0,
+    vbW: widthMm,
+    vbH: heightMm,
+    widthMm,
+    heightMm,
+  };
 }
 
-function svgPointToLabelMm(
-  px: number,
-  py: number,
-  frame: { minX: number; minY: number; vbW: number; vbH: number },
+function ringBounds(rings: PathRing[]) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const ring of rings) {
+    for (const [x, y] of ring) {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+/**
+ * poc px viewBox + mm attrib → label mm uzayına normalize.
+ * buildCutlineSvgMm (viewBox zaten mm) için bbox ≈ label → minimal düzeltme.
+ */
+function normalizeRingsToLabelMm(
+  rings: PathRing[],
   labelWidthMm: number,
   labelHeightMm: number
-): [number, number] {
-  return [
-    (px - frame.minX) * (labelWidthMm / frame.vbW),
-    (py - frame.minY) * (labelHeightMm / frame.vbH),
-  ];
+): PathRing[] {
+  if (rings.length === 0) return rings;
+
+  const { minX, minY, maxX, maxY } = ringBounds(rings);
+  const bw = maxX - minX;
+  const bh = maxY - minY;
+  if (bw <= 0 || bh <= 0) return rings;
+
+  const alreadyMm =
+    minX >= -0.5 &&
+    minY >= -0.5 &&
+    Math.abs(bw - labelWidthMm) / labelWidthMm < 0.03 &&
+    Math.abs(bh - labelHeightMm) / labelHeightMm < 0.03;
+
+  if (alreadyMm) return rings;
+
+  const sx = labelWidthMm / bw;
+  const sy = labelHeightMm / bh;
+
+  return rings.map((ring) =>
+    ring.map(([x, y]) => [(x - minX) * sx, (y - minY) * sy])
+  );
 }
 
 function extractSvgPathDs(svgText: string): string[] {
@@ -155,23 +321,24 @@ function extractSvgPathDs(svgText: string): string[] {
   return matches.map((m) => m[1]!);
 }
 
-/** cutline_designs SVG → mm PathRing[] (buildCutlineSvgMm viewBox sözleşmesi). */
+/** cutline_designs / poc SVG → mm PathRing[] */
 export function extractCutlineRingsFromSvg(
   svgText: string,
   labelWidthMm: number,
   labelHeightMm: number
 ): PathRing[] {
   const frame = parseSvgViewFrame(svgText, labelWidthMm, labelHeightMm);
-  const rings: PathRing[] = [];
+  const ringsUser: PathRing[] = [];
 
   for (const d of extractSvgPathDs(svgText)) {
     const pts = parseSvgPathToPoints(d);
     if (pts.length < 2) continue;
-    const ring: PathRing = pts.map((p) =>
-      svgPointToLabelMm(p.x, p.y, frame, labelWidthMm, labelHeightMm)
-    );
-    rings.push(ring);
+    const ring: PathRing = pts.map((p) => [
+      (p.x - frame.minX) * (labelWidthMm / frame.vbW),
+      (p.y - frame.minY) * (labelHeightMm / frame.vbH),
+    ]);
+    ringsUser.push(ring);
   }
 
-  return rings;
+  return normalizeRingsToLabelMm(ringsUser, labelWidthMm, labelHeightMm);
 }

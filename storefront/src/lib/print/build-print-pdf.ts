@@ -32,6 +32,8 @@ export interface ImagePlacement {
   x: number;
   y: number;
   scale: number;
+  /** poc imageMetadata.contentW — canvas px referansı (varsayılan 800) */
+  contentRefPx?: number;
 }
 
 export interface BuildPrintPdfInput {
@@ -194,7 +196,13 @@ function resolveArtDrawRectMm(
   heightMm: number,
   placement?: ImagePlacement | null
 ) {
-  const pxToMm = widthMm / PLACEMENT_CANVAS_REF_PX;
+  const refPx =
+    placement?.contentRefPx != null &&
+    Number.isFinite(placement.contentRefPx) &&
+    placement.contentRefPx > 0
+      ? placement.contentRefPx
+      : PLACEMENT_CANVAS_REF_PX;
+  const pxToMm = widthMm / refPx;
   const transform = {
     x: (placement?.x ?? 0) * pxToMm,
     y: (placement?.y ?? 0) * pxToMm,

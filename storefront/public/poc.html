@@ -5699,7 +5699,12 @@ function pimBuildCutlineMeta() {
     height_mm: orderDims ? orderDims.h : (imageMetadata ? parseFloat(imageMetadata.heightMm) : null),
     cutline_width_mm: cutRef ? cutRef.w : null,
     cutline_height_mm: cutRef ? cutRef.h : null,
-    image_placement: { x: imageTransform.x, y: imageTransform.y, scale: imageTransform.scale },
+    image_placement: {
+      x: imageTransform.x,
+      y: imageTransform.y,
+      scale: imageTransform.scale,
+      contentRefPx: imageMetadata.contentW,
+    },
     pim_feedback: null,
     pim_severity: tierInfo.tier === 'improve' ? 'warn' : 'ok',
     material_type: materialType,
@@ -5776,9 +5781,17 @@ ${whitePaths}  </g>` : '';
 
   const artworkLayer = pimBuildArtworkSvgLayer(inverseScale);
 
+  const orderDims = getOrderDimsMm();
+  const exportWmm = orderDims
+    ? orderDims.w
+    : parseFloat(imageMetadata.widthMm) || viewW;
+  const exportHmm = orderDims
+    ? orderDims.h
+    : parseFloat(imageMetadata.heightMm) || viewH;
+
   return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-     width="${viewW.toFixed(2)}" height="${viewH.toFixed(2)}"
+     width="${exportWmm.toFixed(2)}mm" height="${exportHmm.toFixed(2)}mm"
      viewBox="${viewMinX.toFixed(2)} ${viewMinY.toFixed(2)} ${viewW.toFixed(2)} ${viewH.toFixed(2)}">${whiteGroup}${artworkLayer}
   <g id="${pimCutSpotGroupId()}" data-pim-cutline="true" data-pim-cut-type="${cutType}">
 ${svgPaths}  </g>

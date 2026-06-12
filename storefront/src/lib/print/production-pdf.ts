@@ -65,7 +65,12 @@ export async function getOrBuildProductionPrintPdf(args: {
     height_mm: number | null;
     cutline_width_mm: number | null;
     cutline_height_mm: number | null;
-    placement_json: { x?: number; y?: number; scale?: number } | null;
+    placement_json: {
+      x?: number;
+      y?: number;
+      scale?: number;
+      contentRefPx?: number;
+    } | null;
   } | null;
 
   if (!cd?.svg_url) {
@@ -124,7 +129,16 @@ export async function getOrBuildProductionPrintPdf(args: {
     typeof placement.x === "number" &&
     typeof placement.y === "number" &&
     typeof placement.scale === "number"
-      ? { x: placement.x, y: placement.y, scale: placement.scale }
+      ? {
+          x: placement.x,
+          y: placement.y,
+          scale: placement.scale,
+          contentRefPx:
+            typeof placement.contentRefPx === "number" &&
+            placement.contentRefPx > 0
+              ? placement.contentRefPx
+              : undefined,
+        }
       : null;
 
   let pdfBytes: Uint8Array;
