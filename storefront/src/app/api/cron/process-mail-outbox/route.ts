@@ -198,6 +198,10 @@ export async function GET(req: Request) {
         continue;
       }
       renderPayload.fason_token = issued;
+      await admin
+        .from("fason_mail_outbox")
+        .update({ payload: renderPayload })
+        .eq("id", row.id);
     }
 
     const rendered = renderMailTemplate(row.template_key, renderPayload);
@@ -278,6 +282,7 @@ export async function GET(req: Request) {
         headers: {
           Authorization: `Bearer ${resendKey}`,
           "Content-Type": "application/json",
+          "Idempotency-Key": row.id,
         },
         body: JSON.stringify(resendBody),
       });
