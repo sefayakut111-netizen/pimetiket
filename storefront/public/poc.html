@@ -2642,6 +2642,11 @@ function pimGetPaddedImageData() {
   return ctx.getImageData(0, 0, pimPaddedCanvas.width, pimPaddedCanvas.height);
 }
 
+function pimPostPocAlive(phase) {
+  if (!PIM_PARAMS.editorShell && !PIM_PARAMS.standalone) return;
+  pimPostToParent({ type: 'pim-poc-alive', phase: phase || 'worker' });
+}
+
 function pimCvRequest(type, payload) {
   return new Promise(function (resolve, reject) {
     if (!pimUseCvWorker || !pimCvWorker) {
@@ -2683,6 +2688,7 @@ function pimInitCvWorker() {
         cvReady = true;
         pimUseCvWorker = true;
         console.log('[pim-poc] OpenCV Web Worker aktif (pimUseCvWorker=true)');
+        pimPostPocAlive('cv-ready');
         if (typeof updateLibStatus === 'function') updateLibStatus();
         pimTryFlushPendingHandleFile();
         onOpenCvReady();
@@ -2692,6 +2698,7 @@ function pimInitCvWorker() {
         const pending = pimCvWorkerRequests.get(msg.requestId);
         if (!pending) return;
         pimCvWorkerRequests.delete(msg.requestId);
+        pimPostPocAlive('cv-worker');
         if (msg.error) pending.reject(new Error(msg.error));
         else pending.resolve(msg);
       }

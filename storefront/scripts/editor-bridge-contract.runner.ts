@@ -72,6 +72,10 @@ async function runBridgeContractTest() {
     "poc.html cutline auto-failed helper eksik"
   );
   assert(
+    pocSource.includes("pim-poc-alive"),
+    "poc.html alive heartbeat eksik"
+  );
+  assert(
     pocSource.includes("pim-poc-load-failed"),
     "poc.html load-failed sinyali eksik"
   );

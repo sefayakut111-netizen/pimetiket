@@ -108,8 +108,10 @@ function cutModeFromTemplate(tpl: DieCutTemplate): CutMode {
 
 const DEFAULT_WIDTH_MM = 50;
 const DEFAULT_HEIGHT_MM = 50;
-/** Tasarım yüklendikten sonra bıçak beklemesi (OpenCV cold start için makul süre). */
-const CUTLINE_WAIT_MS = 10_000;
+/** Tasarım yüklendikten sonra bıçak beklemesi (worker async compute dahil). */
+const CUTLINE_WAIT_MS = 45_000;
+/** İlk tasarım yüklenene kadar mount watchdog — worker cold start için uzun. */
+const POC_MOUNT_TIMEOUT_MS = 180_000;
 const CUTLINE_FAIL_MESSAGE = "Bıçak hazırlanamadı — lütfen tekrar dene";
 
 const EDITOR_TOOL_TABS = [
@@ -246,6 +248,11 @@ export default function EditorShell() {
     useState<BgRemovePreviewPayload | null>(null);
   const undoSnapshotRef = useRef<EditorUndoSnapshot | null>(null);
   const autoSwitchToBicakRef = useRef(false);
+  const pocDesignEverLoadedRef = useRef(false);
+  const pocMountTimeoutRef = useRef<number | null>(null);
+  const cutlineWatchdogRef = useRef<number | null>(null);
+  const cutlineReadyRef = useRef(false);
+  const cutlineErrorRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isEditorOnboarded()) setShowCoach(true);
@@ -266,6 +273,14 @@ export default function EditorShell() {
     designLoadedRef.current = designLoaded;
   }, [designLoaded]);
 
+  useEffect(() => {
+    cutlineReadyRef.current = cutlineReady;
+  }, [cutlineReady]);
+
+  useEffect(() => {
+    cutlineErrorRef.current = cutlineError;
+  }, [cutlineError]);
+
   const markCutlinePending = useCallback(() => {
     setCutlineReady(false);
     setCutlineError(null);
@@ -276,6 +291,62 @@ export default function EditorShell() {
     setCutlineReady(false);
     setPocStatus({ state: "error", message });
   }, []);
+
+  const clearMountWatchdog = useCallback(() => {
+    if (pocMountTimeoutRef.current) {
+      window.clearTimeout(pocMountTimeoutRef.current);
+      pocMountTimeoutRef.current = null;
+    }
+  }, []);
+
+  const clearUnresponsiveBanner = useCallback(() => {
+    setPocStatus((prev) => (prev?.state === "timeout" ? null : prev));
+  }, []);
+
+  const acknowledgePocAlive = useCallback(() => {
+    clearUnresponsiveBanner();
+    clearMountWatchdog();
+  }, [clearUnresponsiveBanner, clearMountWatchdog]);
+
+  const clearCutlineWatchdog = useCallback(() => {
+    if (cutlineWatchdogRef.current) {
+      window.clearTimeout(cutlineWatchdogRef.current);
+      cutlineWatchdogRef.current = null;
+    }
+  }, []);
+
+  const armCutlineWatchdog = useCallback(() => {
+    clearCutlineWatchdog();
+    if (
+      !designLoadedRef.current ||
+      cutlineReadyRef.current ||
+      cutlineErrorRef.current
+    ) {
+      return;
+    }
+    cutlineWatchdogRef.current = window.setTimeout(() => {
+      if (
+        designLoadedRef.current &&
+        !cutlineReadyRef.current &&
+        !cutlineErrorRef.current
+      ) {
+        reportCutlineFailure(CUTLINE_FAIL_MESSAGE);
+      }
+    }, CUTLINE_WAIT_MS);
+  }, [clearCutlineWatchdog, reportCutlineFailure]);
+
+  useEffect(() => {
+    pocMountTimeoutRef.current = window.setTimeout(() => {
+      if (!pocDesignEverLoadedRef.current) {
+        setPocStatus({
+          state: "timeout",
+          message:
+            "Editör yanıt vermedi. Sayfayı yenileyip tekrar deneyin.",
+        });
+      }
+    }, POC_MOUNT_TIMEOUT_MS);
+    return () => clearMountWatchdog();
+  }, [clearMountWatchdog]);
 
   useEffect(() => {
     if (designLoaded && !autoSwitchToBicakRef.current) {
@@ -545,9 +616,6 @@ export default function EditorShell() {
   const applyPendingSablon = applyPendingTemplate;
 
   useEffect(() => {
-    let timeoutHandle: number | null = null;
-    let loaded = false;
-
     const handler = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
       if (iframeRef.current && e.source !== iframeRef.current.contentWindow) {
@@ -556,7 +624,14 @@ export default function EditorShell() {
       const data = e.data as Record<string, unknown> | undefined;
       if (!data || typeof data.type !== "string") return;
 
+      if (data.type === "pim-poc-alive") {
+        acknowledgePocAlive();
+        armCutlineWatchdog();
+        return;
+      }
+
       if (data.type === "pim-poc-ready") {
+        acknowledgePocAlive();
         setPocStatus({ state: "ready", message: "Görsel yükle — bıçak otomatik netleşir" });
         syncSizeToPoc(widthMm, heightMm);
         syncCutTypeToPoc(cutType);
@@ -565,6 +640,7 @@ export default function EditorShell() {
         setPocStatus({ state: "loading", message: "Dosya işleniyor…" });
         setDesignLoaded(false);
         markCutlinePending();
+        clearCutlineWatchdog();
         setImageScalePct(100);
         baseWidthMmRef.current = DEFAULT_WIDTH_MM;
         baseHeightMmRef.current = DEFAULT_HEIGHT_MM;
@@ -578,7 +654,8 @@ export default function EditorShell() {
         undoSnapshotRef.current = null;
         setCanUndo(false);
       } else if (data.type === "pim-poc-loaded") {
-        loaded = true;
+        pocDesignEverLoadedRef.current = true;
+        acknowledgePocAlive();
         markCutlinePending();
         setDesignLoaded(true);
         setRemovingBg(false);
@@ -620,6 +697,7 @@ export default function EditorShell() {
           message: "Tasarım yüklendi — kontur hesaplanıyor…",
         });
         setShowCircleContourSuggest(false);
+        armCutlineWatchdog();
       } else if (data.type === "pim-mm-labels") {
         if (
           typeof data.widthMm === "number" &&
@@ -653,6 +731,8 @@ export default function EditorShell() {
           }
         }
       } else if (data.type === "pim-cutline-ready") {
+        acknowledgePocAlive();
+        clearCutlineWatchdog();
         setCutlineError(null);
         setCutlineReady(true);
         const meta = data.meta as PocCutlineMeta | undefined;
@@ -733,6 +813,8 @@ export default function EditorShell() {
           exportWaitRef.current = null;
         }
       } else if (data.type === "pim-cutline-auto-failed") {
+        acknowledgePocAlive();
+        clearCutlineWatchdog();
         const reason = String(data.reason ?? data.error ?? "kontur_uretilemedi");
         reportCutlineFailure(humanizeCutlineFailReason(reason));
         if (exportWaitRef.current) {
@@ -776,43 +858,57 @@ export default function EditorShell() {
     };
 
     window.addEventListener("message", handler);
-    timeoutHandle = window.setTimeout(() => {
-      if (!loaded) {
-        setPocStatus((prev) =>
-          prev?.state === "loaded"
-            ? prev
-            : {
-                state: "timeout",
-                message:
-                  "Editör yanıt vermedi. Sayfayı yenileyip tekrar deneyin.",
-              }
-        );
-      }
-    }, 120_000);
-
     return () => {
       window.removeEventListener("message", handler);
-      if (timeoutHandle) window.clearTimeout(timeoutHandle);
+      clearCutlineWatchdog();
     };
-  }, [applyPendingSablon, applyCoordinatedScale, applyCoordinatedSize, setBaseFromSize, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm, imageScalePct, cutMode, cutSource, markCutlinePending, reportCutlineFailure, toast]);
+  }, [
+    applyPendingSablon,
+    applyCoordinatedScale,
+    applyCoordinatedSize,
+    setBaseFromSize,
+    syncSizeToPoc,
+    syncCutTypeToPoc,
+    cutType,
+    widthMm,
+    heightMm,
+    imageScalePct,
+    cutMode,
+    cutSource,
+    markCutlinePending,
+    reportCutlineFailure,
+    acknowledgePocAlive,
+    armCutlineWatchdog,
+    clearCutlineWatchdog,
+    toast,
+  ]);
 
   useEffect(() => {
-    if (!designLoaded || cutlineReady || cutlineError) return;
-    const timeout = window.setTimeout(() => {
-      reportCutlineFailure(CUTLINE_FAIL_MESSAGE);
-    }, CUTLINE_WAIT_MS);
-    return () => window.clearTimeout(timeout);
-  }, [designLoaded, cutlineReady, cutlineError, reportCutlineFailure]);
+    if (!designLoaded || cutlineReady || cutlineError) {
+      clearCutlineWatchdog();
+      return;
+    }
+    armCutlineWatchdog();
+    return () => clearCutlineWatchdog();
+  }, [
+    designLoaded,
+    cutlineReady,
+    cutlineError,
+    armCutlineWatchdog,
+    clearCutlineWatchdog,
+  ]);
 
   const retryCutline = useCallback(() => {
     if (!designLoadedRef.current) return;
     markCutlinePending();
+    acknowledgePocAlive();
     setPocStatus({
       state: "loaded",
       message: "Kontur yeniden hesaplanıyor…",
     });
     postToPoc({ type: "pim-flush-cutline" });
-  }, [markCutlinePending, postToPoc]);
+    armCutlineWatchdog();
+  }, [markCutlinePending, postToPoc, acknowledgePocAlive, armCutlineWatchdog]);
 
   const productHint = useMemo(
     () => deriveEditorProductHint(pocMeta),
