@@ -94,19 +94,32 @@ export class ComplianceAuditor extends AuditorBase {
     const warningCutoff = new Date();
     warningCutoff.setDate(warningCutoff.getDate() - TUNE.kvkkWarningDays);
 
-    const { data } = await this.admin
+    const { data, error } = await this.admin
       .from("kvkk_requests")
-      .select("id, user_id, created_at, request_type, status")
+      .select("id, user_id, created_at, kind, status")
       .eq("status", "pending")
+      .in("kind", ["account_delete", "partial_delete"])
       .lt("created_at", warningCutoff.toISOString())
       .order("created_at", { ascending: true })
       .limit(50);
+
+    if (error) {
+      findings.push(
+        this.warning(
+          "kvkk_sla_query_error",
+          "KVKK SLA sorgusu başarısız",
+          `kvkk_requests SELECT hatası: ${error.message}`,
+          { code: error.code }
+        )
+      );
+      return { findings, metrics: { error: error.message } };
+    }
 
     const rows = (data ?? []) as Array<{
       id: string;
       user_id: string;
       created_at: string;
-      request_type: string;
+      kind: string;
       status: string;
     }>;
 
@@ -120,21 +133,12 @@ export class ComplianceAuditor extends AuditorBase {
       .map((r) => r.id);
 
     if (overdueIds.length > 0) {
-      const suggestedAction: SuggestedAction = {
-        type: "process_kvkk_deletion",
-        payload: { requestIds: overdueIds, reason: "sla_overdue" },
-        title: `${overdueIds.length} KVKK silme talebini şimdi işle`,
-        description:
-          "fn_process_kvkk_deletion RPC çağrılır. Anonymization uygulanır (hard delete değil).",
-      };
-
       findings.push(
         this.critical(
           "kvkk_sla_overdue",
           `${overdueIds.length} KVKK talebi 30 gün SLA'yı aştı`,
-          `KVKK m.13: silme talepleri 30 gün içinde işlenmek zorunda. **${overdueIds.length}** talep süreyi aşmış — yasal risk.`,
-          { count: overdueIds.length, requestIds: overdueIds },
-          suggestedAction
+          `KVKK m.7: silme talepleri 30 gün içinde işlenmek zorunda. **${overdueIds.length}** talep süreyi aşmış — /admin/kvkk-talepleri üzerinden silinmeli. Silme tek kapıdan (fn_delete_user_pii); otomatik aksiyon kaldırıldı.`,
+          { count: overdueIds.length, requestIds: overdueIds }
         )
       );
     }
