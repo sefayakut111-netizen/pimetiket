@@ -44,7 +44,7 @@ const BodySchema = z.object({
 
 export async function POST(req: Request) {
   // Auth — impersonation yüksek yetki gerektirir (view-only staff engellenir)
-  const auth = await assertPermission("fason", "create");
+  const auth = await assertPermission("staff", "update");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
