@@ -93,6 +93,7 @@ interface IntentRow {
     effectiveShipping?: number | null;
   };
   status: string;
+  failure_reason?: string | null;
 }
 
 // Sefa kuralı (12 May): orderId 8-char nanoid (~218 trilyon kombinasyon).
@@ -213,6 +214,22 @@ export async function POST(req: NextRequest) {
         merchant_oid: merchantOid,
       },
     });
+    if (isSuccess) {
+      const { notifyAdminCriticalAlert } = await import(
+        "@/lib/mail/admin-critical-alert"
+      );
+      void notifyAdminCriticalAlert({
+        alertKey: `intent_missing:${merchantOid}`,
+        subject: `🚨 PayTR success ama intent yok — ${merchantOid}`,
+        title: "Orphan charge riski — intent bulunamadı",
+        body: `merchant_oid: ${merchantOid}\nPayTR success bildirdi ama payment_intents kaydı yok. PayTR panelinden tahsilatı doğrula.`,
+        targetType: "cart",
+        targetId: merchantOid,
+        extra: {
+          admin_link: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"}/admin/finans?tab=odemeler`,
+        },
+      }).catch(() => {});
+    }
     // Intent yoksa "OK" dönelim — PayTR retry'lamasın, biz manuel düzeltiriz
     return new NextResponse("OK");
   }
@@ -302,6 +319,32 @@ export async function POST(req: NextRequest) {
       console.error("[payment/callback] amount mismatch admin alert:", err)
     );
 
+    return new NextResponse("OK");
+  }
+
+  if (isSuccess && intent.status === "failed") {
+    const { notifyAdminCriticalAlert } = await import(
+      "@/lib/mail/admin-critical-alert"
+    );
+    void notifyAdminCriticalAlert({
+      alertKey: `charge_on_failed_intent:${merchantOid}`,
+      subject: `🚨 PayTR success ama intent 'failed' — ${merchantOid}`,
+      title: "Failed intent'e tahsilat — manuel inceleme",
+      body: `failure_reason: ${intent.failure_reason}. Gerçek tahsilat olduysa yetim.`,
+      targetType: "cart",
+      targetId: merchantOid,
+      extra: {
+        admin_link: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"}/admin/finans?tab=odemeler`,
+      },
+    }).catch(() => {});
+    await admin
+      .from("payment_intents")
+      .update({
+        status: "needs_review",
+        failure_reason: `charge_on_failed:${intent.failure_reason ?? ""}`,
+      })
+      .eq("id", merchantOid)
+      .eq("status", "failed");
     return new NextResponse("OK");
   }
 

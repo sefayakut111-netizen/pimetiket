@@ -29,6 +29,7 @@ import {
 } from "@/lib/payment/paytr";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { casUpdate } from "@/lib/db/cas-update";
 import { validateCartPricing } from "@/lib/payment-validation";
 import {
   resolveCouponForCheckout,
@@ -453,7 +454,13 @@ export async function POST(req: NextRequest) {
     );
     if (reserveErr) {
       console.error("[payment/init] coupon reserve RPC error:", reserveErr);
-      await admin.from("payment_intents").delete().eq("id", merchantOid);
+      await admin.rpc("fn_release_coupon_reservation", {
+        p_payment_intent_id: merchantOid,
+      });
+      await casUpdate(admin, "payment_intents", merchantOid, {
+        status: "failed",
+        failure_reason: "coupon_reserve_failed",
+      }, { expectFrom: "pending", col: "status" });
       return NextResponse.json(
         { error: "coupon_reserve_failed" },
         { status: 500 }
@@ -466,7 +473,13 @@ export async function POST(req: NextRequest) {
         ? (reserveData as { ok?: boolean; reason?: string })
         : null;
     if (!reserve?.ok) {
-      await admin.from("payment_intents").delete().eq("id", merchantOid);
+      await admin.rpc("fn_release_coupon_reservation", {
+        p_payment_intent_id: merchantOid,
+      });
+      await casUpdate(admin, "payment_intents", merchantOid, {
+        status: "failed",
+        failure_reason: "coupon_reserve_failed",
+      }, { expectFrom: "pending", col: "status" });
       return NextResponse.json(
         { error: "coupon_invalid", reason: reserve?.reason ?? "total_limit_reached" },
         { status: 400 }

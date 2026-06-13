@@ -143,21 +143,43 @@ export default function AdminIadelerPage() {
 
     setActionId(r.id);
     try {
-      const res = await fetch("/api/payment/refund", {
+      const basePayload = {
+        orderId: r.orderId,
+        amount: parsed,
+        returnId: r.id,
+        reason: reason.trim(),
+      };
+
+      let res = await fetch("/api/payment/refund", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          orderId: r.orderId,
-          amount: parsed,
-          returnId: r.id,
-          force: true,
-          reason: reason.trim(),
-        }),
+        body: JSON.stringify(basePayload),
       });
-      const data = (await res.json().catch(() => ({}))) as {
+      let data = (await res.json().catch(() => ({}))) as {
         error?: string;
         hint?: string;
+        status?: string;
       };
+
+      if (
+        res.status === 422 &&
+        data.error === "post_production_refund_blocked"
+      ) {
+        const ok = confirm(
+          `Sipariş ${data.status ?? "bilinmiyor"} — baskı sonrası iade kuralı. Yine de devam?`
+        );
+        if (!ok) return;
+        res = await fetch("/api/payment/refund", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ...basePayload, force: true }),
+        });
+        data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          hint?: string;
+        };
+      }
+
       if (!res.ok) {
         toast.error(data.hint ?? data.error ?? "Para iadesi başarısız");
         return;
