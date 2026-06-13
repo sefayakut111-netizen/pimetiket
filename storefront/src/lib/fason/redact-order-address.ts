@@ -90,3 +90,22 @@ export function redactItemMetaForPartner(
   copyNumber("designCount");
   return out;
 }
+
+/** Partner/fason free-text alanlarında PII şekli temizleme (passthrough — chip'leri korur). */
+export function sanitizeFreeTextForPartner(
+  value: string | null | undefined
+): string {
+  if (typeof value !== "string" || !value.trim()) return "";
+  return value
+    .replace(/[\x00-\x1f]/g, " ")
+    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "[gizli]")
+    .replace(
+      /(?:\+?90[\s-]?)?0?5\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}/g,
+      "[gizli]"
+    )
+    .replace(/\d[\d\s-]{9,}\d/g, "[gizli]")
+    .replace(/https?:\/\/\S+/gi, "[gizli]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 1000);
+}

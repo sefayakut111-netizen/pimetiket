@@ -7,7 +7,11 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { redactOrderAddressForPartner, redactItemMetaForPartner } from "@/lib/fason/redact-order-address";
+import {
+  redactOrderAddressForPartner,
+  redactItemMetaForPartner,
+  sanitizeFreeTextForPartner,
+} from "@/lib/fason/redact-order-address";
 
 export const dynamic = "force-dynamic";
 
@@ -83,8 +87,27 @@ export async function GET(
     address: Record<string, unknown> | null;
   } | null;
 
+  const assignmentRow = assignment as {
+    id: string;
+    status: string;
+    estimated_delivery: string | null;
+    notes: string | null;
+    assigned_at: string | null;
+    acknowledged_at: string | null;
+    in_production_at: string | null;
+    ready_at: string | null;
+    shipped_at: string | null;
+    tracking_company: string | null;
+    tracking_number: string | null;
+  } | null;
+
   return NextResponse.json({
-    assignment,
+    assignment: assignmentRow
+      ? {
+          ...assignmentRow,
+          notes: sanitizeFreeTextForPartner(assignmentRow.notes),
+        }
+      : null,
     order: orderRow
       ? {
           id: orderRow.id,
@@ -94,6 +117,9 @@ export async function GET(
       : null,
     items: (items ?? []).map((it) => ({
       ...it,
+      config: sanitizeFreeTextForPartner(
+        (it as { config?: string | null }).config
+      ),
       meta:
         redactItemMetaForPartner(
           (it as { meta?: Record<string, unknown> }).meta
