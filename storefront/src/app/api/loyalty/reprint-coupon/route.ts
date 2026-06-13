@@ -89,24 +89,49 @@ export async function POST(req: Request) {
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
   const code = `REPRINT-${random}`;
 
-  const { error: insertErr } = await admin.from("coupons").insert([
-    {
-      code,
-      kind: "percent",
-      value: 10,
-      max_discount: 500, // max 500 ₺ indirim
-      min_subtotal: 100,
-      total_uses_limit: 1,
-      per_user_limit: 1,
-      starts_at: new Date().toISOString(),
-      expires_at: new Date(
-        Date.now() + 30 * 24 * 60 * 60 * 1000
-      ).toISOString(),
-      description,
-      is_active: true,
-    },
-  ]);
+  const { data: inserted, error: insertErr } = await admin
+    .from("coupons")
+    .insert([
+      {
+        code,
+        kind: "percent",
+        value: 10,
+        max_discount: 500,
+        min_subtotal: 100,
+        total_uses_limit: 1,
+        per_user_limit: 1,
+        starts_at: new Date().toISOString(),
+        expires_at: new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+        description,
+        is_active: true,
+      },
+    ])
+    .select("code, value")
+    .single();
+
   if (insertErr) {
+    if (insertErr.code === "23505") {
+      const { data: raced } = await admin
+        .from("coupons")
+        .select("code, value")
+        .eq("description", description)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (raced) {
+        return NextResponse.json({
+          code: (raced as { code: string }).code,
+          value: (raced as { value: number }).value,
+          reused: true,
+        });
+      }
+      console.error("[reprint-coupon] 23505 race but no active row:", insertErr);
+      return NextResponse.json(
+        { error: "Kupon oluşturulamadı (yarışlı, tekrar deneyin)" },
+        { status: 409 }
+      );
+    }
     console.error("[reprint-coupon] insert error:", insertErr);
     return NextResponse.json(
       { error: "Kupon oluşturulamadı" },
@@ -114,9 +139,10 @@ export async function POST(req: Request) {
     );
   }
 
+  const row = inserted as { code: string; value: number };
   return NextResponse.json({
-    code,
-    value: 10,
+    code: row.code,
+    value: row.value,
     reused: false,
   });
 }
