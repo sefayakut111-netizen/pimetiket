@@ -7,7 +7,6 @@
 
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
-import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +16,6 @@ export async function POST(req: Request) {
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-
 
   let body: { order?: unknown };
   try {
@@ -40,19 +38,9 @@ export async function POST(req: Request) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Her id için sort_order = index
-  const updates = await Promise.all(
-    order.map((id, idx) =>
-      admin.from("gallery_items").update({ sort_order: idx }).eq("id", id)
-    )
-  );
-
-  const errors = updates.filter((u) => u.error);
-  if (errors.length > 0) {
-    return NextResponse.json(
-      { error: "Bazı öğeler güncellenemedi", count: errors.length },
-      { status: 500 }
-    );
+  const { error } = await admin.rpc("fn_reorder_gallery", { p_ids: order });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, updated: order.length });
