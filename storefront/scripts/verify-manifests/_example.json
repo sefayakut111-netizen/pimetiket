@@ -1,0 +1,24 @@
+{
+  "build": true,
+  "commit": "<sha veya boş — boşsa HEAD~1..HEAD diff>",
+  "projectRef": "ucmpwxnoaqjpzhijnxtp",
+  "denyInChanged": ["assertAiBudget", "force:\\s*true"],
+  "requireInFile": [
+    {
+      "file": "src/app/api/example/route.ts",
+      "pattern": "enqueueMail"
+    }
+  ],
+  "dbChecks": [
+    {
+      "label": "mig index var",
+      "sql": "select indexname from pg_indexes where schemaname = 'public' and indexname = 'example_index'",
+      "expect": { "includes": "example_index" }
+    },
+    {
+      "label": "mükerrer 0",
+      "sql": "select count(*) as n from pg_indexes where indexname = 'nonexistent_example'",
+      "expect": { "scalar": "0" }
+    }
+  ]
+}
