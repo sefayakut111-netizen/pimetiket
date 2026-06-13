@@ -113,6 +113,16 @@ export async function POST(
   } | null;
   const itemMeta = itemRow?.meta ?? {};
 
+  if (itemRow?.proof_status === "help_requested") {
+    return NextResponse.json(
+      {
+        error:
+          "Bu ürün için açık bir yardım talebin var — operatörümüz çözümleyince onaylayabilirsin",
+      },
+      { status: 400 }
+    );
+  }
+
   const { data: designFiles } = await admin
     .from("design_files")
     .select("id")
