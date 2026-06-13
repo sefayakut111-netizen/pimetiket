@@ -2491,6 +2491,7 @@ export type Database = {
           detail: Json | null
           event_type: string
           id: string
+          idempotency_key: string | null
           order_id: string
           status_after: Database["public"]["Enums"]["order_status"] | null
           summary: string
@@ -2502,6 +2503,7 @@ export type Database = {
           detail?: Json | null
           event_type: string
           id?: string
+          idempotency_key?: string | null
           order_id: string
           status_after?: Database["public"]["Enums"]["order_status"] | null
           summary: string
@@ -4372,6 +4374,29 @@ export type Database = {
         }
         Returns: string
       }
+      fn_release_advisory_lock: { Args: { p_key: string }; Returns: undefined }
+      fn_transition_order_status: {
+        Args: {
+          p_actor_email?: string
+          p_actor_id?: string
+          p_actor_role?: string
+          p_audit_action?: string
+          p_audit_detail?: Json
+          p_audit_summary?: string
+          p_detail?: Json
+          p_event_type?: string
+          p_from_status?: Database["public"]["Enums"]["order_status"][]
+          p_idempotency_key?: string
+          p_ip_address?: string
+          p_mode?: string
+          p_order_id: string
+          p_summary?: string
+          p_to_status: Database["public"]["Enums"]["order_status"]
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
+      fn_with_advisory_lock: { Args: { p_key: string }; Returns: boolean }
       fn_finalize_paid_order: {
         Args: {
           p_estimated_delivery: string
