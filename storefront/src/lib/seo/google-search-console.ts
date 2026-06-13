@@ -10,6 +10,8 @@
  */
 
 import { GoogleAuth } from "google-auth-library";
+import { fetchWithTimeout } from "@/lib/http/fetch-with-timeout";
+import { GSC_HTTP_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 import { getSiteUrl } from "@/lib/site-url";
 
 const WEBMASTERS_SCOPE = "https://www.googleapis.com/auth/webmasters";
@@ -74,7 +76,7 @@ export async function submitGscSitemap(
     const site = encodeURIComponent(siteUrl());
     const url = `https://www.googleapis.com/webmasters/v3/sites/${site}/sitemaps`;
 
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token.token}`,
@@ -82,6 +84,7 @@ export async function submitGscSitemap(
       },
       body: JSON.stringify({ feedpath: sitemapFeed }),
       cache: "no-store",
+      timeoutMs: GSC_HTTP_TIMEOUT_MS,
     });
 
     const text = await res.text();

@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "@/lib/http/fetch-with-timeout";
+import { INSTAGRAM_HTTP_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 import type { InstagramFeedPost, InstagramMediaItem } from "./types";
 
 const GRAPH_VERSION = "v21.0";
@@ -20,7 +22,10 @@ export async function fetchInstagramMedia(
   url.searchParams.set("limit", String(limit));
   url.searchParams.set("access_token", accessToken);
 
-  const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
+  const res = await fetchWithTimeout(url.toString(), {
+    next: { revalidate: 3600 },
+    timeoutMs: INSTAGRAM_HTTP_TIMEOUT_MS,
+  });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(`Instagram API ${res.status}: ${detail.slice(0, 200)}`);

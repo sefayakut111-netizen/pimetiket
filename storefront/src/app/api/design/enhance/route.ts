@@ -21,6 +21,7 @@ import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 import type { TablesInsert } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
 const Body = z
   .object({

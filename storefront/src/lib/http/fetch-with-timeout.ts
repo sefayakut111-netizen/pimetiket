@@ -16,5 +16,8 @@ export async function fetchWithTimeout(
 
 /** AbortError / timeout ayrımı için yardımcı */
 export function isFetchTimeoutError(err: unknown): boolean {
-  return err instanceof Error && err.name === "AbortError";
+  return (
+    err instanceof Error &&
+    (err.name === "AbortError" || err.name === "TimeoutError")
+  );
 }
