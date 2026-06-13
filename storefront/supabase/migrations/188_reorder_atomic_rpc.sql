@@ -24,7 +24,7 @@ BEGIN
   GET DIAGNOSTICS v_rows = ROW_COUNT; RETURN v_rows;
 END; $$;
 
-REVOKE ALL ON FUNCTION public.fn_reorder_gallery(uuid[]) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.fn_reorder_product_cards(text, uuid[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_reorder_gallery(uuid[]) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fn_reorder_product_cards(text, uuid[]) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.fn_reorder_gallery(uuid[]) TO service_role;
 GRANT EXECUTE ON FUNCTION public.fn_reorder_product_cards(text, uuid[]) TO service_role;
