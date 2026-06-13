@@ -34,7 +34,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolvePartnerContext } from "@/lib/supabase/partner-auth";
-import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import { STORAGE_BUCKET, type AllowedMime } from "@/lib/storage/design-files";
+import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
+import { maybeSanitizeUploadBytes } from "@/lib/upload/sanitize-svg";
+import { categorizeFile, BLOCKED_FILE_MESSAGE } from "@/lib/design-file-types";
 import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
 import { sendOrderProofRequired } from "@/lib/mail/notifications";
 
@@ -60,6 +63,16 @@ const MIME_EXT: Record<string, string> = {
   "application/illustrator": "ai",
   "application/x-photoshop": "psd",
   "image/vnd.adobe.photoshop": "psd",
+};
+const CANONICAL_MIME: Record<string, AllowedMime> = {
+  "image/png": "image/png",
+  "image/jpeg": "image/jpeg",
+  "image/svg+xml": "image/svg+xml",
+  "application/pdf": "application/pdf",
+  "application/postscript": "application/illustrator",
+  "application/illustrator": "application/illustrator",
+  "application/x-photoshop": "image/vnd.adobe.photoshop",
+  "image/vnd.adobe.photoshop": "image/vnd.adobe.photoshop",
 };
 
 export async function POST(
@@ -162,7 +175,24 @@ export async function POST(
       { status: 413 }
     );
   }
+  if (categorizeFile(file.name, file.type) === "blocked") {
+    return NextResponse.json(
+      { error: "blocked_file_type", message: BLOCKED_FILE_MESSAGE },
+      { status: 400 }
+    );
+  }
   if (!ALLOWED_MIMES.has(file.type)) {
+    return NextResponse.json(
+      {
+        error: "unsupported_mime",
+        message: `Desteklenen formatlar: PNG, JPG, SVG, PDF, AI, PSD. Gelen: ${file.type}`,
+      },
+      { status: 415 }
+    );
+  }
+
+  const canonicalMime = CANONICAL_MIME[file.type];
+  if (!canonicalMime) {
     return NextResponse.json(
       {
         error: "unsupported_mime",
@@ -188,10 +218,35 @@ export async function POST(
   const ts = Date.now();
   const storagePath = `${order.user_id}/${order.id}/${itemId}/revised-${ts}-v${nextVersion}.${ext}`;
 
-  const arrayBuffer = await file.arrayBuffer();
+  let uploadBytes: Buffer | ArrayBuffer = await file.arrayBuffer();
+  try {
+    uploadBytes = maybeSanitizeUploadBytes(
+      uploadBytes,
+      canonicalMime,
+      file.name
+    );
+  } catch (svgErr) {
+    console.error("[partner/upload-revision] svg sanitize:", svgErr);
+    return NextResponse.json(
+      { error: "SVG dosyası güvenlik kontrolünden geçemedi." },
+      { status: 400 }
+    );
+  }
+  const headerBytes = new Uint8Array(uploadBytes).slice(0, 64);
+  const magic = detectMimeFromMagicBytes(headerBytes, canonicalMime);
+  if (!magic.matchesClaim) {
+    return NextResponse.json(
+      {
+        error: "file_content_mismatch",
+        detail: `Dosya içeriği MIME ile uyumsuz (iddia: ${file.type}, gerçek: ${magic.label}).`,
+      },
+      { status: 400 }
+    );
+  }
+
   const { error: uploadErr } = await admin.storage
     .from(STORAGE_BUCKET)
-    .upload(storagePath, arrayBuffer, {
+    .upload(storagePath, uploadBytes, {
       contentType: file.type,
       upsert: false,
     });
