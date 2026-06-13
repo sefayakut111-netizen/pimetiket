@@ -1,6 +1,10 @@
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
+import {
+  isGlobalAiBudgetExceeded,
+  logAiUsage,
+} from "@/lib/pim/ai-usage-log";
 
 const ProofValidationSchema = z.object({
   overall_verdict: z.enum(["pass", "warn", "fail"]),
@@ -63,6 +67,10 @@ export async function validateProofWithAI(
   cutlineOverlayUrl: string,
   whiteLayerOverlayUrl: string | null
 ): Promise<ProofAIResult> {
+  if (await isGlobalAiBudgetExceeded()) {
+    throw new Error("ai_budget_exceeded");
+  }
+
   const images: Array<
     { type: "image"; image: URL } | { type: "text"; text: string }
   > = [
@@ -95,6 +103,13 @@ export async function validateProofWithAI(
     temperature: 0.3,
     maxRetries: 2,
     abortSignal: AbortSignal.timeout(45_000),
+  });
+
+  await logAiUsage({
+    source: "proof_validate",
+    model: "gpt-4o",
+    inputTokens: result.usage?.inputTokens ?? 0,
+    outputTokens: result.usage?.outputTokens ?? 0,
   });
 
   return result.object;

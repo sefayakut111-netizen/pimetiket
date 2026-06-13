@@ -10,6 +10,10 @@ import {
 } from "@/lib/editor/pim-command-schema";
 import { EDITOR_MAX_MM, EDITOR_MIN_MM } from "@/lib/editor/coords";
 import { OPENAI_MINI_TIMEOUT_MS } from "@/lib/http/external-timeouts";
+import {
+  isGlobalAiBudgetExceeded,
+  logAiUsage,
+} from "@/lib/pim/ai-usage-log";
 
 export const STICKER_LIMITS = {
   minWidthMm: 25,
@@ -117,7 +121,12 @@ Marka sesi: sen-dili, kısa, net, dalkavuk yok. reply alanı her zaman dolu.`;
 export async function resolvePimCommandWithLlm(
   message: string
 ): Promise<{ reply: string; command: PimEditorCommand } | null> {
-  if (!process.env.OPENAI_API_KEY) return null;
+  if (
+    !process.env.OPENAI_API_KEY ||
+    (await isGlobalAiBudgetExceeded())
+  ) {
+    return null;
+  }
 
   try {
     const result = await generateObject({
@@ -128,6 +137,13 @@ export async function resolvePimCommandWithLlm(
       temperature: 0.2,
       maxRetries: 2,
       abortSignal: AbortSignal.timeout(OPENAI_MINI_TIMEOUT_MS),
+    });
+
+    await logAiUsage({
+      source: "editor_command",
+      model: "gpt-4o-mini",
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
     });
 
     const parsed = PimLlmOutputSchema.safeParse(result.object);

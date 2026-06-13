@@ -33,6 +33,10 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { OPENAI_MINI_TIMEOUT_MS } from "@/lib/http/external-timeouts";
+import {
+  isGlobalAiBudgetExceeded,
+  logAiUsage,
+} from "@/lib/pim/ai-usage-log";
 
 export const runtime = "nodejs";
 export const maxDuration = 15;
@@ -284,6 +288,15 @@ export async function POST(req: Request) {
   const customerName = orderRow.address?.name ?? null;
   const firstName = customerName ? customerName.split(" ")[0] : null;
 
+  if (await isGlobalAiBudgetExceeded()) {
+    const fallback = buildFallbackFeedback(input, firstName);
+    return NextResponse.json({
+      ok: true,
+      ...fallback,
+      fallback: true,
+    });
+  }
+
   // OpenAI çağrısı (schema-validated, kısa response)
   try {
     const result = await generateObject({
@@ -294,6 +307,13 @@ export async function POST(req: Request) {
       temperature: 0.6,
       maxRetries: 2,
       abortSignal: AbortSignal.timeout(OPENAI_MINI_TIMEOUT_MS),
+    });
+
+    await logAiUsage({
+      source: "cutline_feedback",
+      model: "gpt-4o-mini",
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
     });
 
     return NextResponse.json({

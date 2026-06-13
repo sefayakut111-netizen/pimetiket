@@ -32,6 +32,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
 import { OPENAI_VISION_TIMEOUT_MS } from "@/lib/http/external-timeouts";
+import {
+  isGlobalAiBudgetExceeded,
+  logAiUsage,
+} from "@/lib/pim/ai-usage-log";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -303,6 +307,10 @@ export async function POST(req: Request) {
     return visionFallbackResponse(input, firstName, "rate_limit");
   }
 
+  if (await isGlobalAiBudgetExceeded()) {
+    return visionFallbackResponse(input, firstName, "budget");
+  }
+
   // Signed URL — vision 1 saatlik short-lived
   const { data: signed, error: signErr } = await admin.storage
     .from(STORAGE_BUCKET)
@@ -330,6 +338,13 @@ export async function POST(req: Request) {
       temperature: 0.4,
       maxRetries: 2,
       abortSignal: AbortSignal.timeout(OPENAI_VISION_TIMEOUT_MS),
+    });
+
+    await logAiUsage({
+      source: "cutline_vision",
+      model: "gpt-4o",
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
     });
 
     return NextResponse.json({

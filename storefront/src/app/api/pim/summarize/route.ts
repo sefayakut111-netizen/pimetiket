@@ -15,7 +15,10 @@ import {
 } from "@/lib/pim/memory-clamp";
 import type { PimFact, PimMessage } from "@/lib/pim/memory";
 import { OPENAI_CHAT_TIMEOUT_MS } from "@/lib/http/external-timeouts";
-import { logAiUsage } from "@/lib/pim/ai-usage-log";
+import {
+  isGlobalAiBudgetExceeded,
+  logAiUsage,
+} from "@/lib/pim/ai-usage-log";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -79,6 +82,14 @@ export async function POST() {
   const userPrompt = priorSummary
     ? `Önceki özet:\n${priorSummary}\n\nYeni mesajlar:\n${transcript}`
     : `Mesajlar:\n${transcript}`;
+
+  if (await isGlobalAiBudgetExceeded()) {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: "ai_budget_exceeded",
+    });
+  }
 
   let summaryText: string;
   const startedAt = Date.now();

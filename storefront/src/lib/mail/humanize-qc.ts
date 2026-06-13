@@ -8,6 +8,10 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { OPENAI_MINI_TIMEOUT_MS } from "@/lib/http/external-timeouts";
+import {
+  isGlobalAiBudgetExceeded,
+  logAiUsage,
+} from "@/lib/pim/ai-usage-log";
 
 const WarningsSchema = z.object({
   warnings: z.array(z.string().max(200)).max(3),
@@ -43,7 +47,7 @@ export async function humanizeQcWarnings(
     return [QC_ISSUE_FALLBACK];
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.OPENAI_API_KEY || (await isGlobalAiBudgetExceeded())) {
     return cleaned.slice(0, 3);
   }
 
@@ -55,6 +59,12 @@ export async function humanizeQcWarnings(
       prompt: `QC uyarıları (müşteri diline çevir, max 3 madde):\n${cleaned.join("\n")}`,
       temperature: 0.3,
       abortSignal: AbortSignal.timeout(OPENAI_MINI_TIMEOUT_MS),
+    });
+    await logAiUsage({
+      source: "humanize_qc",
+      model: "gpt-4o-mini",
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
     });
     const warnings = result.object.warnings
       .map((w) => w.trim())
@@ -76,7 +86,7 @@ export async function humanizeQcReason(args: {
     return QC_REASON_FALLBACK;
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.OPENAI_API_KEY || (await isGlobalAiBudgetExceeded())) {
     return note;
   }
 
@@ -93,6 +103,12 @@ export async function humanizeQcReason(args: {
         .join("\n"),
       temperature: 0.3,
       abortSignal: AbortSignal.timeout(OPENAI_MINI_TIMEOUT_MS),
+    });
+    await logAiUsage({
+      source: "humanize_qc",
+      model: "gpt-4o-mini",
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
     });
     const reason = result.object.reason.trim();
     return reason.length > 0 ? reason : note;

@@ -9,7 +9,14 @@ export type AiUsageSource =
   | "pim_summarize"
   | "support_classify"
   | "search_intent"
-  | "image_upscale";
+  | "image_upscale"
+  | "proof_validate"
+  | "cutline_feedback"
+  | "cutline_vision"
+  | "editor_command"
+  | "humanize_qc"
+  | "humanize_note"
+  | "daily_summary";
 
 export const PIM_MODEL_PRICING = {
   "gpt-4o": { inputPerM: 2.5, outputPerM: 10 },

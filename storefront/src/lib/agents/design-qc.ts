@@ -32,6 +32,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { OPENAI_VISION_TIMEOUT_MS } from "@/lib/http/external-timeouts";
+import { isGlobalAiBudgetExceeded } from "@/lib/pim/ai-usage-log";
 
 // ============================================================
 // Types
@@ -318,6 +319,34 @@ export async function runDesignQC(
   const ruleBased = await tryRuleBasedRasterQC(input, fileType);
   if (ruleBased) {
     return ruleBased;
+  }
+
+  if (await isGlobalAiBudgetExceeded()) {
+    const duration = Date.now() - start;
+    return {
+      verdict: "normal",
+      score: 60,
+      fileType,
+      effectiveDpi: null,
+      embeddedRasterCount: 0,
+      colorProfile: null,
+      hasBleed: null,
+      hasCutPath: null,
+      isTextOutlined: null,
+      visualQuality: "acceptable",
+      findings: [
+        {
+          severity: "info",
+          category: "general",
+          message: "AI bütçesi doldu—uzman gözü",
+          actionable:
+            "Ödeme tamamlanmadan baskıya geçmeyin; önizlemeyi kontrol edin.",
+        },
+      ],
+      durationMs: duration,
+      model: "no-ai-budget-skip",
+      tokensUsed: 0,
+    };
   }
 
   // Kural tabanlı sonuç yoksa GPT Vision ile analiz

@@ -8,6 +8,10 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { OPENAI_MINI_TIMEOUT_MS } from "@/lib/http/external-timeouts";
+import {
+  isGlobalAiBudgetExceeded,
+  logAiUsage,
+} from "@/lib/pim/ai-usage-log";
 
 export interface DailySummaryStats {
   newOrders24h: number;
@@ -62,7 +66,7 @@ export function buildDailySummaryFallback(stats: DailySummaryStats): string {
 export async function generateDailySummaryAi(
   stats: DailySummaryStats
 ): Promise<string | null> {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.OPENAI_API_KEY || (await isGlobalAiBudgetExceeded())) {
     return null;
   }
 
@@ -76,6 +80,12 @@ export async function generateDailySummaryAi(
       prompt: `Ham veriler:\n${fallback}`,
       temperature: 0.4,
       abortSignal: AbortSignal.timeout(OPENAI_MINI_TIMEOUT_MS),
+    });
+    await logAiUsage({
+      source: "daily_summary",
+      model: "gpt-4o-mini",
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
     });
     const summary = result.object.summary.trim();
     return summary.length > 0 ? summary : null;
