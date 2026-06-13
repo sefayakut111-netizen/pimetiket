@@ -137,6 +137,8 @@ type EditorUndoSnapshot = {
   cutSource: CutSource;
   sekilPreset: SekilPreset;
   imageScalePct: number;
+  imagePlacement: { x: number; y: number; scale: number };
+  canRestoreBgRemove: boolean;
   offsetMm: number;
   smoothness: number;
   cornerRadiusMm: number;
@@ -247,6 +249,8 @@ export default function EditorShell() {
   const [bgRemovePreview, setBgRemovePreview] =
     useState<BgRemovePreviewPayload | null>(null);
   const undoSnapshotRef = useRef<EditorUndoSnapshot | null>(null);
+  const imagePlacementRef = useRef({ x: 0, y: 0, scale: 1 });
+  const bgRemoveUndoAvailableRef = useRef(false);
   const autoSwitchToBicakRef = useRef(false);
   const pocDesignEverLoadedRef = useRef(false);
   const pocMountTimeoutRef = useRef<number | null>(null);
@@ -483,6 +487,8 @@ export default function EditorShell() {
       cutSource,
       sekilPreset,
       imageScalePct,
+      imagePlacement: { ...imagePlacementRef.current },
+      canRestoreBgRemove: bgRemoveUndoAvailableRef.current,
       offsetMm,
       smoothness,
       cornerRadiusMm,
@@ -516,7 +522,10 @@ export default function EditorShell() {
     setSmoothness(snap.smoothness);
     setCornerRadiusMm(snap.cornerRadiusMm);
     setActiveDieCutId(snap.activeDieCutId);
+    imagePlacementRef.current = { ...snap.imagePlacement };
     markCutlinePending();
+    postToPoc({ type: "pim-set-offset", offsetMm: snap.offsetMm });
+    postToPoc({ type: "pim-set-smoothness", smoothness: snap.smoothness });
     postToPoc({
       type: "pim-editor-set-shape",
       mode: snap.cutMode,
@@ -524,10 +533,27 @@ export default function EditorShell() {
       heightMm: snap.heightMm,
       ...(snap.cutMode === "rect" ? { cornerRadiusMm: snap.cornerRadiusMm } : {}),
     });
-    postToPoc({ type: "pim-set-offset", offsetMm: snap.offsetMm });
-    postToPoc({ type: "pim-set-smoothness", smoothness: snap.smoothness });
-    postToPoc({ type: "pim-set-image-scale", scale: snap.imageScalePct / 100 });
-    syncSizeToPoc(snap.widthMm, snap.heightMm);
+    if (snap.canRestoreBgRemove) {
+      postToPoc({
+        type: "pim-restore-editor-undo",
+        x: snap.imagePlacement.x,
+        y: snap.imagePlacement.y,
+        scale: snap.imagePlacement.scale,
+        restoreBgRemove: true,
+      });
+      bgRemoveUndoAvailableRef.current = false;
+      setBgRemovePreview(null);
+    } else {
+      postToPoc({
+        type: "pim-restore-editor-undo",
+        x: snap.imagePlacement.x,
+        y: snap.imagePlacement.y,
+        scale: snap.imagePlacement.scale,
+        restoreBgRemove: false,
+      });
+      postToPoc({ type: "pim-set-image-scale", scale: snap.imageScalePct / 100 });
+      syncSizeToPoc(snap.widthMm, snap.heightMm);
+    }
     undoSnapshotRef.current = null;
     setCanUndo(false);
     setPocStatus({ state: "loaded", message: "Son işlem geri alındı" });
@@ -540,10 +566,12 @@ export default function EditorShell() {
   }, [postToPoc]);
 
   const handleBgRemoveAccept = useCallback(() => {
+    captureUndoSnapshot();
     postToPoc({ type: "pim-bg-remove-accept" });
     setBgRemovePreview(null);
+    bgRemoveUndoAvailableRef.current = false;
     setDirty(true);
-  }, [postToPoc]);
+  }, [postToPoc, captureUndoSnapshot]);
 
   const handleBgRemoveReject = useCallback(() => {
     postToPoc({ type: "pim-bg-remove-reject" });
@@ -653,6 +681,8 @@ export default function EditorShell() {
         setRemovingBg(false);
         undoSnapshotRef.current = null;
         setCanUndo(false);
+        imagePlacementRef.current = { x: 0, y: 0, scale: 1 };
+        bgRemoveUndoAvailableRef.current = false;
       } else if (data.type === "pim-poc-loaded") {
         pocDesignEverLoadedRef.current = true;
         acknowledgePocAlive();
@@ -714,8 +744,39 @@ export default function EditorShell() {
         }
       } else if (data.type === "pim-circle-contour-suggest-clear") {
         setShowCircleContourSuggest(false);
+      } else if (data.type === "pim-image-placement-changed") {
+        if (
+          typeof data.x === "number" &&
+          typeof data.y === "number" &&
+          typeof data.scale === "number" &&
+          data.scale > 0
+        ) {
+          imagePlacementRef.current = {
+            x: data.x,
+            y: data.y,
+            scale: data.scale,
+          };
+        }
+        if (typeof data.scale === "number" && data.scale > 0) {
+          if (performance.now() < scaleEchoSuppressUntilRef.current) {
+            return;
+          }
+          const pct = Math.round(
+            Math.max(25, Math.min(200, data.scale * 100))
+          );
+          if (pct !== imageScalePct) {
+            applyCoordinatedScale(pct, {
+              syncPocScale: false,
+              syncPocSize: false,
+            });
+          }
+        }
       } else if (data.type === "pim-image-scale-changed") {
         if (typeof data.scale === "number" && data.scale > 0) {
+          imagePlacementRef.current = {
+            ...imagePlacementRef.current,
+            scale: data.scale,
+          };
           // Shell kaynaklı set-size'dan gelen echo penceresi → TÜMÜNÜ yok say (slider zıplamasın)
           if (performance.now() < scaleEchoSuppressUntilRef.current) {
             return;
@@ -757,6 +818,7 @@ export default function EditorShell() {
         setRemovingBg(true);
       } else if (data.type === "pim-bg-remove-preview") {
         setRemovingBg(false);
+        bgRemoveUndoAvailableRef.current = true;
         if (
           typeof data.beforeDataUrl === "string" &&
           typeof data.afterDataUrl === "string" &&

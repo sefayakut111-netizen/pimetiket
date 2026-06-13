@@ -1874,6 +1874,7 @@ let bgRemovePendingFile = null;
 let bgRemovePendingBlobUrl = null;
 let bgRemoveBeforeObjectUrl = null;
 let bgRemoveAfterObjectUrl = null;
+let bgRemoveUndoBackupFile = null;
 let detectedCutContourNames = []; // Tespit edilen spot color isimleri
 
 // === BEYAZ PLAN STATE ===
@@ -2355,9 +2356,43 @@ window.addEventListener('message', (e) => {
           imageTransform.y = frame.cy - artCy;
         }
         pimUserMovedImage = true;
-        render();
-        pimPostImageScaleChanged();
+        pimPostImagePlacementChanged();
+        if (pimCutlineFollowsArtworkTransform()) {
+          pimScheduleCutlineRefresh(true);
+        } else {
+          render();
+          pimNotifyCutlineReady();
+        }
         pimScheduleHeightReport();
+      }
+    } else if (msg.type === 'pim-restore-editor-undo') {
+      if (
+        (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) &&
+        currentMat &&
+        imageMetadata
+      ) {
+        if (
+          typeof msg.x === 'number' &&
+          typeof msg.y === 'number' &&
+          typeof msg.scale === 'number'
+        ) {
+          imageTransform.x = msg.x;
+          imageTransform.y = msg.y;
+          imageTransform.scale = Math.max(0.25, Math.min(2, msg.scale));
+          pimUserMovedImage =
+            msg.x !== 0 || msg.y !== 0 || msg.scale !== 1;
+        }
+        if (msg.restoreBgRemove && bgRemoveUndoBackupFile) {
+          pimRestoreBgRemoveUndo();
+        } else {
+          render();
+          pimPostImagePlacementChanged();
+          if (pimCutlineFollowsArtworkTransform()) {
+            pimScheduleCutlineRefresh(true);
+          } else {
+            pimNotifyCutlineReady();
+          }
+        }
       }
     } else if (msg.type === 'pim-set-offset') {
       const slider = document.getElementById('offsetSlider');
@@ -2449,9 +2484,19 @@ function pimAutoFitViewZoomToWrap() {
   applyViewZoom();
 }
 
-function pimPostImageScaleChanged() {
+function pimPostImagePlacementChanged() {
   if (!PIM_PARAMS.editorShell && !PIM_PARAMS.standalone) return;
+  pimPostToParent({
+    type: 'pim-image-placement-changed',
+    x: imageTransform.x,
+    y: imageTransform.y,
+    scale: imageTransform.scale,
+  });
   pimPostToParent({ type: 'pim-image-scale-changed', scale: imageTransform.scale });
+}
+
+function pimPostImageScaleChanged() {
+  pimPostImagePlacementChanged();
 }
 
 /** Editör kabuğu — görseli bıçak çerçevesine sığdır+ortala */
@@ -2854,9 +2899,21 @@ uploadZone.addEventListener('drop', (e) => {
   }
 });
 
-async function handleFile(file) {
-  pimAutoSaveDone = false;
+function resetFileState() {
+  currentFileSource = 'raster';
+  hasCustomWhitePlan = false;
+  detectedCutContourNames = [];
+  whitePlanPaths = [];
+  pimRevokeBgRemoveUrls();
+  bgRemoveBackupFile = null;
+  bgRemovePendingFile = null;
+  bgRemoveUndoBackupFile = null;
   pimVisionFallbackSent = false;
+}
+
+async function handleFile(file) {
+  resetFileState();
+  pimAutoSaveDone = false;
   pimLastMmLabelsKey = '';
   if (PIM_PARAMS.editorShell || PIM_PARAMS.standalone) {
     pimPostToParent({ type: 'pim-poc-loading' });
@@ -2940,9 +2997,6 @@ async function handleFile(file) {
         hideLoading();
         return;
       }
-      currentFileSource = 'raster';
-      hasCustomWhitePlan = false;
-      detectedCutContourNames = [];
       currentFile = file;
       processImage(img, file);
       // Raster dosya yüklenince BG kaldırma butonu görünür olsun
@@ -3753,7 +3807,10 @@ async function applyPlacementPreset(preset) {
   pimScheduleHeightReport();
   pimScheduleAutoSave();
   if (PIM_PARAMS.editorShell || PIM_PARAMS.standalone) {
-    pimPostImageScaleChanged();
+    pimPostImagePlacementChanged();
+    if (pimCutlineFollowsArtworkTransform()) {
+      pimScheduleCutlineRefresh(true);
+    }
   }
 }
 
@@ -4654,6 +4711,21 @@ function rectToPath(r, radiusPx = 0) {
   return { kind: 'arc', d: roundedRectSvgD(r.x, r.y, r.w, r.h, cr), x: r.x, y: r.y, w: r.w, h: r.h, radiusPx: cr };
 }
 
+function pimCutlineFollowsArtworkTransform() {
+  return currentMode === 'contour' || currentMode === 'hull';
+}
+
+function pimWithArtworkCutlineTransform(ctx, fn) {
+  if (!pimCutlineFollowsArtworkTransform()) {
+    fn();
+    return;
+  }
+  ctx.save();
+  pimApplyImageTransformToCtx(ctx);
+  fn();
+  ctx.restore();
+}
+
 function pimApplyImageTransformPt(px, py) {
   if (!imageMetadata) return [px, py];
   if (imageTransform.scale === 1 && imageTransform.x === 0 && imageTransform.y === 0) return [px, py];
@@ -4799,7 +4871,7 @@ function renderContentLayers(ctx) {
   // 1b. STICKER TABANI — yalnızca ekran önizlemesi (export'a sızmaz)
   // ============================================================
   if (currentPaths.length > 0) {
-    pimDrawStickerPreviewBase(ctx);
+    pimWithArtworkCutlineTransform(ctx, () => pimDrawStickerPreviewBase(ctx));
   }
 
   // ============================================================
@@ -4832,24 +4904,30 @@ function renderContentLayers(ctx) {
   drawOrderDimReference(ctx);
 
   if (layers.bleed && bleedPaths.length > 0) {
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 3]);
-    drawPaths(ctx, bleedPaths);
+    pimWithArtworkCutlineTransform(ctx, () => {
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 3]);
+      drawPaths(ctx, bleedPaths);
+    });
   }
 
   if (layers.cut && currentPaths.length > 0) {
-    ctx.strokeStyle = pimCutStrokeColor();
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 4]);
-    drawPaths(ctx, currentPaths);
+    pimWithArtworkCutlineTransform(ctx, () => {
+      ctx.strokeStyle = pimCutStrokeColor();
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 4]);
+      drawPaths(ctx, currentPaths);
+    });
   }
 
   if (layers.safe && safePaths.length > 0) {
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 4]);
-    drawPaths(ctx, safePaths);
+    pimWithArtworkCutlineTransform(ctx, () => {
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      drawPaths(ctx, safePaths);
+    });
   }
 
   ctx.setLineDash([]);
@@ -5400,8 +5478,39 @@ function applyBgRemovedFile(newFile) {
   img.src = objectUrl;
 }
 
+function pimRestoreBgRemoveUndo() {
+  if (!bgRemoveUndoBackupFile) return false;
+  const backup = bgRemoveUndoBackupFile;
+  bgRemoveUndoBackupFile = null;
+  pimRevokeBgRemoveUrls();
+  const objectUrl = URL.createObjectURL(backup);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+    currentFileSource = 'raster';
+    currentFile = backup;
+    processImage(img, backup);
+    if (PIM_PARAMS.editorShell) {
+      pimPostToParent({ type: 'pim-bg-remove-done' });
+    }
+    showStatus('Orijinal görsele dönüldü.', 'ok');
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    if (PIM_PARAMS.editorShell) {
+      pimPostToParent({ type: 'pim-bg-remove-done', error: true });
+    }
+    showStatus('Orijinal görsel yüklenemedi', 'err');
+  };
+  img.src = objectUrl;
+  return true;
+}
+
 function applyPendingBgRemoval() {
   if (!bgRemovePendingFile) return;
+  if (bgRemoveBackupFile) {
+    bgRemoveUndoBackupFile = bgRemoveBackupFile;
+  }
   pimRevokeBgRemoveUrls();
   const newFile = bgRemovePendingFile;
   bgRemovePendingFile = null;
@@ -6097,11 +6206,13 @@ function pimCapturePreviewPng() {
       if (rect) ctx.drawImage(sourceImage, rect.x, rect.y, rect.w, rect.h);
     }
     if (layers.cut && currentPaths.length > 0) {
-      ctx.strokeStyle = pimCutStrokeColor();
-      ctx.lineWidth = 2;
-      ctx.setLineDash([8, 4]);
-      drawPaths(ctx, currentPaths);
-      ctx.setLineDash([]);
+      pimWithArtworkCutlineTransform(ctx, () => {
+        ctx.strokeStyle = pimCutStrokeColor();
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        drawPaths(ctx, currentPaths);
+        ctx.setLineDash([]);
+      });
     }
     return off.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
   } catch (e) {
