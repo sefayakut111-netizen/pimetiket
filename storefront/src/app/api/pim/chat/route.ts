@@ -151,12 +151,11 @@ export async function POST(req: Request) {
   const personaConfig = PERSONAS[persona];
 
   const clampedMessages = clampChatMessages(body.messages ?? []);
-  const lastUserMsg = [...clampedMessages]
-    .reverse()
-    .find((m) => m.role === "user");
-  if (lastUserMsg) {
-    const userText = extractTextFromUIMessage(lastUserMsg);
-    if (looksLikePromptInjection(userText)) {
+  const recentUserMsgs = clampedMessages
+    .filter((m) => m.role === "user")
+    .slice(-3);
+  for (const msg of recentUserMsgs) {
+    if (looksLikePromptInjection(extractTextFromUIMessage(msg))) {
       return new Response(
         JSON.stringify({
           error: "injection_blocked",
