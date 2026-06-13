@@ -241,14 +241,14 @@ export async function saveCutlineEdit(
     orderId: string;
     itemId: string;
     actorUserId: string;
-    actorRole: "customer" | "partner" | "system";
+    actorRole: "customer" | "partner" | "system" | "admin" | "staff";
     isPartner?: boolean;
     /** Pre-order editör draft → sipariş bağlama (status check gevşetilir) */
     editorPromote?: boolean;
     body: SaveCutlineEditBody;
   }
 ): Promise<SaveCutlineEditResult> {
-  const { orderId, itemId, actorUserId, isPartner = false, editorPromote = false, body } = args;
+  const { orderId, itemId, actorUserId, actorRole: actorRoleArg, isPartner = false, editorPromote = false, body } = args;
   const parsedResult = parseBody(body);
   if ("ok" in parsedResult && !parsedResult.ok) {
     return parsedResult;
@@ -428,7 +428,13 @@ export async function saveCutlineEdit(
     .eq("id", itemId)
     .eq("order_id", orderId);
 
-  const actorRole = isAuto ? "system" : isPartner ? "partner" : "customer";
+  const actorRole = isAuto
+    ? "system"
+    : isPartner
+      ? "partner"
+      : actorRoleArg === "admin" || actorRoleArg === "staff"
+        ? actorRoleArg
+        : "customer";
   await admin.from("order_events").insert([
     {
       order_id: orderId,

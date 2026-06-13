@@ -2,7 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
 
-type AccessResult =
+type ProofAccessResult =
+  | { ok: true; actor: "owner" | "admin" | "staff" | "partner" }
+  | { ok: false; status: 401 | 403 | 404 };
+
+type SimpleAccessResult =
   | { ok: true }
   | { ok: false; status: 401 | 403 | 404 };
 
@@ -11,7 +15,7 @@ export async function assertProofOrderAccess(
   admin: SupabaseClient<Database>,
   orderId: string,
   userId: string | undefined
-): Promise<AccessResult> {
+): Promise<ProofAccessResult> {
   if (!userId) {
     return { ok: false, status: 401 };
   }
@@ -26,7 +30,7 @@ export async function assertProofOrderAccess(
     return { ok: false, status: 404 };
   }
   if (orderRow.user_id === userId) {
-    return { ok: true };
+    return { ok: true, actor: "owner" };
   }
 
   const { data: profile } = await admin
@@ -37,7 +41,7 @@ export async function assertProofOrderAccess(
   const role = (profile as { role?: string } | null)?.role;
 
   if (role === "admin" || role === "staff") {
-    return { ok: true };
+    return { ok: true, actor: role === "admin" ? "admin" : "staff" };
   }
 
   if (role === "partner") {
@@ -52,7 +56,7 @@ export async function assertProofOrderAccess(
     }
     const asg = await assertActivePartnerAssignment(admin, orderId, partnerId);
     if (asg.ok) {
-      return { ok: true };
+      return { ok: true, actor: "partner" };
     }
   }
 
@@ -64,7 +68,7 @@ export async function assertProductionExportAccess(
   admin: SupabaseClient<Database>,
   orderId: string,
   userId: string | undefined
-): Promise<AccessResult> {
+): Promise<SimpleAccessResult> {
   if (!userId) {
     return { ok: false, status: 401 };
   }
