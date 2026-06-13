@@ -54,7 +54,8 @@ export type NormalizedShipmentStatus =
   | "delivered"
   | "failed"
   | "returned"
-  | "cancelled";
+  | "cancelled"
+  | "unknown";
 
 export interface ShipmentStatusEvent {
   status: NormalizedShipmentStatus;
@@ -77,6 +78,8 @@ export interface YurticiQueryResult {
   error?: string;
   /** Ham API payload (debug) */
   raw?: unknown;
+  /** operationCode ok ama 0 event */
+  noData?: boolean;
   dryRun: boolean;
 }
 
@@ -87,7 +90,7 @@ export interface YurticiQueryResult {
  * Yurtiçi'nin döndüğü ham status kodlarını/text'lerini Pim Etiket'in
  * normalized status'üne çevirir. Yurtiçi resmi dokümanı kapsamlı bir
  * kod listesi vermediği için bilinen değerleri eşliyoruz; bilinmeyen
- * için "in_transit" fallback (kullanıcı için "Yolda" görünür).
+ * için "unknown" döner (persist katmanı event satırını atlar, tracking_status set eder).
  *
  * Bilinen kodlar (yk-proxy ve PHP kütüphanelerinden):
  *   - "İslem Bekliyor" / "İşleme Alındı" → created
@@ -102,7 +105,10 @@ export function normalizeYurticiStatus(
   raw: string
 ): NormalizedShipmentStatus {
   const t = (raw ?? "").toLowerCase().trim();
-  if (!t) return "in_transit";
+  if (!t) {
+    console.warn("[yurtici] normalizeYurticiStatus: boş ham metin → unknown");
+    return "unknown";
+  }
 
   // delivered
   if (
@@ -172,8 +178,10 @@ export function normalizeYurticiStatus(
     return "created";
   }
 
-  // Default: in_transit (transferde, şubede, yolda, vb)
-  return "in_transit";
+  console.warn(
+    `[yurtici] normalizeYurticiStatus: eşleşmeyen ham metin → unknown: ${raw}`
+  );
+  return "unknown";
 }
 
 // ============================================================
@@ -212,13 +220,19 @@ function escapeXml(s: string): string {
 // XML Parser (basit, çünkü hafif istiyoruz)
 // ============================================================
 function extractTag(xml: string, tag: string): string | null {
-  const re = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, "i");
+  const re = new RegExp(
+    `<(?:\\w+:)?${tag}>([\\s\\S]*?)</(?:\\w+:)?${tag}>`,
+    "i"
+  );
   const m = xml.match(re);
   return m ? m[1].trim() : null;
 }
 
 function extractAllTags(xml: string, tag: string): string[] {
-  const re = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, "gi");
+  const re = new RegExp(
+    `<(?:\\w+:)?${tag}>([\\s\\S]*?)</(?:\\w+:)?${tag}>`,
+    "gi"
+  );
   const results: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml)) !== null) {
@@ -275,15 +289,25 @@ function parseYurticiResponse(
 
   events.sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime());
 
+  const opCode = extractTag(xml, "operationCode");
+  const opOk = !opCode || opCode === "0" || opCode === "00";
+  const noData = opOk && events.length === 0;
+  if (noData) {
+    console.warn(
+      `[yurtici] operationCode ok (${opCode ?? "n/a"}) but 0 events for ${trackingNumber}`
+    );
+  }
+
   const last = events[events.length - 1];
   const deliveredEvent = events.find((e) => e.status === "delivered");
 
   return {
-    success: events.length > 0,
+    success: opOk,
     trackingNumber,
-    currentStatus: last?.status ?? null,
+    currentStatus: last?.status ?? (opOk ? "unknown" : null),
     deliveredAt: deliveredEvent ? deliveredEvent.eventTime : null,
     events,
+    noData,
   } as YurticiQueryResult;
 }
 
@@ -405,6 +429,7 @@ export async function queryYurticiShipment(
     const result = parseYurticiResponse(xml, trackingNumber);
     return { ...result, raw: xml, dryRun: false };
   } catch (err) {
+    console.error("[yurtici] queryYurticiShipment error:", err);
     const msg = isFetchTimeoutError(err)
       ? "Yurtiçi API zaman aşımı"
       : `Network/parse hatası: ${(err as Error).message}`;

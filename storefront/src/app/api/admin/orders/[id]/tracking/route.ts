@@ -27,6 +27,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { queryYurticiShipment } from "@/lib/shipping/yurtici-api";
+import { persistShipmentPoll } from "@/lib/shipping/persist-shipment-poll";
 import { findCarrier, getTrackingUrl } from "@/lib/shipping/carriers";
 import { logOrderEvent } from "@/lib/order-events-server";
 import { transitionOrderStatus } from "@/lib/db/transition-order-status";
@@ -202,36 +203,14 @@ export async function POST(
   // İlk Yurtiçi poll'u senkron — kargo var mı, yola çıkmış mı doğrula
   const apiResult = await queryYurticiShipment(trackingNumber);
 
-  if (apiResult.success && apiResult.events.length > 0) {
-    // shipment_status_events'e idempotent insert
-    for (const ev of apiResult.events) {
-      await supabase
-        .from("shipment_status_events")
-        .upsert(
-          {
-            order_id: orderId,
-            assignment_id: assignmentId,
-            status: ev.status,
-            raw_status_code: ev.rawStatusCode,
-            description: ev.description,
-            location: ev.location,
-            event_time: ev.eventTime.toISOString(),
-            polled_at: new Date().toISOString(),
-            raw_payload: {},
-          },
-          { onConflict: "order_id,status,event_time" }
-        );
-    }
-
-    // order_assignments'ı güncelle
-    await supabase
-      .from("order_assignments")
-      .update({
-        tracking_status: apiResult.currentStatus,
-        tracking_last_polled_at: new Date().toISOString(),
-        tracking_delivered_at: apiResult.deliveredAt?.toISOString() ?? null,
-      })
-      .eq("id", assignmentId);
+  if (apiResult.success) {
+    await persistShipmentPoll(supabase, {
+      assignmentId,
+      orderId,
+      trackingNumber,
+      apiResult,
+      sendMail: false,
+    });
   }
 
   // Order events log + sipariş statüsünü kargoda olarak senkronize et

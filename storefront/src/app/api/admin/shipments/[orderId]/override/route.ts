@@ -115,7 +115,7 @@ export async function POST(
           reason,
         },
       },
-      { onConflict: "order_id,status,event_time", ignoreDuplicates: false }
+      { onConflict: "order_id,assignment_id,status,event_time", ignoreDuplicates: false }
     );
 
   if (insErr) {
@@ -126,10 +126,9 @@ export async function POST(
   const updatePayload: Record<string, unknown> = {
     tracking_status: status,
     tracking_last_polled_at: now.toISOString(),
+    tracking_delivered_at:
+      status === "delivered" ? now.toISOString() : null,
   };
-  if (status === "delivered") {
-    updatePayload.tracking_delivered_at = now.toISOString();
-  }
 
   const { error: updErr } = await supabase
     .from("order_assignments")

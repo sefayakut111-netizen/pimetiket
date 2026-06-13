@@ -25,6 +25,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { queryYurticiShipment } from "@/lib/shipping/yurtici-api";
+import { persistShipmentPoll } from "@/lib/shipping/persist-shipment-poll";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -91,39 +92,15 @@ export async function POST(req: NextRequest) {
     const apiResult = await queryYurticiShipment(row.tracking_number);
 
     let newEvents = 0;
-    if (apiResult.success && apiResult.events.length > 0) {
-      for (const ev of apiResult.events) {
-        const { error: upErr } = await supabase
-          .from("shipment_status_events")
-          .upsert(
-            {
-              order_id: row.order_id,
-              assignment_id: row.id,
-              status: ev.status,
-              raw_status_code: ev.rawStatusCode,
-              description: ev.description,
-              location: ev.location,
-              event_time: ev.eventTime.toISOString(),
-              polled_at: new Date().toISOString(),
-              raw_payload: {},
-            },
-            {
-              onConflict: "order_id,status,event_time",
-              ignoreDuplicates: true,
-            }
-          );
-        if (!upErr) newEvents++;
-      }
-
-      await supabase
-        .from("order_assignments")
-        .update({
-          tracking_status: apiResult.currentStatus,
-          tracking_last_polled_at: new Date().toISOString(),
-          tracking_delivered_at:
-            apiResult.deliveredAt?.toISOString() ?? null,
-        })
-        .eq("id", row.id);
+    if (apiResult.success) {
+      const persisted = await persistShipmentPoll(supabase, {
+        assignmentId: row.id,
+        orderId: row.order_id,
+        trackingNumber: row.tracking_number,
+        apiResult,
+        sendMail: true,
+      });
+      newEvents = persisted.newEvents;
     } else {
       // Poll fail olsa bile last_polled güncelle
       await supabase
