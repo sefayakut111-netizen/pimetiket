@@ -1,7 +1,7 @@
 /**
  * POST /api/customer/kvkk-archive-delete
  *
- * KVKK m.11/e — R2 + Supabase depolama temizliği.
+ * KVKK m.11/e — R2 + Supabase depolama temizliği + DB-PII silme (account_delete).
  * Y3: Yalnızca onaylı silme talebi + grace süresi dolduktan sonra çalışır.
  * Admin (service) başkası adına grace gate'i atlayabilir.
  */
@@ -11,14 +11,36 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { assertKvkkR2DeleteEligible } from "@/lib/kvkk/delete-eligibility";
 import { purgeKvkkUserStorage } from "@/lib/kvkk/storage-purge";
+import { deleteUserPiiAndAnonymizeAuth } from "@/lib/kvkk/delete-user-pii";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 interface BodyShape {
   targetUserId?: string;
   kind?: "account_delete" | "partial_delete";
+}
+
+async function resolveKvkkRequestId(
+  admin: SupabaseClient,
+  userId: string,
+  kind: "account_delete" | "partial_delete"
+): Promise<string | null> {
+  const { data } = await admin
+    .from("kvkk_requests")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("kind", kind)
+    .in("status", ["confirmed", "processing", "completed"])
+    .is("cancelled_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return (data as { id: string } | null)?.id ?? null;
 }
 
 export async function POST(req: NextRequest) {
@@ -40,6 +62,7 @@ export async function POST(req: NextRequest) {
 
   const isSelf = targetUserId === user.id;
   let adminActing = false;
+  let kvkkRequestId: string | null = null;
 
   if (!isSelf) {
     const auth = await assertPermission("customers", "delete");
@@ -70,6 +93,13 @@ export async function POST(req: NextRequest) {
         { status: eligibility.status }
       );
     }
+    kvkkRequestId = eligibility.requestId;
+  } else {
+    kvkkRequestId = await resolveKvkkRequestId(
+      serviceClient,
+      targetUserId,
+      deleteKind
+    );
   }
 
   try {
@@ -89,6 +119,7 @@ export async function POST(req: NextRequest) {
       kind: deleteKind,
       actorId: user.id,
       actorType: adminActing ? "admin" : "user",
+      kvkkRequestId: kvkkRequestId ?? undefined,
       reason: "KVKK silme tamamlandı — depolama temizliği",
     });
 
@@ -101,6 +132,30 @@ export async function POST(req: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    if (deleteKind === "account_delete") {
+      let email: string | null = user.email ?? null;
+      if (adminActing) {
+        const { data: authUser } =
+          await serviceClient.auth.admin.getUserById(targetUserId);
+        email = authUser?.user?.email ?? null;
+      }
+
+      const piiRes = await deleteUserPiiAndAnonymizeAuth(serviceClient, {
+        userId: targetUserId,
+        email,
+        kvkkRequestId,
+        actorId: user.id,
+        actorRole: adminActing ? "admin" : "customer",
+      });
+
+      if (!piiRes.ok) {
+        return NextResponse.json(
+          { error: `KVKK silme (${piiRes.stage}): ${piiRes.message}` },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({

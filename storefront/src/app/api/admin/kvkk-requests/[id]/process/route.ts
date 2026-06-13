@@ -16,6 +16,7 @@ import {
   purgeKvkkUserStorage,
   shouldPurgeKvkkStorage,
 } from "@/lib/kvkk/storage-purge";
+import { deleteUserPiiAndAnonymizeAuth } from "@/lib/kvkk/delete-user-pii";
 import {
   deletePimConversationForUser,
   scopeIncludesPimChat,
@@ -92,6 +93,12 @@ export async function POST(
 
   const nextStatus = action === "complete" ? "completed" : "rejected";
 
+  let accountDeleteEmail: string | null = null;
+  if (action === "complete" && row.kind === "account_delete") {
+    const { data: authUser } = await admin.auth.admin.getUserById(row.user_id);
+    accountDeleteEmail = authUser?.user?.email ?? null;
+  }
+
   if (action === "complete") {
     if (
       row.kind === "partial_delete" &&
@@ -123,6 +130,22 @@ export async function POST(
       if (!purge.ok) {
         return NextResponse.json(
           { error: purge.error ?? "Depolama temizliği başarısız" },
+          { status: 500 }
+        );
+      }
+    }
+
+    if (row.kind === "account_delete") {
+      const piiRes = await deleteUserPiiAndAnonymizeAuth(admin, {
+        userId: row.user_id,
+        email: accountDeleteEmail,
+        kvkkRequestId: id,
+        actorId: auth.user.id,
+        actorRole: "admin",
+      });
+      if (!piiRes.ok) {
+        return NextResponse.json(
+          { error: `KVKK silme (${piiRes.stage}): ${piiRes.message}` },
           { status: 500 }
         );
       }

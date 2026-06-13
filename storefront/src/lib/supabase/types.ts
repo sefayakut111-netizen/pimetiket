@@ -4546,6 +4546,16 @@ export type Database = {
         }[]
       }
       fn_order_has_design: { Args: { p_order_id: string }; Returns: boolean }
+      fn_delete_user_pii: {
+        Args: {
+          p_actor_id?: string
+          p_actor_role?: string
+          p_kvkk_request_id?: string
+          p_user_email: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       fn_process_kvkk_deletion: {
         Args: { p_request_id: string }
         Returns: Json
