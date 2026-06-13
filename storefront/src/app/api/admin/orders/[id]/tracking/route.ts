@@ -29,6 +29,8 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { queryYurticiShipment } from "@/lib/shipping/yurtici-api";
 import { findCarrier, getTrackingUrl } from "@/lib/shipping/carriers";
 import { logOrderEvent } from "@/lib/order-events-server";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
+import type { OrderStatus } from "@/lib/order";
 import { sendOrderShipped } from "@/lib/mail/notifications";
 import { shouldSkipAdminOrderShippedMail } from "@/lib/mail/shipped-mail-guard";
 import { getDeliveryPromise } from "@/lib/delivery-promise";
@@ -235,10 +237,20 @@ export async function POST(
   // Order events log + sipariş statüsünü kargoda olarak senkronize et
   const orderRow = order as { id: string; status: string };
   if (orderRow.status !== "shipped" && orderRow.status !== "delivered") {
-    await supabase
-      .from("orders")
-      .update({ status: "shipped" })
-      .eq("id", orderId);
+    await transitionOrderStatus(supabase, {
+      orderId,
+      to: "shipped",
+      from: orderRow.status as OrderStatus,
+      mode: "forward",
+      actorId: auth.user.id,
+      actorRole: auth.role === "admin" ? "admin" : "staff",
+      eventType: "status_changed",
+      summary: `Kargo takip no eklendi — ${orderRow.status} → shipped`,
+      detail: {
+        carrier_code: carrier.code,
+        tracking_number: trackingNumber,
+      },
+    });
   }
 
   await logOrderEvent(supabase, {

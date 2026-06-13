@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
-import { logOrderEvent } from "@/lib/order-events-server";
+import {
+  transitionOrderStatus,
+  transitionHttpStatus,
+} from "@/lib/db/transition-order-status";
 import {
   getValidTransitions,
   isOrderStatus,
@@ -67,26 +70,14 @@ export async function POST(
     return NextResponse.json({ ok: false, error: "No design files found" });
   }
 
-  const { error: updateErr } = await admin
-    .from("orders")
-    .update({ status: TARGET_STATUS })
-    .eq("id", orderId)
-    .eq("status", currentStatus);
-
-  if (updateErr) {
-    console.error("[advance-status] update failed:", updateErr);
-    return NextResponse.json(
-      { ok: false, error: "status_update_failed" },
-      { status: 500 }
-    );
-  }
-
-  await logOrderEvent(admin, {
+  const result = await transitionOrderStatus(admin, {
     orderId,
-    eventType: "status_changed",
-    statusAfter: TARGET_STATUS,
+    to: TARGET_STATUS,
+    from: currentStatus,
+    mode: "forward",
     actorId: user.id,
     actorRole: "customer",
+    eventType: "status_changed",
     summary: `Tasarım yüklendi — ${currentStatus} → ${TARGET_STATUS}`,
     detail: {
       from: currentStatus,
@@ -94,6 +85,14 @@ export async function POST(
       trigger: "advance-status",
     },
   });
+
+  if (!result.ok) {
+    console.error("[advance-status] transition failed:", result.error);
+    return NextResponse.json(
+      { ok: false, error: result.error },
+      { status: transitionHttpStatus(result.error) }
+    );
+  }
 
   scheduleOrderDesignQC(admin, orderId);
 

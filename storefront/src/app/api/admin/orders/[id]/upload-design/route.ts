@@ -7,7 +7,8 @@
 
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
 import { maybeSanitizeUploadBytes } from "@/lib/upload/sanitize-svg";
 import {
@@ -104,17 +105,7 @@ export async function POST(
     );
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      { error: "Sunucu yapılandırması eksik" },
-      { status: 500 }
-    );
-  }
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const admin = createAdminClient();
 
   const { data: order, error: orderErr } = await admin
     .from("orders")
@@ -233,10 +224,17 @@ export async function POST(
   }
 
   if (currentStatus === "paid" || currentStatus === "awaiting_upload") {
-    await admin
-      .from("orders")
-      .update({ status: "qc_pending" })
-      .eq("id", orderId);
+    await transitionOrderStatus(admin, {
+      orderId,
+      to: "qc_pending",
+      from: currentStatus as "paid" | "awaiting_upload",
+      mode: "forward",
+      actorId: auth.user.id,
+      actorRole: auth.role === "admin" ? "admin" : "staff",
+      eventType: "status_changed",
+      summary: `Admin tasarım yüklendi — ${currentStatus} → qc_pending`,
+      detail: { fileId, trigger: "admin-upload-design" },
+    });
   }
 
   await admin.from("order_events").insert([

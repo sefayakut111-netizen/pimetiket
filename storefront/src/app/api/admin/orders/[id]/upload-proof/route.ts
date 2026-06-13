@@ -14,8 +14,9 @@
 
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { transitionOrderStatus, transitionHttpStatus } from "@/lib/db/transition-order-status";
+import { logOrderEvent } from "@/lib/order-events-server";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
 import type { AllowedMime } from "@/lib/storage/design-files";
 
@@ -79,18 +80,7 @@ export async function POST(
     );
   }
 
-  // Service role
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      { error: "Sunucu yapılandırması eksik" },
-      { status: 500 }
-    );
-  }
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const admin = createAdminClient();
 
   // Sipariş var mı?
   const { data: existing, error: existingErr } = await admin
@@ -167,14 +157,55 @@ export async function POST(
     );
   }
 
-  // Order güncelle (status → proof_pending)
+  // Status → proof_pending (RPC), ardından yalnızca prova kolonları
+  if (currentStatus !== "proof_pending") {
+    const statusResult = await transitionOrderStatus(admin, {
+      orderId,
+      to: "proof_pending",
+      from: currentStatus as "paid" | "qc_pending" | "qc_flagged" | "operator_review",
+      mode: "forward",
+      actorId: auth.user.id,
+      actorRole: auth.role === "admin" ? "admin" : "staff",
+      eventType: "proof_uploaded",
+      summary: `Operatör prova dosyası yükledi: ${file.name}`,
+      detail: {
+        fileName: file.name,
+        sizeBytes: file.size,
+        mimeType: file.type,
+        storagePath,
+      },
+    });
+    if (!statusResult.ok) {
+      await admin.storage.from("designs").remove([storagePath]);
+      return NextResponse.json(
+        { error: statusResult.error },
+        { status: transitionHttpStatus(statusResult.error) }
+      );
+    }
+  } else {
+    await logOrderEvent(admin, {
+      orderId,
+      eventType: "proof_uploaded",
+      statusAfter: "proof_pending",
+      actorId: auth.user.id,
+      actorRole: auth.role === "admin" ? "admin" : "staff",
+      summary: `Operatör prova dosyası yeniden yükledi: ${file.name}`,
+      detail: {
+        fileName: file.name,
+        sizeBytes: file.size,
+        mimeType: file.type,
+        storagePath,
+        reupload: true,
+      },
+    });
+  }
+
   const { error: updateErr } = await admin
     .from("orders")
     .update({
       proof_storage_path: storagePath,
       proof_uploaded_at: new Date().toISOString(),
       proof_uploaded_by: auth.user.id,
-      status: "proof_pending",
     })
     .eq("id", orderId);
   if (updateErr) {
@@ -186,24 +217,6 @@ export async function POST(
       { status: 500 }
     );
   }
-
-  // order_events log
-  await admin.from("order_events").insert([
-    {
-      order_id: orderId,
-      event_type: "proof_uploaded",
-      status_after: "proof_pending",
-      actor_id: auth.user.id,
-      actor_role: auth.role,
-      summary: `Operatör prova dosyası yükledi: ${file.name}`,
-      detail: {
-        fileName: file.name,
-        sizeBytes: file.size,
-        mimeType: file.type,
-        storagePath,
-      },
-    },
-  ]);
 
   return NextResponse.json({
     ok: true,

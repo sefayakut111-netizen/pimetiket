@@ -25,7 +25,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertPermission } from "@/lib/supabase/assert-permission";
-import { logOrderEvent } from "@/lib/order-events-server";
+import {
+  transitionOrderStatus,
+  transitionHttpStatus,
+} from "@/lib/db/transition-order-status";
 import { AI_QC_ACTIVE_STATUSES, isOrderStatus } from "@/lib/order";
 
 const BodySchema = z.object({
@@ -96,24 +99,6 @@ export async function POST(req: Request) {
           ? "cancelled"
           : "human_review_failed";
 
-  const { data: updated, error: updateErr } = await admin
-    .from("orders")
-    .update({ status: nextStatus })
-    .eq("id", body.orderId)
-    .eq("status", fromStatus)
-    .select("id, status")
-    .single();
-
-  if (updateErr || !updated) {
-    return NextResponse.json(
-      {
-        error: "Update failed",
-        detail: updateErr?.message ?? "order_not_in_qc_queue",
-      },
-      { status: 400 }
-    );
-  }
-
   const eventType = isPrintReview
     ? body.decision === "approve"
       ? "print_review_approved"
@@ -138,12 +123,14 @@ export async function POST(req: Request) {
         ? "Operatör düzeltecek → prova hazırlanıyor"
         : "AI QC reddedildi → düzeltme istendi";
 
-  await logOrderEvent(admin, {
+  const transitionResult = await transitionOrderStatus(admin, {
     orderId: body.orderId,
-    eventType,
-    statusAfter: nextStatus,
+    to: nextStatus,
+    from: fromStatus,
+    mode: "forward",
     actorId: auth.user.id,
     actorRole: auth.role === "admin" ? "admin" : "staff",
+    eventType,
     summary,
     detail: {
       operator: auth.user.email ?? auth.user.id,
@@ -152,6 +139,16 @@ export async function POST(req: Request) {
       from_status: fromStatus,
     },
   });
+
+  if (!transitionResult.ok) {
+    return NextResponse.json(
+      {
+        error: "Update failed",
+        detail: transitionResult.error,
+      },
+      { status: transitionHttpStatus(transitionResult.error) }
+    );
+  }
 
   if (body.decision === "reject" && !isPrintReview) {
     const { data: orderData } = await admin

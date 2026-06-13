@@ -29,6 +29,7 @@ import {
   type DesignQCResult,
 } from "@/lib/proof/multi-design-check";
 import { orderDesignUploadSlotsComplete } from "@/lib/order-design-upload-slots";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 
 interface OrderItemForQC {
   id: string;
@@ -61,20 +62,15 @@ async function recordQcFailureEscalation(
   summary: string,
   detail: Record<string, unknown>
 ): Promise<void> {
-  await admin
-    .from("orders")
-    .update({ status: "proof_generating" })
-    .eq("id", orderId);
-  await admin.from("order_events").insert([
-    {
-      order_id: orderId,
-      event_type: "qc_pipeline_failure",
-      status_after: "proof_generating",
-      actor_role: "system",
-      summary,
-      detail,
-    },
-  ]);
+  await transitionOrderStatus(admin, {
+    orderId,
+    to: "proof_generating",
+    mode: "forward",
+    actorRole: "system",
+    eventType: "qc_pipeline_failure",
+    summary,
+    detail,
+  });
 }
 
 /**
@@ -127,20 +123,16 @@ async function runOrderDesignQCInner(
       ?.qc_attempt_count ?? 0);
 
   if (currentAttempts >= QC_MAX_ATTEMPTS) {
-    await admin
-      .from("orders")
-      .update({ status: "proof_generating" })
-      .eq("id", orderId);
-    await admin.from("order_events").insert([
-      {
-        order_id: orderId,
-        event_type: "qc_escalated_max_attempts",
-        status_after: "proof_generating",
-        actor_role: "system",
-        summary: `AI ${currentAttempts} kez çalıştı — proof_generating'e escalate (sonsuz döngü guard).`,
-        detail: { attempts: currentAttempts, max_attempts: QC_MAX_ATTEMPTS },
-      },
-    ]);
+    await transitionOrderStatus(admin, {
+      orderId,
+      to: "proof_generating",
+      from: "qc_pending",
+      mode: "forward",
+      actorRole: "system",
+      eventType: "qc_escalated_max_attempts",
+      summary: `AI ${currentAttempts} kez çalıştı — proof_generating'e escalate (sonsuz döngü guard).`,
+      detail: { attempts: currentAttempts, max_attempts: QC_MAX_ATTEMPTS },
+    });
     return {
       orderId,
       ranCount: 0,
@@ -154,22 +146,23 @@ async function runOrderDesignQCInner(
   const circuit = await isAiCircuitOpen(admin);
   if (circuit.open) {
     await notifyAiCircuitOpenIfNeeded(admin, orderId, circuit);
-    await admin
-      .from("orders")
-      .update({ status: "proof_generating" })
-      .eq("id", orderId);
-    await admin.from("order_events").insert([
-      {
-        order_id: orderId,
-        event_type: "ai_circuit_open_fallback",
-        status_after: "proof_generating",
-        actor_role: "system",
-        summary: `AI circuit OPEN — son ${circuit.windowMin}dk hata oranı %${Math.round(
-          circuit.failureRate * 100
-        )} (${circuit.errorRuns}/${circuit.totalRuns}). proof_generating fallback.`,
-        detail: { ...circuit },
+    await transitionOrderStatus(admin, {
+      orderId,
+      to: "proof_generating",
+      from: "qc_pending",
+      mode: "forward",
+      actorRole: "system",
+      eventType: "ai_circuit_open_fallback",
+      summary: `AI circuit OPEN — son ${circuit.windowMin}dk hata oranı %${Math.round(
+        circuit.failureRate * 100
+      )} (${circuit.errorRuns}/${circuit.totalRuns}). proof_generating fallback.`,
+      detail: {
+        failure_rate: circuit.failureRate,
+        error_runs: circuit.errorRuns,
+        total_runs: circuit.totalRuns,
+        window_min: circuit.windowMin,
       },
-    ]);
+    });
     return {
       orderId,
       ranCount: 0,
@@ -444,29 +437,34 @@ async function runOrderDesignQCInner(
   const nextAttemptCount = currentAttempts + 1;
   const nextStatus = "proof_generating";
 
-  const { error: statusUpdateErr } = await admin
-    .from("orders")
-    .update({
-      status: nextStatus,
-      qc_attempt_count: nextAttemptCount,
-    })
-    .eq("id", orderId);
+  const statusResult = await transitionOrderStatus(admin, {
+    orderId,
+    to: nextStatus,
+    from: currentOrder.status as "qc_pending" | "paid" | "awaiting_upload",
+    mode: "forward",
+    actorRole: "system",
+    eventType: "status_changed",
+    summary: `QC tamamlandı — ${currentOrder.status} → ${nextStatus}`,
+    detail: {
+      aggregate_verdict: aggregateVerdict,
+      attempt: nextAttemptCount,
+      verdict_counts: verdictCounts,
+    },
+  });
 
-  if (statusUpdateErr) {
+  if (!statusResult.ok) {
     console.error(
-      "[run-order-qc] status update FAILED:",
+      "[run-order-qc] status transition FAILED:",
       orderId,
-      statusUpdateErr.message
+      statusResult.error
     );
-    const { error: fallbackErr } = await admin
-      .from("orders")
-      .update({ status: nextStatus })
-      .eq("id", orderId);
-    if (fallbackErr) {
-      console.error("[run-order-qc] fallback status update FAILED:", fallbackErr.message);
-      throw new Error(`status_update_failed: ${fallbackErr.message}`);
-    }
+    throw new Error(`status_update_failed: ${statusResult.error}`);
   }
+
+  await admin
+    .from("orders")
+    .update({ qc_attempt_count: nextAttemptCount })
+    .eq("id", orderId);
 
   // Eğer bu son izin verilen attempt ise (counter şimdi maks'e ulaştı) ve
   // sonuç "needs_review" ise admin görsün — sıradaki re-run direkt escalate olacak.
@@ -519,11 +517,15 @@ async function runOrderDesignQCInner(
       .eq("id", orderId)
       .maybeSingle();
     if ((afterCut as { status: string } | null)?.status === "proof_generating") {
-      await admin
-        .from("orders")
-        .update({ status: "proof_pending" })
-        .eq("id", orderId)
-        .eq("status", "proof_generating");
+      await transitionOrderStatus(admin, {
+        orderId,
+        to: "proof_pending",
+        from: "proof_generating",
+        mode: "forward",
+        actorRole: "system",
+        eventType: "status_changed",
+        summary: "Cutline fallback — proof_generating → proof_pending",
+      });
     }
   }
 

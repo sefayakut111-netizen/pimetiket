@@ -6,8 +6,9 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { logServerAudit } from "@/lib/audit-log-server";
-import { logOrderEvent } from "@/lib/order-events-server";
+import {
+  transitionOrderStatus,
+} from "@/lib/db/transition-order-status";
 import { isOrderStatus, isValidBulkTransition, type OrderStatus } from "@/lib/order";
 
 interface BodyShape {
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
     (rows ?? []).map((r) => [r.id as string, r.status as OrderStatus])
   );
 
+  const actorRole = auth.role === "admin" ? "admin" : "staff";
   let updated = 0;
   let skipped = 0;
   const errors: string[] = [];
@@ -81,39 +83,31 @@ export async function POST(req: Request) {
       continue;
     }
 
-    const { error: updateErr } = await admin
-      .from("orders")
-      .update({ status: newStatus })
-      .eq("id", orderId);
-
-    if (updateErr) {
-      skipped++;
-      errors.push(`${orderId}: güncelleme hatası`);
-      continue;
-    }
-
-    await logOrderEvent(admin, {
+    const result = await transitionOrderStatus(admin, {
       orderId,
-      eventType: "bulk_status_change",
-      statusAfter: newStatus,
+      to: newStatus,
+      from: current,
+      mode: "bulk",
       actorId: auth.user.id,
-      actorRole: auth.role === "admin" ? "admin" : "staff",
+      actorRole,
+      eventType: "bulk_status_change",
       summary: `Toplu status: ${current} → ${newStatus}${reason ? " · " + reason : ""}`,
       detail: { from: current, to: newStatus, reason },
+      audit: {
+        action: newStatus === "cancelled" ? "order.cancel" : "order.status_change",
+        summary: `Toplu: ${orderId} ${current} → ${newStatus}`,
+        detail: { from: current, to: newStatus, reason, bulk: true },
+        actorEmail: auth.user.email ?? null,
+        ipAddress: req.headers.get("x-forwarded-for"),
+        userAgent: req.headers.get("user-agent"),
+      },
     });
 
-    await logServerAudit(admin, {
-      actorId: auth.user.id,
-      actorEmail: auth.user.email ?? null,
-      actorRole: auth.role === "admin" ? "admin" : "staff",
-      action: newStatus === "cancelled" ? "order.cancel" : "order.status_change",
-      targetType: "order",
-      targetId: orderId,
-      summary: `Toplu: ${orderId} ${current} → ${newStatus}`,
-      detail: { from: current, to: newStatus, reason, bulk: true },
-      ipAddress: req.headers.get("x-forwarded-for"),
-      userAgent: req.headers.get("user-agent"),
-    });
+    if (!result.ok) {
+      skipped++;
+      errors.push(`${orderId}: ${result.error}`);
+      continue;
+    }
 
     updated++;
   }

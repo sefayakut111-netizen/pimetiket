@@ -8,6 +8,7 @@ import {
 } from "@/lib/proof/rule-validator";
 import { validateProofWithAI, type ProofAIResult } from "@/lib/proof/ai-validator";
 import { autoFixProof } from "@/lib/proof/auto-fix";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 import {
   detectBackground,
   type BgDetectResult,
@@ -129,10 +130,15 @@ export async function runProofPipeline(
   const admin = createAdminClient();
 
   if (fileCategoryRaw === "qc_only") {
-    await admin
-      .from("orders")
-      .update({ status: "proof_pending" })
-      .eq("id", input.orderId);
+    await transitionOrderStatus(admin, {
+      orderId: input.orderId,
+      to: "proof_pending",
+      from: "proof_generating",
+      mode: "forward",
+      actorRole: "system",
+      eventType: "status_changed",
+      summary: "QC-only dosya — proof_pending",
+    });
     return { status: "proof_pending", validationId: "" };
   }
 
@@ -205,10 +211,15 @@ export async function runProofPipeline(
       fixLog: null,
       verdict: "pass",
     });
-    await admin
-      .from("orders")
-      .update({ status: "proof_pending" })
-      .eq("id", input.orderId);
+    await transitionOrderStatus(admin, {
+      orderId: input.orderId,
+      to: "proof_pending",
+      from: "proof_generating",
+      mode: "forward",
+      actorRole: "system",
+      eventType: "status_changed",
+      summary: "Proof kuralları geçti — proof_pending",
+    });
     return { status: "proof_pending", validationId: vid };
   }
 
@@ -235,10 +246,15 @@ export async function runProofPipeline(
       fixLog: null,
       verdict: aiResult.overall_verdict,
     });
-    await admin
-      .from("orders")
-      .update({ status: "proof_pending" })
-      .eq("id", input.orderId);
+    await transitionOrderStatus(admin, {
+      orderId: input.orderId,
+      to: "proof_pending",
+      from: "proof_generating",
+      mode: "forward",
+      actorRole: "system",
+      eventType: "status_changed",
+      summary: "Proof kuralları geçti — proof_pending",
+    });
     return { status: "proof_pending", validationId: vid };
   }
 
@@ -287,10 +303,15 @@ export async function runProofPipeline(
           fixLog: fix.fixLog,
           verdict: "pass",
         });
-        await admin
-          .from("orders")
-          .update({ status: "proof_pending" })
-          .eq("id", input.orderId);
+        await transitionOrderStatus(admin, {
+          orderId: input.orderId,
+          to: "proof_pending",
+          from: "proof_generating",
+          mode: "forward",
+          actorRole: "system",
+          eventType: "status_changed",
+          summary: "Auto-fix sonrası kurallar geçti — proof_pending",
+        });
         return { status: "proof_pending", validationId: vid };
       }
     }
@@ -304,10 +325,15 @@ export async function runProofPipeline(
   });
 
   const finalStatus = aiResult?.overall_verdict === "fail" ? "operator_review" : "proof_pending";
-  await admin
-    .from("orders")
-    .update({ status: finalStatus })
-    .eq("id", input.orderId);
+  await transitionOrderStatus(admin, {
+    orderId: input.orderId,
+    to: finalStatus,
+    from: "proof_generating",
+    mode: "forward",
+    actorRole: "system",
+    eventType: "status_changed",
+    summary: `Proof pipeline — ${finalStatus}`,
+  });
 
   return {
     status: finalStatus === "operator_review" ? "operator_review" : "proof_pending",
@@ -328,10 +354,15 @@ export async function runProofValidationAfterEdit(params: {
   designHeight: number;
 }): Promise<void> {
   const admin = createAdminClient();
-  await admin
-    .from("orders")
-    .update({ status: "proof_validating" })
-    .eq("id", params.orderId);
+  await transitionOrderStatus(admin, {
+    orderId: params.orderId,
+    to: "proof_validating",
+    from: ["proof_pending", "operator_review"],
+    mode: "forward",
+    actorRole: "system",
+    eventType: "status_changed",
+    summary: "Müşteri düzenleme sonrası proof_validating",
+  });
 
   try {
     await runProofPipeline({
@@ -347,9 +378,14 @@ export async function runProofValidationAfterEdit(params: {
     });
   } catch (err) {
     console.error("[proof/orchestrator] after-edit failed:", err);
-    await admin
-      .from("orders")
-      .update({ status: "proof_pending" })
-      .eq("id", params.orderId);
+    await transitionOrderStatus(admin, {
+      orderId: params.orderId,
+      to: "proof_pending",
+      from: "proof_validating",
+      mode: "compensating",
+      actorRole: "system",
+      eventType: "status_changed",
+      summary: "Proof validation hatası — proof_pending fallback",
+    });
   }
 }

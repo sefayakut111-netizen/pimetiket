@@ -10,6 +10,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 import { isPayTrConfigured, refundPayment } from "@/lib/payment/paytr";
 import type { Json, TablesInsert, Database } from "@/lib/supabase/types";
 
@@ -76,26 +77,30 @@ export async function POST(
   const previousStatus = order.status as CancellableStatus;
 
   // Atomik claim — TOCTOU: status hâlâ previousStatus ise cancelled yap
-  const { data: claimed, error: claimErr } = await admin
-    .from("orders")
-    .update({ status: "cancelled" })
-    .eq("id", orderId)
-    .eq("user_id", user.id)
-    .eq("status", previousStatus)
-    .select("id, total")
-    .maybeSingle();
+  const claimResult = await transitionOrderStatus(admin, {
+    orderId,
+    to: "cancelled",
+    from: previousStatus,
+    mode: "forward",
+    actorId: user.id,
+    actorRole: "customer",
+    eventType: "status_changed",
+    summary: "Müşteri iptal talebi — status claim",
+    detail: { previousStatus, source: "customer_cancel" },
+  });
 
-  if (claimErr) {
-    console.error("[orders/cancel] atomic claim failed:", claimErr);
+  if (!claimResult.ok) {
+    console.error("[orders/cancel] atomic claim failed:", claimResult.error);
+    if (claimResult.error === "stale_from" || claimResult.error === "invalid_transition") {
+      return NextResponse.json(
+        { error: "Sipariş iptal edilemez durumda" },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ error: "Güncelleme başarısız" }, { status: 500 });
   }
 
-  if (!claimed) {
-    return NextResponse.json(
-      { error: "Sipariş iptal edilemez durumda" },
-      { status: 409 }
-    );
-  }
+  const claimed = { id: orderId, total: order.total };
 
   let refundAmount: number | null = null;
   let refundAttempted = false;
@@ -154,22 +159,30 @@ export async function POST(
         if (phErr) {
           const code = (phErr as { code?: string }).code;
           if (code === "23505") {
-            await admin
-              .from("orders")
-              .update({ status: previousStatus })
-              .eq("id", orderId)
-              .eq("status", "cancelled");
+            await transitionOrderStatus(admin, {
+              orderId,
+              to: previousStatus,
+              from: "cancelled",
+              mode: "compensating",
+              actorId: user.id,
+              actorRole: "customer",
+              summary: "İade zaten devam ediyor — iptal geri alındı",
+            });
             return NextResponse.json(
               { error: "refund_already_in_progress" },
               { status: 409 }
             );
           }
           console.error("[orders/cancel] refund placeholder failed:", phErr);
-          await admin
-            .from("orders")
-            .update({ status: previousStatus })
-            .eq("id", orderId)
-            .eq("status", "cancelled");
+          await transitionOrderStatus(admin, {
+            orderId,
+            to: previousStatus,
+            from: "cancelled",
+            mode: "compensating",
+            actorId: user.id,
+            actorRole: "customer",
+            summary: "İade başlatılamadı — iptal geri alındı",
+          });
           return NextResponse.json({ error: "refund_init_failed" }, { status: 500 });
         }
 
@@ -193,11 +206,16 @@ export async function POST(
             })
             .eq("id", placeholderId);
 
-          await admin
-            .from("orders")
-            .update({ status: previousStatus })
-            .eq("id", orderId)
-            .eq("status", "cancelled");
+          await transitionOrderStatus(admin, {
+            orderId,
+            to: previousStatus,
+            from: "cancelled",
+            mode: "compensating",
+            actorId: user.id,
+            actorRole: "customer",
+            summary: "PayTR iade reddedildi — iptal geri alındı",
+            detail: { reason: result.reason, code: result.errCode },
+          });
 
           return NextResponse.json(
             {

@@ -2,16 +2,17 @@
  * /api/admin/orders/[id]/status — admin status update + audit log.
  *
  * POST { status, note? }
- * - orders.status update
- * - order_events 'status_changed' insert (audit trail)
+ * - orders.status update via fn_transition_order_status
+ * - order_events + audit_log RPC tarafından yazılır
  */
 
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-import { createClient } from "@supabase/supabase-js";
-import { logServerAudit } from "@/lib/audit-log-server";
-import { logOrderEvent } from "@/lib/order-events-server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  transitionOrderStatus,
+  transitionHttpStatus,
+} from "@/lib/db/transition-order-status";
 import { isOrderStatus } from "@/lib/order";
 
 interface BodyShape {
@@ -44,27 +45,13 @@ export async function POST(
   }
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) : null;
 
-  // Admin auth check
   const auth = await assertPermission("orders", "update");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const admin = createAdminClient();
 
-  // Service role update
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      { error: "Sunucu yapılandırması eksik" },
-      { status: 500 }
-    );
-  }
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
-  // Mevcut status'u oku (audit için)
   const { data: existingData, error: existingErr } = await admin
     .from("orders")
     .select("id, status")
@@ -78,38 +65,36 @@ export async function POST(
     return NextResponse.json({ ok: true, unchanged: true });
   }
 
-  // Update + log atomic değil ama tolerable (trigger'la atomic yapılabilir)
-  const { error: updateErr } = await admin
-    .from("orders")
-    .update({ status })
-    .eq("id", orderId);
-  if (updateErr) {
-    console.error("[admin status] update error:", updateErr);
-    return NextResponse.json({ error: "Güncelleme başarısız" }, { status: 500 });
-  }
+  const actorRole = auth.role === "admin" ? "admin" : "staff";
+  const summary = `Status: ${existing.status} → ${status}${note ? " · " + note : ""}`;
 
-  await logOrderEvent(admin, {
+  const result = await transitionOrderStatus(admin, {
     orderId,
-    eventType: "status_changed",
-    statusAfter: status,
+    to: status,
+    from: existing.status as typeof status,
+    mode: "admin_override",
     actorId: auth.user.id,
-    actorRole: auth.role === "admin" ? "admin" : "staff",
-    summary: `Status: ${existing.status} → ${status}${note ? " · " + note : ""}`,
+    actorRole,
+    eventType: "status_changed",
+    summary,
     detail: { from: existing.status, to: status, note },
+    audit: {
+      action: status === "cancelled" ? "order.cancel" : "order.status_change",
+      summary: `Sipariş ${orderId}: ${existing.status} → ${status}${note ? " · " + note : ""}`,
+      detail: { from: existing.status, to: status, note },
+      actorEmail: auth.user.email ?? null,
+      ipAddress: req.headers.get("x-forwarded-for"),
+      userAgent: req.headers.get("user-agent"),
+    },
   });
 
-  await logServerAudit(admin, {
-    actorId: auth.user.id,
-    actorEmail: auth.user.email ?? null,
-    actorRole: auth.role === "admin" ? "admin" : "staff",
-    action: status === "cancelled" ? "order.cancel" : "order.status_change",
-    targetType: "order",
-    targetId: orderId,
-    summary: `Sipariş ${orderId}: ${existing.status} → ${status}${note ? " · " + note : ""}`,
-    detail: { from: existing.status, to: status, note },
-    ipAddress: req.headers.get("x-forwarded-for"),
-    userAgent: req.headers.get("user-agent"),
-  });
+  if (!result.ok) {
+    console.error("[admin status] transition error:", result.error);
+    return NextResponse.json(
+      { error: result.error },
+      { status: transitionHttpStatus(result.error) }
+    );
+  }
 
   if (status === "cancelled") {
     const { data: orderOwner } = await admin

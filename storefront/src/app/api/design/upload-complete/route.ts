@@ -30,6 +30,7 @@ import {
   uploadToR2,
 } from "@/lib/storage/r2-client";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 import { orderDesignUploadSlotsComplete } from "@/lib/order-design-upload-slots";
 import type {
   Enums,
@@ -265,10 +266,17 @@ export async function POST(req: NextRequest) {
       orderRow.status === "awaiting_upload" ||
       orderRow.status === "paid"
     ) {
-      await admin
-        .from("orders")
-        .update({ status: "qc_pending" })
-        .eq("id", orderId);
+      await transitionOrderStatus(admin, {
+        orderId,
+        to: "qc_pending",
+        from: orderRow.status as "awaiting_upload" | "paid",
+        mode: "forward",
+        actorId: user.id,
+        actorRole: "customer",
+        eventType: "status_changed",
+        summary: `Tasarım yüklendi — ${orderRow.status} → qc_pending`,
+        detail: { trigger: "upload-complete", fileId: body.fileId },
+      });
     }
     const slotsComplete = await orderDesignUploadSlotsComplete(admin, orderId);
     if (slotsComplete) {

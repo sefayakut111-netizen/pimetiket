@@ -23,6 +23,7 @@ import {
   sendRefundCompleted,
 } from "@/lib/mail/notifications";
 import { logOrderEvent } from "@/lib/order-events-server";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 import { isPayTrConfigured, refundPayment } from "@/lib/payment/paytr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -85,18 +86,21 @@ async function processRefund(
 ): Promise<{ ok: boolean; reason?: string }> {
   const orderId = row.order_id;
 
-  const { data: claimed, error: claimErr } = await admin
-    .from("orders")
-    .update({ status: "cancelled" })
-    .eq("id", orderId)
-    .eq("status", "proof_pending")
-    .select("id, total")
-    .maybeSingle();
+  const claimResult = await transitionOrderStatus(admin, {
+    orderId,
+    to: "cancelled",
+    from: "proof_pending",
+    mode: "forward",
+    actorRole: "system",
+    eventType: "status_changed",
+    summary: "36 saat onaysız — iptal claim",
+    detail: { auto: true, hours_since_proof: row.hours_since_proof },
+  });
 
-  if (claimErr || !claimed) {
+  if (!claimResult.ok) {
     return {
       ok: false,
-      reason: claimErr?.message ?? "order_not_proof_pending",
+      reason: claimResult.error ?? "order_not_proof_pending",
     };
   }
 
@@ -158,11 +162,14 @@ async function processRefund(
             console.warn(
               `[cron/auto-refund] refund already in progress for ${orderId}`
             );
-            await admin
-              .from("orders")
-              .update({ status: "proof_pending" })
-              .eq("id", orderId)
-              .eq("status", "cancelled");
+            await transitionOrderStatus(admin, {
+              orderId,
+              to: "proof_pending",
+              from: "cancelled",
+              mode: "compensating",
+              actorRole: "system",
+              summary: "İade zaten devam ediyor — iptal geri alındı",
+            });
             return { ok: false, reason: "refund_already_in_progress" };
           }
 
@@ -170,11 +177,14 @@ async function processRefund(
             `[cron/auto-refund] refund placeholder failed for ${orderId}:`,
             phErr
           );
-          await admin
-            .from("orders")
-            .update({ status: "proof_pending" })
-            .eq("id", orderId)
-            .eq("status", "cancelled");
+          await transitionOrderStatus(admin, {
+            orderId,
+            to: "proof_pending",
+            from: "cancelled",
+            mode: "compensating",
+            actorRole: "system",
+            summary: "İade başlatılamadı — iptal geri alındı",
+          });
           return { ok: false, reason: "refund_init_failed" };
         }
 
@@ -198,11 +208,15 @@ async function processRefund(
             })
             .eq("id", placeholderId);
 
-          await admin
-            .from("orders")
-            .update({ status: "proof_pending" })
-            .eq("id", orderId)
-            .eq("status", "cancelled");
+          await transitionOrderStatus(admin, {
+            orderId,
+            to: "proof_pending",
+            from: "cancelled",
+            mode: "compensating",
+            actorRole: "system",
+            summary: "PayTR iade reddedildi — iptal geri alındı",
+            detail: { reason: result.reason, code: result.errCode },
+          });
 
           console.error(
             `[cron/auto-refund] PayTR refund rejected for ${orderId}:`,

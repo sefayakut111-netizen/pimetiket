@@ -12,6 +12,7 @@ import {
 } from "@/lib/proof/cutline-detect";
 import { runProofPipeline } from "@/lib/proof/orchestrator";
 import { sendProofReady } from "@/lib/mail/notifications";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 import { shapeToPocMode } from "@/lib/proof/shape-to-poc-mode";
 
 const SITE_URL = () =>
@@ -315,11 +316,15 @@ export async function runOrderCutlineGeneration(
 
   // Server cutline başarısız olsa bile proof_pending — müşteri /onay'da iframe fallback
   if (proofPipelineStatus !== "operator_review") {
-    await admin
-      .from("orders")
-      .update({ status: "proof_pending" })
-      .eq("id", orderId)
-      .eq("status", "proof_generating");
+    await transitionOrderStatus(admin, {
+      orderId,
+      to: "proof_pending",
+      from: "proof_generating",
+      mode: "forward",
+      actorRole: "system",
+      eventType: "status_changed",
+      summary: "Cutline tamamlandı — proof_pending",
+    });
   }
 
   const { data: orderAfter } = await admin

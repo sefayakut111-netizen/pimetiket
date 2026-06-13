@@ -10,7 +10,11 @@
 
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  transitionOrderStatus,
+  transitionHttpStatus,
+} from "@/lib/db/transition-order-status";
 
 interface BodyShape {
   action?: unknown;
@@ -39,7 +43,6 @@ export async function POST(
   }
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) : null;
 
-  // Auth check
   const supabase = await createServerClient();
   const {
     data: { user },
@@ -48,19 +51,8 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      { error: "Sunucu yapılandırması eksik" },
-      { status: 500 }
-    );
-  }
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const admin = createAdminClient();
 
-  // Sipariş sahibi mi + status uygun mu?
   const { data: orderData, error: orderErr } = await admin
     .from("orders")
     .select("id, user_id, status")
@@ -83,32 +75,32 @@ export async function POST(
   const newStatus =
     action === "approve" ? "in_production" : "operator_review";
 
-  // Status update
-  const { error: updateErr } = await admin
-    .from("orders")
-    .update({ status: newStatus })
-    .eq("id", orderId);
-  if (updateErr) {
-    console.error("[proof-respond] update error:", updateErr);
-    return NextResponse.json({ error: "Güncelleme başarısız" }, { status: 500 });
-  }
+  const eventType =
+    action === "approve" ? "proof_approved" : "proof_change_requested";
+  const summary =
+    action === "approve"
+      ? "Müşteri provayı onayladı"
+      : `Müşteri değişiklik talep etti${note ? ": " + note : ""}`;
 
-  // order_events log
-  await admin.from("order_events").insert([
-    {
-      order_id: orderId,
-      event_type:
-        action === "approve" ? "proof_approved" : "proof_change_requested",
-      status_after: newStatus,
-      actor_id: user.id,
-      actor_role: "customer",
-      summary:
-        action === "approve"
-          ? "Müşteri provayı onayladı"
-          : `Müşteri değişiklik talep etti${note ? ": " + note : ""}`,
-      detail: note ? { note } : null,
-    },
-  ]);
+  const result = await transitionOrderStatus(admin, {
+    orderId,
+    to: newStatus,
+    from: "proof_pending",
+    mode: "forward",
+    actorId: user.id,
+    actorRole: "customer",
+    eventType,
+    summary,
+    detail: note ? { note } : {},
+  });
+
+  if (!result.ok) {
+    console.error("[proof-respond] transition error:", result.error);
+    return NextResponse.json(
+      { error: "Güncelleme başarısız" },
+      { status: transitionHttpStatus(result.error) }
+    );
+  }
 
   return NextResponse.json({ ok: true, newStatus });
 }

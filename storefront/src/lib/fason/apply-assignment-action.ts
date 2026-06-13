@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logOrderEvent } from "@/lib/order-events-server";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 import { enqueueMail } from "@/lib/mail/enqueue";
 
 export type FasonAction =
@@ -276,17 +277,14 @@ export async function applyAssignmentAction(
   });
 
   if (opts.action === "shipped") {
-    await admin
-      .from("orders")
-      .update({ status: "shipped" })
-      .eq("id", opts.orderId);
-    await logOrderEvent(admin, {
+    await transitionOrderStatus(admin, {
       orderId: opts.orderId,
+      to: "shipped",
+      mode: "forward",
+      actorRole: "fason",
       eventType: "shipped",
-      statusAfter: "shipped",
-      actorRole: "system",
       summary: "Sipariş kargoya verildi",
-      detail: { via: opts.via ?? "fason_form" },
+      detail: { via: opts.via ?? "fason_form", assignment_id: opts.assignmentId },
     });
   }
 
