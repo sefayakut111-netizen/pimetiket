@@ -47,7 +47,7 @@ export async function POST(
 
   const { data: item } = await admin
     .from("order_items")
-    .select("width, height, meta")
+    .select("width, height, meta, proof_status")
     .eq("id", itemId)
     .eq("order_id", orderId)
     .maybeSingle();
@@ -55,6 +55,7 @@ export async function POST(
     width: number;
     height: number;
     meta: Record<string, unknown> | null;
+    proof_status: string;
   } | null;
   if (!itemRow) {
     return NextResponse.json({ error: "item_not_found" }, { status: 404 });
@@ -152,6 +153,9 @@ export async function POST(
         bg_removal_dismissed: true,
         bg_removed_at: new Date().toISOString(),
       } as Json,
+      ...(itemRow.proof_status === "approved"
+        ? { proof_status: "viewed", proof_approved_at: null }
+        : {}),
     })
     .eq("id", itemId);
 
