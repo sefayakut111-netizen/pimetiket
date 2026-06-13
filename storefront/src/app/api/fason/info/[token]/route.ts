@@ -7,7 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { redactOrderAddressForPartner } from "@/lib/fason/redact-order-address";
+import { redactOrderAddressForPartner, redactItemMetaForPartner } from "@/lib/fason/redact-order-address";
 
 export const dynamic = "force-dynamic";
 
@@ -92,7 +92,13 @@ export async function GET(
           address: redactOrderAddressForPartner(orderRow.address),
         }
       : null,
-    items: items ?? [],
+    items: (items ?? []).map((it) => ({
+      ...it,
+      meta:
+        redactItemMetaForPartner(
+          (it as { meta?: Record<string, unknown> }).meta
+        ) ?? {},
+    })),
     fasonName: (fason as { name: string } | null)?.name ?? null,
     downloadUrl: `/api/fason/download/${token}`,
   });

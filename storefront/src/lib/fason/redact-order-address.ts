@@ -58,3 +58,35 @@ export function fullOrderAddressForPartnerShipping(
     postalCode,
   };
 }
+
+/** Partner/fason uçlarında order_items.meta whitelist redaksiyonu. */
+export function redactItemMetaForPartner(
+  meta: Record<string, unknown> | null | undefined
+): Record<string, unknown> | null {
+  if (!meta) return null;
+  const out: Record<string, unknown> = {};
+  const copyString = (k: string) => {
+    const v = meta[k];
+    if (typeof v === "string" && v.trim()) out[k] = v.trim();
+  };
+  const copyNumber = (k: string) => {
+    const v = meta[k];
+    if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+  };
+  const copyBoolean = (k: string) => {
+    const v = meta[k];
+    if (typeof v === "boolean") out[k] = v;
+  };
+  copyString("shape");
+  copyString("cut");
+  copyString("material");
+  copyString("material_type");
+  copyString("finish");
+  copyBoolean("softCorners");
+  copyNumber("winding");
+  copyNumber("coreSize");
+  copyNumber("rollLabelCount");
+  copyNumber("hediyeAdet");
+  copyNumber("designCount");
+  return out;
+}

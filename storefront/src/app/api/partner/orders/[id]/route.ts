@@ -36,7 +36,7 @@ import {
   assertActivePartnerAssignment,
   type ActivePartnerAssignmentRow,
 } from "@/lib/fason/assert-active-partner-assignment";
-import { redactOrderAddressForPartner } from "@/lib/fason/redact-order-address";
+import { redactOrderAddressForPartner, redactItemMetaForPartner } from "@/lib/fason/redact-order-address";
 import { isPartnerPending } from "@/lib/fason/partner-proof-status";
 
 export const runtime = "nodejs";
@@ -208,7 +208,9 @@ export async function GET(
       width: it.width,
       height: it.height,
       qty: it.qty,
-      meta: it.meta,
+      meta: redactItemMetaForPartner(
+        (it as { meta?: Record<string, unknown> }).meta
+      ),
       proof_status: it.proof_status,
       proof_approved_at: it.proof_approved_at,
       partner_decision: it.partner_decided_at
