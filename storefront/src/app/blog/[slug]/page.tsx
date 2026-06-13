@@ -131,6 +131,10 @@ function renderBody(body: string): React.ReactNode[] {
       }
       const link = part?.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
       if (link) {
+        const safeHref = /^(https?:\/\/|\/|mailto:)/i.test(link[2]);
+        if (!safeHref) {
+          return <span key={j}>{link[1]}</span>;
+        }
         return (
           <a
             key={j}

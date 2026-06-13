@@ -69,10 +69,20 @@ export async function POST(req: Request) {
 
   const body = (await req.json()) as Record<string, unknown>;
   const title_tr = pickString(body.title_tr)?.trim();
-  const body_tr = pickString(body.body_tr)?.trim();
-  if (!title_tr || !body_tr) {
+  const body_tr_raw = pickString(body.body_tr);
+  if (!title_tr || !body_tr_raw) {
     return NextResponse.json(
       { ok: false, error: "Başlık ve içerik zorunlu" },
+      { status: 400 }
+    );
+  }
+  const body_tr = body_tr_raw.trim();
+  if (/\]\(\s*(javascript:|data:)/i.test(body_tr)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "İçerikte güvensiz bağlantı (javascript:/data:) var",
+      },
       { status: 400 }
     );
   }
@@ -145,8 +155,18 @@ export async function PATCH(req: Request) {
   const body_tr = pickString(body.body_tr);
   if (title_tr) patch.title_tr = title_tr.trim();
   if (body_tr) {
-    patch.body_tr = body_tr.trim();
-    patch.read_minutes = calculateReadMinutes(body_tr);
+    const trimmed = body_tr.trim();
+    if (/\]\(\s*(javascript:|data:)/i.test(trimmed)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "İçerikte güvensiz bağlantı (javascript:/data:) var",
+        },
+        { status: 400 }
+      );
+    }
+    patch.body_tr = trimmed;
+    patch.read_minutes = calculateReadMinutes(trimmed);
   }
   if (pickString(body.slug)) patch.slug = pickString(body.slug)!.trim();
   if (pickOptionalString(body.excerpt_tr) !== undefined) {

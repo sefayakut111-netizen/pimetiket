@@ -22,6 +22,7 @@ const MIME_ALIASES: Record<string, string[]> = {
   "image/vnd.adobe.photoshop": ["image/vnd.adobe.photoshop"],
   "image/png": ["image/png"],
   "image/jpeg": ["image/jpeg"],
+  "image/webp": ["image/webp"],
   "image/svg+xml": ["image/svg+xml", "text/xml", "application/xml"],
 };
 
@@ -101,6 +102,20 @@ export interface MagicByteResult {
  * @param buf Storage'tan inilen ilk 64-512 byte
  * @param claimedMime Client'ın gönderdiği MIME
  */
+function detectWebp(buf: Uint8Array): boolean {
+  if (buf.length < 12) return false;
+  return (
+    buf[0] === 0x52 &&
+    buf[1] === 0x49 &&
+    buf[2] === 0x46 &&
+    buf[3] === 0x46 &&
+    buf[8] === 0x57 &&
+    buf[9] === 0x45 &&
+    buf[10] === 0x42 &&
+    buf[11] === 0x50
+  );
+}
+
 export function detectMimeFromMagicBytes(
   buf: Uint8Array,
   claimedMime: AllowedMime
@@ -133,6 +148,16 @@ export function detectMimeFromMagicBytes(
       matchesClaim: (MIME_ALIASES[claimedMime] ?? [claimedMime]).includes(
         "image/svg+xml"
       ),
+    };
+  }
+
+  // WebP — RIFF container (byte 0-3) + WEBP marker (byte 8-11)
+  if (detectWebp(buf)) {
+    const aliases = MIME_ALIASES[claimedMime] ?? [claimedMime];
+    return {
+      detected: "image/webp",
+      label: "WEBP",
+      matchesClaim: aliases.includes("image/webp"),
     };
   }
 
