@@ -353,17 +353,17 @@ export default function HomePage({
                 key={item.n}
                 className="rounded-2xl bg-krem-soft ring-1 ring-black/[0.06] overflow-hidden shadow-1"
               >
-                <div className="relative aspect-[16/10] bg-gri-100">
+                <div className="relative aspect-[16/10]">
                   <Image
                     src={item.image}
                     alt={item.title}
                     fill
                     loading="lazy"
                     sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover"
+                    className="object-cover object-top"
                   />
                 </div>
-                <div className="flex items-start gap-3 p-5 md:p-6">
+                <div className="flex items-start gap-3 px-5 py-4">
                   <span
                     className="grid shrink-0 place-items-center w-10 h-10 rounded-full bg-pim-mercan text-white font-bold text-lg leading-none"
                     aria-hidden
