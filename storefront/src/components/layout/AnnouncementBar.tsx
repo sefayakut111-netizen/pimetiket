@@ -1,7 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 /** HAZIRAN20 kampanyası — 30 Haziran 2026 23:59 TR sonrası gizlenir. */
 const CAMPAIGN_VALID_UNTIL = new Date("2026-06-30T23:59:59+03:00");
+
+/** Kullanıcı kapatınca tercih burada saklanır (denetim P1-10). */
+const DISMISS_KEY = "pim_announce_haziran20_dismissed";
 
 const MESSAGES = [
   <>
@@ -37,9 +42,33 @@ function MarqueeHalf({ hidden }: { hidden?: boolean }) {
 }
 
 export function AnnouncementBar() {
-  if (new Date() > CAMPAIGN_VALID_UNTIL) {
+  const [dismissed, setDismissed] = useState(false);
+
+  // Kapatma tercihini mount'tan sonra oku (SSR/hydration uyumlu — ilk render
+  // her zaman barı gösterir, dismissed sonradan true olur).
+  useEffect(() => {
+    try {
+      // localStorage client-only → mount sonrası tek sefer okunur (SSR/hydration
+      // uyumlu kalsın diye ilk render barı gösterir, dismissed sonradan set olur).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (localStorage.getItem(DISMISS_KEY) === "1") setDismissed(true);
+    } catch {
+      /* localStorage erişilemezse barı göstermeye devam et */
+    }
+  }, []);
+
+  if (new Date() > CAMPAIGN_VALID_UNTIL || dismissed) {
     return null;
   }
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem(DISMISS_KEY, "1");
+    } catch {
+      /* sessiz geç */
+    }
+  };
 
   return (
     <div
@@ -47,12 +76,22 @@ export function AnnouncementBar() {
       aria-label="Duyuru"
       className="relative z-[60] h-10 bg-lacivert text-white border-b border-white/10"
     >
-      <div className="h-full overflow-hidden group/announce">
+      <div className="h-full overflow-hidden group/announce pe-10">
         <div className="announce-marquee-track flex h-full w-max min-w-[200vw] items-center group-hover/announce:[animation-play-state:paused]">
           <MarqueeHalf />
           <MarqueeHalf hidden />
         </div>
       </div>
+      <button
+        type="button"
+        onClick={handleDismiss}
+        aria-label="Duyuruyu kapat"
+        className="absolute right-0 top-0 bottom-0 z-10 grid w-10 place-items-center bg-lacivert text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/60"
+      >
+        <span aria-hidden className="text-[18px] leading-none">
+          ×
+        </span>
+      </button>
     </div>
   );
 }
