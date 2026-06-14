@@ -1253,7 +1253,7 @@ function EtiketPage() {
 
   const quoteError = !quote.ok ? quote.reason : null;
 
-  const teslim = deliveryEstimate({ kind: "etiket", qty });
+  const teslim = deliveryEstimate({ kind: "etiket", qty, formFactor });
   const upsell = upsellFor(qty);
 
   // Sticky CTA bar — UX audit (15 May): PriceCard sayfa sonunda, mobile'da
@@ -2888,7 +2888,7 @@ function EtiketPage() {
                     : null
                 }
                 deliveryDate={teslim}
-                deliveryPromiseRange={getDeliveryPromise("etiket")}
+                deliveryPromiseRange={getDeliveryPromise("etiket", formFactor)}
                 deliveryPromiseNote={DELIVERY_PROMISE_NOTE}
                 ctaLabel={t.config.addToCart}
                 ctaLoading={cartAdding}

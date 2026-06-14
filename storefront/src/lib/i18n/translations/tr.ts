@@ -67,7 +67,7 @@ export const tr: TranslationDict = {
       "DPI, CMYK, kenar boşluğu — eksik varsa üretime gitmeden söyler.",
     pillar3Title: "Hızlı teslim",
     pillar3Desc:
-      "Etiket 10, sticker 5 iş günü içinde kargoda. Şeffaf üretim takibi.",
+      "Sticker 3, etiket 10 iş günü içinde kargoda. Şeffaf üretim takibi.",
     productEtiketSub: "Rulodan etiket — kozmetik, gıda, içecek, parfüm.",
     productStickerSub: "Tekli ya da tabakada — laptop, defter, kampanya.",
     productPriceLabel: "fiyatı, başlangıç",
@@ -98,7 +98,7 @@ export const tr: TranslationDict = {
     step3: "Provayı onayla",
     step3Desc: "Basılacak ürününü baskıya hazır halde gör.",
     step4: "Teslim al",
-    step4Desc: "Etiket 10, sticker 5 iş günü içinde kargoda.",
+    step4Desc: "Sticker 3, etiket 10 iş günü içinde kargoda.",
     faqEyebrow: "Sıkça sorulanlar",
     faqTitle: 'Cevap genelde "evet, hallederiz".',
     faqHelp:
@@ -232,7 +232,7 @@ export const tr: TranslationDict = {
     goToCart: "🛒 Sepete git",
     stayHere: "Sayfada kal",
     successNote:
-      "KDV dahil · Onayladığın siparişler 5 iş günü içinde kargoya verilir.",
+      "KDV dahil · Tahmini teslim süresi ürüne göre değişir; sepet ve konfigüratörde gösterilir.",
     unitPiece: "adet",
     unitLabel: "etiket",
     unitSticker: "sticker",
@@ -302,7 +302,7 @@ export const tr: TranslationDict = {
       "Operatör manuel kontrolünden sonra prova göndereceğiz. Onayladıktan sonra üretime girer.",
     step3Title: "Kapına teslim",
     step3Desc:
-      "5 iş günü içinde kargoya veriyoruz. Süreci takip etmek için panelim sayfasına bakabilirsin.",
+      "Üretim tamamlanınca kargoya veriyoruz. Süreci takip etmek için panelim sayfasına bakabilirsin.",
     orderDetail: "Sipariş detayı",
     backToPanel: "Panele git",
     orderLoadingTitle: "Siparişin hazırlanıyor",
@@ -337,11 +337,11 @@ export const tr: TranslationDict = {
     stepDeliveryShippedDesc:
       "Sipariş kargoya verildi. Detayda kargo takip numarasını görebilirsin.",
     stepDeliveryProductionDesc:
-      "Üretim atölyemizde baskıda. 5 iş günü içinde kargoya verilir.",
+      "Üretim atölyemizde baskıda. Tamamlanınca kargoya verilir.",
     stepDeliveryProofApprovedDesc:
       "Onayın alındı, üretim kuyruğuna düştü. Kısa süre içinde baskı başlar.",
     stepDeliveryDefaultDesc:
-      "Prova onayı sonrası baskı → 5 iş günü kargo → kapına teslim.",
+      "Prova onayı sonrası baskı → kargo → kapına teslim.",
     reviewProof: "Provayı İncele →",
     ctaProofReady:
       "Provan hazır — baskı önizlemesini inceleyip onaylayabilirsin.",

@@ -1,5 +1,6 @@
 import { LegalLayout } from "@/components/legal/LegalLayout";
 import { legalPageMetadata } from "@/lib/seo/legal-metadata";
+import { PIM_PRODUCTION_BUSINESS_DAYS } from "@/lib/pim/site-facts";
 
 export const metadata = legalPageMetadata(
   "Ön Bilgilendirme Formu",
@@ -135,15 +136,28 @@ export default function OnBilgilendirmePage() {
           aracılığıyla gönderilir.
         </li>
         <li>
-          <strong>Tahmini teslim süresi (Sefa 21 May v68 standart):</strong>
+          <strong>Tahmini teslim süresi (tasarım onayından sonra, iş günü):</strong>
           <ul>
             <li>
-              <strong>Etiket siparişleri</strong>: en geç{" "}
-              <strong>10 (on) iş günü</strong> içinde kargoya verilir.
+              <strong>Sticker siparişleri</strong>: en geç{" "}
+              <strong>
+                {PIM_PRODUCTION_BUSINESS_DAYS.sticker} (üç) iş günü
+              </strong>{" "}
+              içinde kargoya verilir.
             </li>
             <li>
-              <strong>Sticker siparişleri</strong>: en geç{" "}
-              <strong>5 (beş) iş günü</strong> içinde kargoya verilir.
+              <strong>Tabaka etiket siparişleri</strong>: en geç{" "}
+              <strong>
+                {PIM_PRODUCTION_BUSINESS_DAYS.tabaka} (beş) iş günü
+              </strong>{" "}
+              içinde kargoya verilir.
+            </li>
+            <li>
+              <strong>Rulo etiket siparişleri</strong>: en geç{" "}
+              <strong>
+                {PIM_PRODUCTION_BUSINESS_DAYS.rulo} (on) iş günü
+              </strong>{" "}
+              içinde kargoya verilir.
             </li>
           </ul>
           Kargonun ALICI&rsquo;ya ulaşması teslim adresine göre 1-3 iş günü

@@ -67,7 +67,7 @@ export const en: TranslationDict = {
       "DPI, CMYK, bleed — if anything's missing, we flag it before production.",
     pillar3Title: "Fast delivery",
     pillar3Desc:
-      "Labels ship within 10, stickers within 5 business days. Transparent production tracking.",
+      "Stickers ship within 3, labels within 10 business days. Transparent production tracking.",
     productEtiketSub: "Roll labels — cosmetics, food, beverages, perfume.",
     productStickerSub: "Single die-cut or sheet labels — laptop, notebook, campaign.",
     productPriceLabel: "price, starting from",
@@ -98,7 +98,7 @@ export const en: TranslationDict = {
     step3: "Approve the proof",
     step3Desc: "See your product print-ready before production.",
     step4: "Receive",
-    step4Desc: "Labels 10, stickers 5 business days to ship.",
+    step4Desc: "Stickers 3, labels 10 business days to ship.",
     faqEyebrow: "Frequently asked",
     faqTitle: 'Answer is usually "yes, we got you".',
     faqHelp:
@@ -233,7 +233,7 @@ export const en: TranslationDict = {
     goToCart: "🛒 Go to cart",
     stayHere: "Keep browsing",
     successNote:
-      "VAT included · Approved orders ship within 5 business days.",
+      "VAT included · Estimated lead time varies by product; shown in cart and configurator.",
     unitPiece: "pcs",
     unitLabel: "labels",
     unitSticker: "stickers",
@@ -303,7 +303,7 @@ export const en: TranslationDict = {
       "After operator manual check, we'll send a proof. Once approved, it goes to production.",
     step3Title: "Door delivery",
     step3Desc:
-      "We hand it over to the courier within 5 business days. You can track the process from the my-panel page.",
+      "We hand it over to the courier once production is complete. You can track the process from the my-panel page.",
     orderDetail: "Order detail",
     backToPanel: "Go to panel",
     orderLoadingTitle: "Preparing your order",
@@ -338,11 +338,11 @@ export const en: TranslationDict = {
     stepDeliveryShippedDesc:
       "Order shipped. Tracking number is on the order detail page.",
     stepDeliveryProductionDesc:
-      "Printing at our partner. Ships within 5 business days.",
+      "Printing at our partner. Ships once production is complete.",
     stepDeliveryProofApprovedDesc:
       "Approval received. Added to production queue. Printing starts soon.",
     stepDeliveryDefaultDesc:
-      "After proof approval → print → ship within 5 business days.",
+      "After proof approval → print → ship → door delivery.",
     reviewProof: "Review proof →",
     ctaProofReady:
       "Your proof is ready — review and approve your print preview.",

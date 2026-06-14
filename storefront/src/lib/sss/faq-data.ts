@@ -705,7 +705,7 @@ export const SSS_FAQS_EN: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "How long does production take?",
       summary:
-        "Stickers: 3 business days; sheet labels: 3; roll labels: 10 (after design approval).",
+        "Stickers: 3 business days; sheet labels: 5; roll labels: 10 (after design approval).",
       detail:
         "Weekends and public holidays excluded. Roll label orders open 29 June 2026 — sheet labels and stickers available now. Add 1-3 days shipping (Istanbul 1, other cities 2-3).",
     },
@@ -718,7 +718,7 @@ export const SSS_FAQS_EN: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "Same-day shipping / rush print?",
       summary:
-        "No rush service. Stickers 3, sheet labels 3, roll labels 10 business days.",
+        "No rush service. Stickers 3, sheet labels 5, roll labels 10 business days.",
       detail:
         "Fixed production windows for QC and quality. Plan ahead — order early for your deadline.",
     },
