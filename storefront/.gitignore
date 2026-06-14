@@ -103,3 +103,6 @@ gsc-*-key.json
 .lh-tmp/
 
 testsprite_tests\tmp\config.json
+
+# Geçici kanıt / test çıktıları (PDF, görsel vb.)
+tmp-evidence-*
