@@ -143,9 +143,34 @@ async function finalizeFromPaytrSuccess(
   if (Math.abs(expectedKurus - opts.totalAmountKurus) > 1) {
     await admin
       .from("payment_intents")
-      .update({ status: "failed", failure_reason: "amount_mismatch" })
+      .update({
+        status: "needs_review",
+        failure_reason: `amount_mismatch:${expectedKurus}!=${opts.totalAmountKurus}`,
+      })
       .eq("id", intent.id);
-    return { status: "failed", reason: "amount_mismatch" };
+    Sentry.captureMessage("payment_amount_mismatch_orphan_risk", {
+      level: "error",
+      tags: { merchantOid: intent.id },
+      extra: {
+        expectedKurus,
+        incoming: opts.totalAmountKurus,
+      },
+    });
+    const { notifyAdminCriticalAlert } = await import(
+      "@/lib/mail/admin-critical-alert"
+    );
+    void notifyAdminCriticalAlert({
+      alertKey: `amount_mismatch:${intent.id}`,
+      subject: `🚨 PayTR tutar uyumsuzluğu (recover) — ${intent.id}`,
+      title: "orphaned charge riski",
+      body: `expected:${expectedKurus} incoming:${opts.totalAmountKurus}`,
+      targetType: "cart",
+      targetId: intent.id,
+      extra: {
+        admin_link: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://pimetiket.com"}/admin/finans?tab=odemeler`,
+      },
+    }).catch(() => {});
+    return { status: "failed", reason: "needs_review" };
   }
 
   const itemsPayload = intent.snapshot.items.map((i) => ({
@@ -290,6 +315,13 @@ export async function recoverPendingPaymentIntent(
     return {
       status: "failed",
       reason: intent.failure_reason ?? "payment_failed",
+    };
+  }
+
+  if (intent.status === "needs_review") {
+    return {
+      status: "failed",
+      reason: intent.failure_reason ?? "needs_review",
     };
   }
 

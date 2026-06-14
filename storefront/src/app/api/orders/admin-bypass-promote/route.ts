@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { promoteOrderDesigns } from "@/lib/storage/promote-temp-designs";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 import { runOrderDesignQC } from "@/lib/agents/run-order-qc";
 import {
   orderItemHasDesigns,
@@ -60,10 +61,16 @@ export async function POST(req: NextRequest) {
   }
 
   if (promoted > 0) {
-    await admin
-      .from("orders")
-      .update({ status: "qc_pending" })
-      .eq("id", orderId);
+    await transitionOrderStatus(admin, {
+      orderId,
+      to: "qc_pending",
+      mode: "admin_override",
+      actorId: auth.user.id,
+      actorRole: auth.role === "admin" ? "admin" : "staff",
+      eventType: "status_changed",
+      summary: "Admin bypass promote — qc_pending",
+      detail: { promoted, trigger: "admin-bypass-promote" },
+    });
 
     // QC'yi doğrudan çalıştır (after() yerine — lambda kapanma riski yok)
     try {

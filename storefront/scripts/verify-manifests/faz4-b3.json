@@ -1,0 +1,17 @@
+{
+  "_note": "FAZ4 Batch3 — M17 reorder/CSV (b702e842, mig188) + M12 webhook/outbox (7607336f) + M15 sanitize (11bfa44e). Presence + mig188 RPC var+anon-kapalı. B3/B8 ayrıca elle okunur.",
+  "build": true,
+  "requireInFile": [
+    { "file": "src/app/api/admin/gallery/reorder/route.ts", "pattern": "fn_reorder_gallery" },
+    { "file": "src/app/api/admin/product-cards/reorder/route.ts", "pattern": "fn_reorder_product_cards" },
+    { "file": "src/lib/csv/escape.ts", "pattern": "csvCell" },
+    { "file": "src/app/api/admin/subscribers/route.ts", "pattern": "csvCell" },
+    { "file": "src/app/api/cron/process-mail-outbox/route.ts", "pattern": "Idempotency-Key" },
+    { "file": "src/lib/pim/chat-guard.ts", "pattern": "sanitizeForPrompt" },
+    { "file": "src/app/api/pim/cutline-feedback/route.ts", "pattern": "sanitizeForPrompt" }
+  ],
+  "dbChecks": [
+    { "label": "mig188 reorder RPC sayısı (2)", "sql": "select count(*) as n from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('fn_reorder_gallery','fn_reorder_product_cards')", "expect": { "scalar": "2" } },
+    { "label": "reorder RPC anon EXECUTE kapalı (K5)", "sql": "select bool_and(not has_function_privilege('anon', p.oid, 'EXECUTE')) as ok from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('fn_reorder_gallery','fn_reorder_product_cards')", "expect": { "scalar": "true" } }
+  ]
+}

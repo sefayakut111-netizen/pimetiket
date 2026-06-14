@@ -58,3 +58,54 @@ export function fullOrderAddressForPartnerShipping(
     postalCode,
   };
 }
+
+/** Partner/fason uçlarında order_items.meta whitelist redaksiyonu. */
+export function redactItemMetaForPartner(
+  meta: Record<string, unknown> | null | undefined
+): Record<string, unknown> | null {
+  if (!meta) return null;
+  const out: Record<string, unknown> = {};
+  const copyString = (k: string) => {
+    const v = meta[k];
+    if (typeof v === "string" && v.trim()) out[k] = v.trim();
+  };
+  const copyNumber = (k: string) => {
+    const v = meta[k];
+    if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+  };
+  const copyBoolean = (k: string) => {
+    const v = meta[k];
+    if (typeof v === "boolean") out[k] = v;
+  };
+  copyString("shape");
+  copyString("cut");
+  copyString("material");
+  copyString("material_type");
+  copyString("finish");
+  copyBoolean("softCorners");
+  copyNumber("winding");
+  copyNumber("coreSize");
+  copyNumber("rollLabelCount");
+  copyNumber("hediyeAdet");
+  copyNumber("designCount");
+  return out;
+}
+
+/** Partner/fason free-text alanlarında PII şekli temizleme (passthrough — chip'leri korur). */
+export function sanitizeFreeTextForPartner(
+  value: string | null | undefined
+): string {
+  if (typeof value !== "string" || !value.trim()) return "";
+  return value
+    .replace(/[\x00-\x1f]/g, " ")
+    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "[gizli]")
+    .replace(
+      /(?:\+?90[\s-]?)?0?5\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}/g,
+      "[gizli]"
+    )
+    .replace(/\d[\d\s-]{9,}\d/g, "[gizli]")
+    .replace(/https?:\/\/\S+/gi, "[gizli]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 1000);
+}

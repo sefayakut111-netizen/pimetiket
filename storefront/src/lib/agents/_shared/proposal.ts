@@ -31,7 +31,6 @@ import expireStaleIntents from "../actions/expire-stale-intents";
 import extendCouponExpiry from "../actions/extend-coupon-expiry";
 import retriggerStuckOrder from "../actions/retrigger-stuck-order";
 import cancelNoDesignOrder from "../actions/cancel-no-design-order";
-import processKvkkDeletion from "../actions/process-kvkk-deletion";
 import archiveOldFiles from "../actions/archive-old-files";
 import cleanupOrphanCart from "../actions/cleanup-orphan-cart";
 
@@ -80,7 +79,6 @@ export const ACTION_REGISTRY: Record<string, ActionHandler> = {
   extend_coupon_expiry: extendCouponExpiry,
   retrigger_stuck_order: retriggerStuckOrder,
   cancel_no_design_order: cancelNoDesignOrder,
-  process_kvkk_deletion: processKvkkDeletion,
   archive_old_files: archiveOldFiles,
   cleanup_orphan_cart: cleanupOrphanCart,
 };

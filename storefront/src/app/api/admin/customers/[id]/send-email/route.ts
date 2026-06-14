@@ -10,22 +10,20 @@
  *
  * Akış:
  *   1. auth.users'tan müşteri email'i çek (yoksa 404)
- *   2. fason_mail_outbox INSERT (assignment_id NULL, template_key
- *      "admin_custom", category "customer", target_type "user")
+ *   2. enqueueMail (_prerendered + suppression/idempotency)
  *   3. Cron /api/cron/process-mail-outbox 5dk içinde Resend ile yollar
  *   4. audit_log: customer.email_sent
- *
- * Şema referansı:
- *   - Mig 035: assignment_id NULL'a izin verildi + category +
- *     target_type/target_id (polymorphic).
- *   - Mig 037: target_id uuid → text (orders.id PE-2026-XXXX yüzünden).
  */
 
+import { createHash } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
+import { render } from "@react-email/render";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Enums } from "@/lib/supabase/types";
+import { enqueueMail } from "@/lib/mail/enqueue";
+import { AdminCustomMessageEmail } from "@/lib/mail/templates/admin-custom-message";
 
 export const runtime = "nodejs";
 
@@ -63,7 +61,6 @@ export async function POST(
 
   const admin = createAdminClient();
 
-  // 1) Müşteri email'i (auth.users)
   const { data: userData, error: userErr } =
     await admin.auth.admin.getUserById(id);
   if (userErr || !userData?.user?.email) {
@@ -73,34 +70,53 @@ export async function POST(
     );
   }
   const toEmail = userData.user.email;
+  const recipientName =
+    typeof userData.user.user_metadata?.full_name === "string"
+      ? userData.user.user_metadata.full_name
+      : undefined;
+  const senderEmail = auth.user.email ?? undefined;
 
-  // 2) Outbox INSERT
-  const { error: outboxErr } = await admin.from("fason_mail_outbox").insert([
-    {
-      assignment_id: null,
-      template_key: "admin_custom",
-      to_email: toEmail,
+  const hash = createHash("sha256")
+    .update(`${subject}${body_text}`)
+    .digest("hex")
+    .slice(0, 16);
+
+  const html = await render(
+    AdminCustomMessageEmail({
+      recipientName,
       subject,
-      payload: {
-        body_text,
-        sender_email: auth.user.email ?? null,
-      },
-      category: "customer",
-      target_type: "user",
-      target_id: id,
-      status: "pending",
-      attempts: 0,
-    },
-  ]);
+      bodyText: body_text,
+      senderEmail,
+    })
+  );
 
-  if (outboxErr) {
+  const result = await enqueueMail({
+    templateKey: "_prerendered",
+    to: toEmail,
+    category: "customer",
+    targetType: "user",
+    targetId: id,
+    subject,
+    payload: {
+      subject,
+      html,
+      text: body_text,
+      _kind: "admin_custom",
+      _user_id: id,
+    },
+    idempotencyKey: `admin_custom:${id}:${hash}`,
+  });
+
+  if (result.suppressed) {
+    return NextResponse.json({ ok: true, suppressed: true });
+  }
+  if (!result.ok) {
     return NextResponse.json(
-      { error: "enqueue_failed", detail: outboxErr.message },
+      { error: "enqueue_failed", detail: result.error },
       { status: 500 }
     );
   }
 
-  // 3) Audit
   try {
     await admin.from("audit_log").insert([
       {

@@ -1,0 +1,19 @@
+{
+  "_note": "FAZ4 Batch2 — M16 timeout (f1068d3a) + M7 kargo (59006328, mig187). Mekanik presence + mig187 index dbCheck. Yarış correctness ayrıca elle okunur.",
+  "build": true,
+  "requireInFile": [
+    { "file": "src/lib/http/fetch-with-timeout.ts", "pattern": "TimeoutError" },
+    { "file": "src/lib/http/external-timeouts.ts", "pattern": "INSTAGRAM_HTTP_TIMEOUT_MS" },
+    { "file": "src/lib/instagram/fetch-media.ts", "pattern": "fetchWithTimeout" },
+    { "file": "src/lib/design/image-upscale.ts", "pattern": "remaining" },
+    { "file": "src/app/api/design/enhance/route.ts", "pattern": "maxDuration" },
+    { "file": "src/lib/shipping/persist-shipment-poll.ts", "pattern": "casUpdate" },
+    { "file": "src/app/api/cron/poll-shipments/route.ts", "pattern": "persistShipmentPoll" },
+    { "file": "src/app/api/admin/shipments/bulk-poll/route.ts", "pattern": "persistShipmentPoll" },
+    { "file": "src/app/api/admin/orders/[id]/tracking/route.ts", "pattern": "persistShipmentPoll" },
+    { "file": "src/lib/shipping/yurtici-api.ts", "pattern": "unknown" }
+  ],
+  "dbChecks": [
+    { "label": "mig187 4-kolon dedup index (assignment_id dahil)", "sql": "select indexdef from pg_indexes where schemaname='public' and indexname='uniq_shipment_event_dedupe'", "expect": { "includes": "assignment_id" } }
+  ]
+}

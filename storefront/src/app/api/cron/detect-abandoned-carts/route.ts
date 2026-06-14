@@ -124,8 +124,11 @@ export async function GET(req: Request) {
   const sevenDaysAgo = new Date(
     Date.now() - 7 * 24 * 60 * 60 * 1000
   ).toISOString();
-  const dayKey = new Date().toISOString().slice(0, 10);
-  const idempotencyKeys = userIds.map((uid) => `abandoned_cart:${uid}:${dayKey}`);
+  // #4 — notifications.ts sendAbandonedCart ile LOCKSTEP: hafta-kovalı key (penceresiz
+  // fn_enqueue_mail idempotency'sinde ömür-boyu suppression önlenir). .gte(sevenDaysAgo)
+  // defense-in-depth olarak kalır.
+  const weekKey = Math.floor(Date.now() / (7 * 86400000));
+  const idempotencyKeys = userIds.map((uid) => `abandoned_cart:${uid}:${weekKey}`);
   const { data: recentMails } = await admin
     .from("fason_mail_outbox")
     .select("idempotency_key")

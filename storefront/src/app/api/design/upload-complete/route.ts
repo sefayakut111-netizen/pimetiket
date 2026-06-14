@@ -30,6 +30,7 @@ import {
   uploadToR2,
 } from "@/lib/storage/r2-client";
 import { scheduleOrderDesignQC } from "@/lib/agents/schedule-order-design-qc";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 import { orderDesignUploadSlotsComplete } from "@/lib/order-design-upload-slots";
 import type {
   Enums,
@@ -233,6 +234,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // B3 — replace ile süpersede edilen eski objeyi ŞİMDİ sil (yeni dosya artık 'analyzing' = teyitli).
+  // upload-init ertelemişti (o noktada yeni dosya yüklenmemişti → veri kaybı riski); abandon olursa
+  // eski sağ kalır, tamamlanınca burada silinir. Best-effort, R2-branch zorunlu (KVKK orphan).
+  const supersededPath = (
+    file as { ai_check?: { _supersededStoragePath?: unknown } | null }
+  ).ai_check?._supersededStoragePath;
+  if (
+    typeof supersededPath === "string" &&
+    supersededPath.trim() &&
+    supersededPath !== fileRow.storage_path
+  ) {
+    try {
+      if (isR2StorageKey(supersededPath)) {
+        await deleteFromR2(supersededPath);
+      } else {
+        await admin.storage.from(STORAGE_BUCKET).remove([supersededPath]);
+      }
+    } catch (e) {
+      console.warn(
+        "[upload-complete] süpersede edilen eski obje silinemedi:",
+        supersededPath,
+        e
+      );
+    }
+  }
+
   // 3) order_events 'file_uploaded' log
   await admin.from("order_events").insert([
     {
@@ -265,10 +292,17 @@ export async function POST(req: NextRequest) {
       orderRow.status === "awaiting_upload" ||
       orderRow.status === "paid"
     ) {
-      await admin
-        .from("orders")
-        .update({ status: "qc_pending" })
-        .eq("id", orderId);
+      await transitionOrderStatus(admin, {
+        orderId,
+        to: "qc_pending",
+        from: orderRow.status as "awaiting_upload" | "paid",
+        mode: "forward",
+        actorId: user.id,
+        actorRole: "customer",
+        eventType: "status_changed",
+        summary: `Tasarım yüklendi — ${orderRow.status} → qc_pending`,
+        detail: { trigger: "upload-complete", fileId: body.fileId },
+      });
     }
     const slotsComplete = await orderDesignUploadSlotsComplete(admin, orderId);
     if (slotsComplete) {

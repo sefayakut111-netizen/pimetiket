@@ -15,7 +15,6 @@ import { createClient } from "@supabase/supabase-js";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  // Sefa 21 May v68: inline auth → assertAdmin helper (tutarlılık)
   const auth = await assertPermission("products", "update");
   if (!auth) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -52,26 +51,14 @@ export async function POST(req: Request) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // 1-indexed sort_order (mevcut seed 1..11 olarak)
-  const updates = await Promise.all(
-    order.map((id, idx) =>
-      admin
-        .from("product_cards")
-        .update({ sort_order: idx + 1 })
-        .eq("id", id)
-        .eq("product_type", body.product_type as string)
-    )
-  );
-
-  const errors = updates.filter((u) => u.error);
-  if (errors.length > 0) {
-    return NextResponse.json(
-      { error: "Bazı kartlar güncellenemedi", count: errors.length },
-      { status: 500 }
-    );
+  const { error } = await admin.rpc("fn_reorder_product_cards", {
+    p_product_type: body.product_type as string,
+    p_ids: order,
+  });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Customer sayfa cache invalidate
   revalidatePath("/etiket");
   revalidatePath("/sticker");
 

@@ -27,8 +27,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { queryYurticiShipment } from "@/lib/shipping/yurtici-api";
+import { persistShipmentPoll } from "@/lib/shipping/persist-shipment-poll";
 import { findCarrier, getTrackingUrl } from "@/lib/shipping/carriers";
 import { logOrderEvent } from "@/lib/order-events-server";
+import { transitionOrderStatus, transitionHttpStatus } from "@/lib/db/transition-order-status";
+import type { OrderStatus } from "@/lib/order";
 import { sendOrderShipped } from "@/lib/mail/notifications";
 import { shouldSkipAdminOrderShippedMail } from "@/lib/mail/shipped-mail-guard";
 import { getDeliveryPromise } from "@/lib/delivery-promise";
@@ -143,6 +146,45 @@ export async function POST(
     );
   }
 
+  const orderRow = order as { id: string; user_id: string; status: string };
+  const ALLOWED_SHIP_FROM: OrderStatus[] = ["in_production"];
+
+  if (
+    orderRow.status !== "shipped" &&
+    orderRow.status !== "delivered"
+  ) {
+    if (!ALLOWED_SHIP_FROM.includes(orderRow.status as OrderStatus)) {
+      return NextResponse.json(
+        { error: `Sipariş kargolanacak durumda değil (${orderRow.status})` },
+        { status: 409 }
+      );
+    }
+
+    const shipResult = await transitionOrderStatus(supabase, {
+      orderId,
+      to: "shipped",
+      from: orderRow.status as OrderStatus,
+      mode: "forward",
+      actorId: auth.user.id,
+      actorRole: auth.role === "admin" ? "admin" : "staff",
+      eventType: "status_changed",
+      summary: `Kargo takip no eklendi — ${orderRow.status} → shipped`,
+      detail: {
+        carrier_code: carrier.code,
+        tracking_number: trackingNumber,
+      },
+    });
+    if (!shipResult.ok) {
+      return NextResponse.json(
+        {
+          error: "Sipariş kargo durumuna alınamadı",
+          detail: shipResult.error,
+        },
+        { status: transitionHttpStatus(shipResult.error) }
+      );
+    }
+  }
+
   // Mevcut assignment var mı?
   const { data: existing } = await supabase
     .from("order_assignments")
@@ -200,45 +242,14 @@ export async function POST(
   // İlk Yurtiçi poll'u senkron — kargo var mı, yola çıkmış mı doğrula
   const apiResult = await queryYurticiShipment(trackingNumber);
 
-  if (apiResult.success && apiResult.events.length > 0) {
-    // shipment_status_events'e idempotent insert
-    for (const ev of apiResult.events) {
-      await supabase
-        .from("shipment_status_events")
-        .upsert(
-          {
-            order_id: orderId,
-            assignment_id: assignmentId,
-            status: ev.status,
-            raw_status_code: ev.rawStatusCode,
-            description: ev.description,
-            location: ev.location,
-            event_time: ev.eventTime.toISOString(),
-            polled_at: new Date().toISOString(),
-            raw_payload: {},
-          },
-          { onConflict: "order_id,status,event_time" }
-        );
-    }
-
-    // order_assignments'ı güncelle
-    await supabase
-      .from("order_assignments")
-      .update({
-        tracking_status: apiResult.currentStatus,
-        tracking_last_polled_at: new Date().toISOString(),
-        tracking_delivered_at: apiResult.deliveredAt?.toISOString() ?? null,
-      })
-      .eq("id", assignmentId);
-  }
-
-  // Order events log + sipariş statüsünü kargoda olarak senkronize et
-  const orderRow = order as { id: string; status: string };
-  if (orderRow.status !== "shipped" && orderRow.status !== "delivered") {
-    await supabase
-      .from("orders")
-      .update({ status: "shipped" })
-      .eq("id", orderId);
+  if (apiResult.success) {
+    await persistShipmentPoll(supabase, {
+      assignmentId,
+      orderId,
+      trackingNumber,
+      apiResult,
+      sendMail: false,
+    });
   }
 
   await logOrderEvent(supabase, {
@@ -269,7 +280,7 @@ export async function POST(
         orderId
       );
     } else {
-      const orderUserId = (order as { user_id: string }).user_id;
+      const orderUserId = orderRow.user_id;
       const { data: items } = await supabase
         .from("order_items")
         .select("product")

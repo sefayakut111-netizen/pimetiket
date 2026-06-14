@@ -68,8 +68,17 @@ export async function assertPermission(
       adminRole: p.admin_role ?? null,
     };
 
-    // fn_has_permission ile uyumlu: legacy admin (admin_role NULL) + super_admin → tam yetki
-    if (!p.admin_role || p.admin_role === "super_admin") {
+    // fn_has_permission ile uyumlu: super_admin → tam yetki
+    if (p.admin_role === "super_admin") {
+      return guardResult;
+    }
+    // Legacy admin (admin_role NULL) genelde tam yetki — AMA 'staff' modülünde DEĞİL
+    // (self/peer super_admin atamasını engelle). '*' (assertAdminCompat) ve 'settings'
+    // (Mig 055/056 super_admin'e meşru) REDDEDİLMEZ — yalnız 'staff'.
+    if (!p.admin_role) {
+      if (module === "staff") {
+        return null;
+      }
       return guardResult;
     }
 

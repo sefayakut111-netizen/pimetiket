@@ -40,9 +40,12 @@ export async function upscaleImageFromUrl(
     return { success: false, error: "no_replicate_token" };
   }
 
+  const deadline = Date.now() + REPLICATE_UPSCALE_TIMEOUT_MS;
+  const remaining = () => Math.max(0, deadline - Date.now());
+
   try {
     const res = await fetch(fileUrl, {
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(Math.min(30_000, remaining())),
     });
     if (!res.ok) {
       return { success: false, error: "fetch_failed" };
@@ -71,7 +74,7 @@ export async function upscaleImageFromUrl(
           face_enhance: false,
         },
       }),
-      signal: AbortSignal.timeout(REPLICATE_UPSCALE_TIMEOUT_MS),
+      signal: AbortSignal.timeout(remaining()),
     });
 
     if (!createRes.ok) {
@@ -95,12 +98,11 @@ export async function upscaleImageFromUrl(
       prediction.id &&
       pollUrl
     ) {
-      const deadline = Date.now() + REPLICATE_UPSCALE_TIMEOUT_MS;
-      while (Date.now() < deadline) {
+      while (remaining() > 0) {
         await new Promise((r) => setTimeout(r, 2000));
         const pollRes = await fetch(pollUrl, {
           headers: { Authorization: `Bearer ${token}` },
-          signal: AbortSignal.timeout(15_000),
+          signal: AbortSignal.timeout(Math.min(15_000, remaining())),
         });
         if (!pollRes.ok) break;
         prediction = (await pollRes.json()) as typeof prediction;
@@ -125,7 +127,7 @@ export async function upscaleImageFromUrl(
       ? prediction.output[0]
       : prediction.output;
     const imgRes = await fetch(outputUrl, {
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(Math.min(60_000, remaining())),
     });
     if (!imgRes.ok) {
       return { success: false, error: "output_fetch_failed" };

@@ -37,6 +37,17 @@ export function looksLikePromptInjection(text: string): boolean {
   return INJECTION_PATTERNS.some((p) => p.test(t));
 }
 
+const REDACTED_LINE = "[müşteri metninden kaldırıldı]";
+
+/** Satır bazında INJECTION_PATTERNS eşleşmesini redakte eder, sonra clamp. */
+export function sanitizeForPrompt(text: string): string {
+  const lines = text.split(/\r?\n/);
+  const sanitized = lines.map((line) =>
+    INJECTION_PATTERNS.some((p) => p.test(line)) ? REDACTED_LINE : line
+  );
+  return clampUserText(sanitized.join("\n"));
+}
+
 export function looksLikeSystemPromptLeak(text: string): boolean {
   if (!text || text.length < 40) return false;
   return OUTPUT_LEAK_PATTERNS.some((p) => p.test(text));

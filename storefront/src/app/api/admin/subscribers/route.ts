@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { csvCell } from "@/lib/csv/escape";
 
 export interface SubscriberRow {
   id: string;
@@ -82,13 +83,13 @@ export async function GET(req: Request) {
       "email,source,interests,subscribed,welcome_sent_at,consent_at,created_at";
     const lines = subscribers.map((s) =>
       [
-        s.email,
-        s.source,
-        `"${s.interests.join("|")}"`,
+        csvCell(s.email),
+        csvCell(s.source),
+        csvCell(s.interests.join("|")),
         s.subscribed ? "1" : "0",
-        s.welcomeSentAt ?? "",
-        s.consentAt,
-        s.createdAt,
+        csvCell(s.welcomeSentAt ?? ""),
+        csvCell(s.consentAt),
+        csvCell(s.createdAt),
       ].join(",")
     );
     const csv = [header, ...lines].join("\n");

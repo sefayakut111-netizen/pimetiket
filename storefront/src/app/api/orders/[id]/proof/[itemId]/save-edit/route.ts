@@ -46,7 +46,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { saveCutlineEdit } from "@/lib/proof/save-cutline-edit";
 import { sendOrderProofRequired } from "@/lib/mail/notifications";
-import { assertActivePartnerAssignment } from "@/lib/fason/assert-active-partner-assignment";
+import { assertProofOrderAccess } from "@/lib/proof/order-proof-access";
 
 interface Body {
   svg?: unknown;
@@ -96,58 +96,38 @@ export async function POST(
 
   const admin = createAdminClient();
 
+  const access = await assertProofOrderAccess(admin, orderId, user.id);
+  if (!access.ok) {
+    const errMsg =
+      access.status === 404 ? "Sipariş bulunamadı" : "Forbidden";
+    return NextResponse.json({ error: errMsg }, { status: access.status });
+  }
+
   const { data: order } = await admin
     .from("orders")
-    .select("user_id, status")
+    .select("user_id")
     .eq("id", orderId)
     .maybeSingle();
-  const orderRow = order as { user_id: string; status: string } | null;
-  if (!orderRow) {
+  const ownerUserId = (order as { user_id: string } | null)?.user_id;
+  if (!ownerUserId) {
     return NextResponse.json({ error: "Sipariş bulunamadı" }, { status: 404 });
   }
 
-  let isPartner = false;
-  if (orderRow.user_id !== user.id) {
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-    const role = (profile as { role?: string } | null)?.role;
-    if (role === "partner") {
-      const { data: contactRow } = await admin
-        .from("partner_contacts")
-        .select("partner_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      const partnerId = (contactRow as { partner_id: string } | null)
-        ?.partner_id;
-      if (!partnerId) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-      const asg = await assertActivePartnerAssignment(
-        admin,
-        orderId,
-        partnerId
-      );
-      if (!asg.ok) {
-        return NextResponse.json(
-          { error: "not_your_order" },
-          { status: 403 }
-        );
-      }
-      isPartner = true;
-    } else {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
+  const isPartner = access.actor === "partner";
+  const isStaff = access.actor === "admin" || access.actor === "staff";
+  const actorRole: "customer" | "partner" | "admin" | "staff" = isPartner
+    ? "partner"
+    : access.actor === "admin" || access.actor === "staff"
+      ? access.actor
+      : "customer";
 
   const result = await saveCutlineEdit(admin, {
     orderId,
     itemId,
     actorUserId: user.id,
-    actorRole: isPartner ? "partner" : "customer",
+    actorRole,
     isPartner,
+    editorPromote: isStaff,
     body: {
       svg: typeof body.svg === "string" ? body.svg : "",
       preview_png_base64:
@@ -193,7 +173,7 @@ export async function POST(
 
   if (isPartner) {
     void sendOrderProofRequired({
-      userId: orderRow.user_id,
+      userId: ownerUserId,
       orderId,
       idempotencyKey: `proof_revise:${orderId}:${itemId}`,
     }).catch((err) => {

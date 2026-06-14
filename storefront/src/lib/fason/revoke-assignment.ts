@@ -5,6 +5,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logOrderEvent } from "@/lib/order-events-server";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
+import type { OrderStatus } from "@/lib/order";
 
 export const REVOKABLE_ASSIGNMENT_STATUSES = new Set([
   "assigned",
@@ -159,13 +161,23 @@ export async function revokeFasonAssignment(
 
   let orderStatusAfter = order.status;
   if (ORDER_STATUSES_AFTER_ASSIGN.has(order.status)) {
-    const { error: orderErr } = await admin
-      .from("orders")
-      .update({ status: revertStatus })
-      .eq("id", order.id);
+    const revertResult = await transitionOrderStatus(admin, {
+      orderId: order.id,
+      to: revertStatus as OrderStatus,
+      from: order.status as OrderStatus,
+      mode: "admin_override",
+      actorId: opts.adminUserId,
+      actorRole: "admin",
+      eventType: "status_changed",
+      summary: `Fason ataması geri alındı — ${order.status} → ${revertStatus}`,
+      detail: {
+        assignment_id: assignment.id,
+        reason: opts.reason?.slice(0, 500) ?? null,
+      },
+    });
 
-    if (orderErr) {
-      console.error("[revoke-assignment] order revert:", orderErr);
+    if (!revertResult.ok) {
+      console.error("[revoke-assignment] order revert:", revertResult.error);
       return {
         ok: false,
         error: "Siparis durumu geri alinamadi",

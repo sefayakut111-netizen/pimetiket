@@ -1,0 +1,17 @@
+{
+  "_note": "KVKK data_export worker — mig189 + 9 dosya. Presence + mig189 dbChecks. collect/purge güvenliği ayrıca elle okunur. (Commit yok — .git rootlanmadı.)",
+  "build": true,
+  "requireInFile": [
+    { "file": "src/lib/kvkk/collect-export-data.ts", "pattern": "collectUserExportData" },
+    { "file": "src/app/api/cron/process-data-export/route.ts", "pattern": "withCronRun" },
+    { "file": "src/app/api/cron/process-data-export/route.ts", "pattern": "casUpdate" },
+    { "file": "src/lib/mail/templates.ts", "pattern": "customer_data_export_ready" },
+    { "file": "src/lib/kvkk/storage-purge.ts", "pattern": "exports/" },
+    { "file": "src/app/ayarlar/verilerim/page.tsx", "pattern": "exporting" },
+    { "file": "src/app/api/me/kvkk-requests/route.ts", "pattern": "triggerDataExportProcess" }
+  ],
+  "dbChecks": [
+    { "label": "mig189 enum 'exporting' var", "sql": "select e.enumlabel from pg_enum e join pg_type t on t.oid=e.enumtypid where t.typname='kvkk_request_status' and e.enumlabel='exporting'", "expect": { "includes": "exporting" } },
+    { "label": "mig189 result_expires_at kolonu var", "sql": "select column_name from information_schema.columns where table_schema='public' and table_name='kvkk_requests' and column_name='result_expires_at'", "expect": { "includes": "result_expires_at" } }
+  ]
+}

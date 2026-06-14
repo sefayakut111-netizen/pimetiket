@@ -18,7 +18,7 @@
  */
 
 import type { ActionHandler } from "../_shared/proposal";
-import type { Json, TablesInsert } from "@/lib/supabase/types";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 
 interface CancelPayload {
   orderIds: string[];
@@ -36,52 +36,49 @@ const cancelNoDesignOrder: ActionHandler = async ({ admin, payload }) => {
     };
   }
 
-  // Guard: yalnızca status=paid olanları iptal et (race condition)
-  const { data, error } = await admin
-    .from("orders")
-    .update({
-      status: "cancelled",
-    })
-    .in("id", orderIds)
-    .eq("status", "paid")
-    .select("id");
+  const updated: string[] = [];
+  const errors: string[] = [];
 
-  if (error) {
-    return {
-      result: "failed",
-      error: `DB update failed: ${error.message}`,
-    };
+  for (const orderId of orderIds) {
+    const result = await transitionOrderStatus(admin, {
+      orderId,
+      to: "cancelled",
+      from: "paid",
+      mode: "forward",
+      actorRole: "system",
+      eventType: "cancelled_no_design",
+      summary: `Tasarım yüklenmedi — sipariş iptal (${reason})`,
+      detail: {
+        reason,
+        auditor: "workflow",
+        requires_manual_refund: true,
+      },
+    });
+
+    if (result.ok && !result.unchanged) {
+      updated.push(orderId);
+    } else if (!result.ok) {
+      errors.push(`${orderId}: ${result.error}`);
+    }
   }
 
-  const updated = (data ?? []) as Array<{ id: string }>;
-
-  // order_events kayıtları (audit)
-  if (updated.length > 0) {
-    await admin.from("order_events").insert(
-      updated.map(
-        (r): TablesInsert<"order_events"> => ({
-          order_id: r.id,
-          event_type: "cancelled_no_design",
-          summary: `Tasarım yüklenmedi — sipariş iptal (${reason})`,
-          detail: {
-            reason,
-            auditor: "workflow",
-            requires_manual_refund: true,
-          } satisfies Json,
-        })
-      )
-    );
+  if (errors.length > 0 && updated.length === 0) {
+    return {
+      result: "failed",
+      error: errors.join("; "),
+    };
   }
 
   return {
     result: updated.length === orderIds.length ? "success" : "partial",
     affectedRows: updated.length,
-    affectedIds: { orderIds: updated.map((r) => r.id) },
+    affectedIds: { orderIds: updated },
     externalCall: {
       requested: orderIds.length,
       cancelled: updated.length,
       reason,
       note: "PayTR refund manuel — /admin/finans'tan başlat",
+      errors: errors.length > 0 ? errors : undefined,
     },
   };
 };

@@ -1,4 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchWithTimeout } from "@/lib/http/fetch-with-timeout";
+import { INSTAGRAM_HTTP_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 import { detectMimeFromMagicBytes } from "@/lib/storage/magic-bytes";
 import { fetchInstagramMedia, mediaToFeedPost } from "./fetch-media";
 import { getInstagramToken } from "./token";
@@ -43,50 +45,57 @@ export async function syncInstagramToSiteImageSlots(limit = 6) {
     const slot = SLOTS[i];
     if (!slot) break;
 
-    const imageRes = await fetch(post.imageUrl);
-    if (!imageRes.ok) continue;
+    try {
+      const imageRes = await fetchWithTimeout(post.imageUrl, {
+        timeoutMs: INSTAGRAM_HTTP_TIMEOUT_MS,
+      });
+      if (!imageRes.ok) continue;
 
-    const bytes = Buffer.from(await imageRes.arrayBuffer());
-    const header = new Uint8Array(
-      bytes.buffer,
-      bytes.byteOffset,
-      Math.min(bytes.length, 512)
-    );
-    const magic = detectMimeFromMagicBytes(header, "image/jpeg");
-    const mime = magic.detected ?? "image/jpeg";
-    const ext = extForMime(mime);
-    const storagePath = `site-images/${slot}/${post.id}.${ext}`;
+      const bytes = Buffer.from(await imageRes.arrayBuffer());
+      const header = new Uint8Array(
+        bytes.buffer,
+        bytes.byteOffset,
+        Math.min(bytes.length, 512)
+      );
+      const magic = detectMimeFromMagicBytes(header, "image/jpeg");
+      const mime = magic.detected ?? "image/jpeg";
+      const ext = extForMime(mime);
+      const storagePath = `site-images/${slot}/${post.id}.${ext}`;
 
-    const { error: uploadError } = await admin.storage
-      .from(BUCKET)
-      .upload(storagePath, bytes, { contentType: mime, upsert: true });
+      const { error: uploadError } = await admin.storage
+        .from(BUCKET)
+        .upload(storagePath, bytes, { contentType: mime, upsert: true });
 
-    if (uploadError) {
-      console.error(`[instagram-sync] upload ${slot}:`, uploadError);
+      if (uploadError) {
+        console.error(`[instagram-sync] upload ${slot}:`, uploadError);
+        continue;
+      }
+
+      const { error: upsertError } = await admin.from("site_images").upsert(
+        {
+          slot,
+          storage_path: storagePath,
+          alt_text: post.altText,
+          title: post.caption?.slice(0, 80) ?? null,
+          link_url: post.permalink,
+          is_active: true,
+          mime_type: mime,
+          size_bytes: bytes.length,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "slot" }
+      );
+
+      if (upsertError) {
+        console.error(`[instagram-sync] upsert ${slot}:`, upsertError);
+        continue;
+      }
+
+      synced += 1;
+    } catch (err) {
+      console.error(`[instagram-sync] slot ${slot} fetch/upload:`, err);
       continue;
     }
-
-    const { error: upsertError } = await admin.from("site_images").upsert(
-      {
-        slot,
-        storage_path: storagePath,
-        alt_text: post.altText,
-        title: post.caption?.slice(0, 80) ?? null,
-        link_url: post.permalink,
-        is_active: true,
-        mime_type: mime,
-        size_bytes: bytes.length,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "slot" }
-    );
-
-    if (upsertError) {
-      console.error(`[instagram-sync] upsert ${slot}:`, upsertError);
-      continue;
-    }
-
-    synced += 1;
   }
 
   return { ok: synced > 0, reason: synced > 0 ? ("synced" as const) : ("no_posts" as const), synced };

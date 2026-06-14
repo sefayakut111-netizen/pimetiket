@@ -2,17 +2,18 @@
  * POST /api/admin/returns/[id]/status
  *
  * Admin iade talebi durumu güncelle + müşteri maili.
- * Body: { status: "approved" | "rejected" | "refunded", adminNote?, refundAmount? }
+ * Body: { status: "approved" | "rejected", adminNote?, refundAmount? }
  */
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { casUpdate } from "@/lib/db/cas-update";
 import type { Enums, TablesInsert } from "@/lib/supabase/types";
 
 const BodySchema = z.object({
-  status: z.enum(["approved", "rejected", "refunded"]),
+  status: z.enum(["approved", "rejected"]),
   adminNote: z.string().min(1).max(2000).optional(),
   refundAmount: z.number().positive().optional(),
 });
@@ -79,17 +80,28 @@ export async function POST(
     updatePayload.refund_amount = body.refundAmount;
   }
 
-  const { data: updated, error: updateErr } = await admin
-    .from("returns")
-    .update(updatePayload)
-    .eq("id", returnId)
-    .select("*")
-    .single();
+  const expectFrom =
+    body.status === "approved" ? ["pending"] : ["pending", "approved"];
 
-  if (updateErr || !updated) {
-    console.error("[admin/returns/status]", updateErr);
-    return NextResponse.json({ error: "update_failed" }, { status: 500 });
+  const cas = await casUpdate(admin, "returns", returnId, updatePayload, {
+    expectFrom,
+    col: "status",
+    select: "*",
+  });
+
+  if (!cas.ok) {
+    return NextResponse.json(
+      cas.reason === "stale"
+        ? {
+            error: "return_status_conflict",
+            hint: "İade durumu değişmiş, listeyi yenile",
+          }
+        : { error: "update_failed" },
+      { status: cas.reason === "stale" ? 409 : 500 }
+    );
   }
+
+  const updated = cas.row;
 
   const {
     sendRefundApproved,

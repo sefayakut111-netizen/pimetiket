@@ -1463,7 +1463,10 @@ export async function sendAbandonedCart(args: {
     : `Sepetindeki ${args.itemCount} ürün hâlâ bekliyor`;
   const text = `Sepette ${args.itemCount} ürün, toplam ${totalRounded.toLocaleString("tr-TR")} ₺.\n\nSepete dön: ${SITE_URL_FALLBACK}/sepet\n\nAbonelikten çık: ${unsubscribeUrl}`;
 
-  const dayKey = new Date().toISOString().slice(0, 10);
+  // #4 — fn_enqueue_mail idempotency'si penceresiz (Mig 076); tam-stabil key ömür-boyu
+  // suppression yapardı. Hafta-kovası (~7 gün) doğal TTL gibi davranır — gerçekten yeni
+  // terk-sepet 8+ gün sonra yeni key alır. detect-abandoned-carts aynı weekKey ile lockstep.
+  const weekKey = Math.floor(Date.now() / (7 * 86400000));
 
   const result = await enqueueCommercialPrerendered({
     to: email,
@@ -1472,7 +1475,7 @@ export async function sendAbandonedCart(args: {
     text,
     userId: args.userId,
     kind: "abandoned_cart",
-    idempotencyKey: `abandoned_cart:${args.userId}:${dayKey}`,
+    idempotencyKey: `abandoned_cart:${args.userId}:${weekKey}`,
     targetType: "user",
     targetId: args.userId,
   });

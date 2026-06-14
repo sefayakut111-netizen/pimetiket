@@ -10,22 +10,24 @@
  *     note?: string  // operatör notu (audit log için)
  *   }
  *
- * human_review / qc_* kaynak:
+ * Kaynak durumlar: AI_QC_ACTIVE_STATUSES (qc_pending / qc_flagged / human_review / human_review_failed).
  *   - approve → ready_to_ship
  *   - fix_and_proof → proof_generating
  *   - reject → human_review_failed (+ müşteriye düzeltme maili)
  *
- * operator_print_review kaynak (FAZ 3 — baskı öncesi):
- *   - approve → ready_to_ship
- *   - fix_and_proof → proof_generating
- *   - reject → cancelled (iade akışı mevcut cancel mekanizmasına bırakılır)
+ * NOT: operator_print_review (baskı öncesi inceleme) bu kuyruğa DAHİL DEĞİL (AI_QC_ACTIVE_STATUSES
+ * dışında) — baskı incelemesi /admin/prova → /api/admin/orders/[id]/status (admin_override) ile
+ * ilerletilir. Bu yüzden bu route'ta print-review dalı YOKTUR.
  */
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertPermission } from "@/lib/supabase/assert-permission";
-import { logOrderEvent } from "@/lib/order-events-server";
+import {
+  transitionOrderStatus,
+  transitionHttpStatus,
+} from "@/lib/db/transition-order-status";
 import { AI_QC_ACTIVE_STATUSES, isOrderStatus } from "@/lib/order";
 
 const BodySchema = z.object({
@@ -85,65 +87,35 @@ export async function POST(req: Request) {
     );
   }
 
-  const isPrintReview = fromStatus === "operator_print_review";
-
   const nextStatus =
     body.decision === "approve"
       ? "ready_to_ship"
       : body.decision === "fix_and_proof"
         ? "proof_generating"
-        : isPrintReview
-          ? "cancelled"
-          : "human_review_failed";
+        : "human_review_failed";
 
-  const { data: updated, error: updateErr } = await admin
-    .from("orders")
-    .update({ status: nextStatus })
-    .eq("id", body.orderId)
-    .eq("status", fromStatus)
-    .select("id, status")
-    .single();
-
-  if (updateErr || !updated) {
-    return NextResponse.json(
-      {
-        error: "Update failed",
-        detail: updateErr?.message ?? "order_not_in_qc_queue",
-      },
-      { status: 400 }
-    );
-  }
-
-  const eventType = isPrintReview
-    ? body.decision === "approve"
-      ? "print_review_approved"
-      : body.decision === "fix_and_proof"
-        ? "print_review_fix"
-        : "print_review_cancelled"
-    : body.decision === "approve"
+  const eventType =
+    body.decision === "approve"
       ? "qc_approved"
       : body.decision === "fix_and_proof"
         ? "qc_fixed_by_operator"
         : "qc_rejected";
 
-  const summary = isPrintReview
-    ? body.decision === "approve"
-      ? "Baskı öncesi onaylandı → üretime hazır"
-      : body.decision === "fix_and_proof"
-        ? "Baskı öncesi düzeltme → prova yeniden"
-        : "Baskı öncesi iptal → iade"
-    : body.decision === "approve"
+  const summary =
+    body.decision === "approve"
       ? "AI QC onaylandı → üretime hazır"
       : body.decision === "fix_and_proof"
         ? "Operatör düzeltecek → prova hazırlanıyor"
         : "AI QC reddedildi → düzeltme istendi";
 
-  await logOrderEvent(admin, {
+  const transitionResult = await transitionOrderStatus(admin, {
     orderId: body.orderId,
-    eventType,
-    statusAfter: nextStatus,
+    to: nextStatus,
+    from: fromStatus,
+    mode: "forward",
     actorId: auth.user.id,
     actorRole: auth.role === "admin" ? "admin" : "staff",
+    eventType,
     summary,
     detail: {
       operator: auth.user.email ?? auth.user.id,
@@ -153,7 +125,17 @@ export async function POST(req: Request) {
     },
   });
 
-  if (body.decision === "reject" && !isPrintReview) {
+  if (!transitionResult.ok) {
+    return NextResponse.json(
+      {
+        error: "Update failed",
+        detail: transitionResult.error,
+      },
+      { status: transitionHttpStatus(transitionResult.error) }
+    );
+  }
+
+  if (body.decision === "reject") {
     const { data: orderData } = await admin
       .from("orders")
       .select("user_id")

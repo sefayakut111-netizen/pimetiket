@@ -1,5 +1,7 @@
 import "server-only";
 
+import { fetchWithTimeout } from "@/lib/http/fetch-with-timeout";
+import { INSTAGRAM_HTTP_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   INSTAGRAM_ACCESS_TOKEN_KEY,
@@ -108,7 +110,9 @@ export async function refreshInstagramAccessToken(
   url.searchParams.set("grant_type", "ig_refresh_token");
   url.searchParams.set("access_token", currentToken);
 
-  const res = await fetch(url.toString());
+  const res = await fetchWithTimeout(url.toString(), {
+    timeoutMs: INSTAGRAM_HTTP_TIMEOUT_MS,
+  });
   const body: unknown = await res.json().catch(() => null);
   if (!res.ok) {
     const detail =

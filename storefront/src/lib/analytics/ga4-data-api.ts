@@ -1,4 +1,5 @@
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
+import { GA4_REPORT_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 
 export type TrafficRange = "24h" | "7d" | "28d" | "90d";
 
@@ -147,6 +148,25 @@ function formatGaHour(hourStr: string): string {
   return `${String(h).padStart(2, "0")}:00`;
 }
 
+function withReportTimeout<T>(promise: Promise<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const err = new Error("GA4 report timeout");
+      err.name = "TimeoutError";
+      reject(err);
+    }, GA4_REPORT_TIMEOUT_MS);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 function parseTotalsRow(row: GaRow | null | undefined) {
   if (!row) {
     return {
@@ -198,7 +218,8 @@ export async function getTrafficSummary(
   ];
 
   try {
-    const [dailyRes, totalsRes, pagesRes, sourcesRes] = await Promise.all([
+    const [dailyRes, totalsRes, pagesRes, sourcesRes] = await withReportTimeout(
+      Promise.all([
       client.runReport({
         property,
         dateRanges: dateRange,
@@ -229,7 +250,8 @@ export async function getTrafficSummary(
         orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
         limit: 10,
       }),
-    ]);
+    ])
+    );
 
     const daily = dailyRes[0];
     const totalsData = totalsRes[0];
@@ -305,7 +327,8 @@ export async function getRealtimeSummary(): Promise<
   const property = `properties/${propertyId}`;
 
   try {
-    const [minuteRes, pageRes, countryRes, deviceRes] = await Promise.all([
+    const [minuteRes, pageRes, countryRes, deviceRes] = await withReportTimeout(
+      Promise.all([
       client.runRealtimeReport({
         property,
         dimensions: [{ name: "minutesAgo" }],
@@ -332,7 +355,8 @@ export async function getRealtimeSummary(): Promise<
         orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
         limit: 5,
       }),
-    ]);
+    ])
+    );
 
     const minuteMap = new Map<number, number>();
     (minuteRes[0].rows ?? []).forEach((row) => {

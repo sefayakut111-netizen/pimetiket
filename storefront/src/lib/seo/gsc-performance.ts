@@ -4,6 +4,8 @@
  */
 
 import { GoogleAuth } from "google-auth-library";
+import { fetchWithTimeout } from "@/lib/http/fetch-with-timeout";
+import { GSC_HTTP_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 import { getSiteUrl } from "@/lib/site-url";
 
 const WEBMASTERS_READONLY =
@@ -80,7 +82,7 @@ export async function fetchGscTopQueries(
     const site = encodeURIComponent(gscSiteUrl());
     const url = `https://www.googleapis.com/webmasters/v3/sites/${site}/searchAnalytics/query`;
 
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token.token}`,
@@ -93,6 +95,7 @@ export async function fetchGscTopQueries(
         rowLimit: 25,
       }),
       cache: "no-store",
+      timeoutMs: GSC_HTTP_TIMEOUT_MS,
     });
 
     const json = (await res.json()) as {

@@ -5,23 +5,19 @@
  *
  * Body: { user_ids: string[], subject: string, body_text: string }
  *
- * Her kullanıcı için fason_mail_outbox'a ayrı kayıt — cron process-mail-outbox
- * Resend ile sırayla gönderir. Bu sayede:
- *   - Retry desteği (her kayıt bağımsız)
- *   - Rate limiting (Resend günlük limit)
- *   - Audit trail (her gönderim log'lanır)
- *
+ * enqueueMail + suppression/idempotency — cron process-mail-outbox gönderir.
  * Limit: max 100 alıcı / istek (spam koruması).
  */
 
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
+import { render } from "@react-email/render";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertPermission } from "@/lib/supabase/assert-permission";
+import { enqueueMail } from "@/lib/mail/enqueue";
+import { AdminCustomMessageEmail } from "@/lib/mail/templates/admin-custom-message";
 
 export async function POST(req: Request) {
-  // Sefa 18 May v68 (RBAC yayma — Migration 054):
-  // Bulk email customer_service yetkisi (modul=customers, action=update).
-  // Spam koruması — operations/production/content_editor mail atamaz.
   const auth = await assertPermission("customers", "update");
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -58,10 +54,15 @@ export async function POST(req: Request) {
   }
 
   const admin = createAdminClient();
+  const senderEmail = auth.user.email ?? "info@pimetiket.com";
+  const hash = createHash("sha256")
+    .update(`${subject}${text}`)
+    .digest("hex")
+    .slice(0, 16);
 
-  // Tüm kullanıcıların emaillerini topla (admin API)
   const enqueued: string[] = [];
   const skipped: string[] = [];
+  const suppressed: string[] = [];
 
   for (const userId of userIds) {
     const { data: user } = await admin.auth.admin.getUserById(userId);
@@ -69,33 +70,49 @@ export async function POST(req: Request) {
       skipped.push(userId);
       continue;
     }
-    const { error: outboxErr } = await admin
-      .from("fason_mail_outbox")
-      .insert([
-        {
-          assignment_id: null,
-          template_key: "admin_custom",
-          to_email: user.user.email.toLowerCase(),
-          subject,
-          payload: {
-            body_text: text,
-            sender_email: auth.user.email ?? "info@pimetiket.com",
-          },
-          category: "customer",
-          target_type: "user",
-          target_id: userId,
-          status: "pending",
-          attempts: 0,
-        },
-      ]);
-    if (outboxErr) {
+
+    const recipientName =
+      typeof user.user.user_metadata?.full_name === "string"
+        ? user.user.user_metadata.full_name
+        : undefined;
+
+    const html = await render(
+      AdminCustomMessageEmail({
+        recipientName,
+        subject,
+        bodyText: text,
+        senderEmail,
+      })
+    );
+
+    const result = await enqueueMail({
+      templateKey: "_prerendered",
+      to: user.user.email,
+      category: "customer",
+      targetType: "user",
+      targetId: userId,
+      subject,
+      payload: {
+        subject,
+        html,
+        text,
+        _kind: "admin_custom_bulk",
+        _user_id: userId,
+      },
+      idempotencyKey: `admin_custom_bulk:${userId}:${hash}`,
+    });
+
+    if (result.suppressed) {
+      suppressed.push(userId);
+      continue;
+    }
+    if (!result.ok) {
       skipped.push(userId);
       continue;
     }
     enqueued.push(userId);
   }
 
-  // Customer notes auto-log her enqueued user için
   if (enqueued.length > 0) {
     const notes = enqueued.map((uid) => ({
       user_id: uid,
@@ -111,6 +128,7 @@ export async function POST(req: Request) {
     ok: true,
     enqueued: enqueued.length,
     skipped: skipped.length,
+    suppressed: suppressed.length,
     total_requested: userIds.length,
   });
 }

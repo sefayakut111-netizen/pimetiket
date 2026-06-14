@@ -20,6 +20,7 @@
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 
 export type StepStatus = "pending" | "running" | "success" | "fail" | "skip";
 
@@ -408,10 +409,18 @@ export async function runCheckoutSimulation(
       if (error) {
         // RPC yoksa fallback: doğrudan UPDATE
         if (error.code === "42883" || error.message?.includes("does not exist")) {
+          const transitionResult = await transitionOrderStatus(admin, {
+            orderId: localOrderId,
+            to: "paid",
+            mode: "admin_override",
+            actorRole: "system",
+            eventType: "status_changed",
+            summary: "Simülasyon fallback — paid",
+          });
+          if (!transitionResult.ok) throw new Error(transitionResult.error);
           const { error: updErr } = await admin
             .from("orders")
             .update({
-              status: "paid",
               payment: {
                 method: "card",
                 masked: "**** **** **** 0796",

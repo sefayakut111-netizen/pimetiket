@@ -3,6 +3,8 @@
  * Key dosyası: public/{INDEXNOW_KEY}.txt
  */
 
+import { fetchWithTimeout } from "@/lib/http/fetch-with-timeout";
+import { INDEXNOW_HTTP_TIMEOUT_MS } from "@/lib/http/external-timeouts";
 import { getSiteUrl } from "@/lib/site-url";
 
 function siteHost(): string {
@@ -67,11 +69,12 @@ export async function submitIndexNow(
   };
 
   try {
-    const res = await fetch("https://api.indexnow.org/indexnow", {
+    const res = await fetchWithTimeout("https://api.indexnow.org/indexnow", {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=utf-8" },
       body: JSON.stringify(body),
       cache: "no-store",
+      timeoutMs: INDEXNOW_HTTP_TIMEOUT_MS,
     });
 
     return {
@@ -99,7 +102,10 @@ export async function submitIndexNowFromSitemap(
   const url = sitemapUrl ?? `${getSiteUrl()}/sitemap.xml`;
 
   try {
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetchWithTimeout(url, {
+      cache: "no-store",
+      timeoutMs: INDEXNOW_HTTP_TIMEOUT_MS,
+    });
     if (!res.ok) {
       return {
         configured: Boolean(indexNowKey()),

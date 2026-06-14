@@ -358,12 +358,6 @@ function renderAutoRefundStaleProof(input: MailTemplateInput): MailRendered {
   return { subject, html: shellHtml(subject, body, footer), text };
 }
 
-// ============================================================
-// Router
-// ============================================================
-// ============================================================
-// lead_welcome — şablon listesi signup welcome maili
-// ============================================================
 function renderLeadWelcome(input: MailTemplateInput): MailRendered {
   const p = input.payload;
   const downloadUrl = (() => {
@@ -439,6 +433,58 @@ function renderLeadWelcome(input: MailTemplateInput): MailRendered {
   `;
 
   const text = `Hoş geldin!\n\nPim Etiket şablon kütüphanesine kaydoldun.${downloadUrl ? `\n\nZIP indir: ${downloadUrl}` : "\n\nŞablonlar hazır olunca mail atacağız (24 saat içinde)."}\n\nEtiket yapılandır: ${SITE_URL}/etiket\nSticker yapılandır: ${SITE_URL}/sticker\n\nAboneliği iptal et: ${unsubUrl}`;
+
+  return { subject, html: shellHtml(subject, body, footer), text };
+}
+
+function renderCustomerDataExportReady(input: MailTemplateInput): MailRendered {
+  const p = input.payload;
+  const downloadUrl = (() => {
+    const raw = typeof p.download_url === "string" ? p.download_url : "";
+    if (!raw) return "";
+    try {
+      const u = new URL(raw);
+      if (u.protocol === "https:") return u.toString();
+    } catch {
+      /* invalid */
+    }
+    return "";
+  })();
+
+  const expiresRaw = typeof p.expires_at === "string" ? p.expires_at : "";
+  const expiresLabel = expiresRaw
+    ? new Date(expiresRaw).toLocaleString("tr-TR", {
+        dateStyle: "long",
+        timeStyle: "short",
+      })
+    : "7 gün";
+
+  const subject = "Verilerin hazır — Pim Etiket";
+
+  const body = `
+    <h1 style="font-size: 20px; margin: 0 0 12px;">Veri dışa aktarımın hazır</h1>
+    <p style="font-size: 14px; line-height: 1.6; color: #292524;">
+      Talep ettiğin tüm hesap verilerin tek dosyada hazır.
+      Link <strong>${escape(expiresLabel)}</strong> geçerli; sonra güvenlik için otomatik silinir.
+    </p>
+    ${
+      downloadUrl
+        ? `<div style="margin: 24px 0; text-align: center;">
+            <a href="${downloadUrl}" style="display: inline-block; background: #ef3e56; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">
+              Verilerimi indir
+            </a>
+          </div>`
+        : `<p style="font-size: 13px; color: #57534e;">İndirme linki oluşturulamadı — destek ile iletişime geç.</p>`
+    }
+  `;
+
+  const footer = `
+    Sorun mu yaşadın? <a href="${SITE_URL}/iletisim">İletişim</a> sayfasından bize yaz.
+  `;
+
+  const text = downloadUrl
+    ? `Verilerin hazır. İndirme linki ${expiresLabel} geçerli: ${downloadUrl}`
+    : `Verilerin hazır ancak link üretilemedi. ${SITE_URL}/iletisim`;
 
   return { subject, html: shellHtml(subject, body, footer), text };
 }
@@ -933,6 +979,7 @@ const RENDERERS: Record<
   customer_delivered: renderCustomerDelivered,
   auto_refund_stale_proof: renderAutoRefundStaleProof,
   lead_welcome: renderLeadWelcome,
+  customer_data_export_ready: renderCustomerDataExportReady,
   customer_abandoned_cart: renderCustomerAbandonedCart,
   customer_review_request: renderCustomerReviewRequest,
   admin_new_order: renderAdminNewOrder,

@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -87,6 +87,175 @@ export type Database = {
           role?: Database["public"]["Enums"]["admin_role_v2"]
         }
         Relationships: []
+      }
+      ai_usage_logs: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          duration_ms: number | null
+          id: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+          persona: string | null
+          source: string
+          tokens_used: number
+          user_id: string | null
+        }
+        Insert: {
+          cost_usd?: number
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input_tokens?: number
+          model: string
+          output_tokens?: number
+          persona?: string | null
+          source: string
+          tokens_used?: number
+          user_id?: string | null
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          persona?: string | null
+          source?: string
+          tokens_used?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      approval_assets: {
+        Row: {
+          id: string
+          mime: string
+          request_id: string
+          sort: number
+          storage_path: string
+        }
+        Insert: {
+          id?: string
+          mime: string
+          request_id: string
+          sort?: number
+          storage_path: string
+        }
+        Update: {
+          id?: string
+          mime?: string
+          request_id?: string
+          sort?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_assets_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "approval_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approval_requests: {
+        Row: {
+          blocking: boolean
+          created_at: string
+          created_by: string
+          customer_comment: string | null
+          decided_at: string | null
+          id: string
+          message: string | null
+          order_id: string
+          order_item_id: string | null
+          partner_id: string | null
+          reminded_at: string | null
+          source: string
+          status: string
+          title: string
+        }
+        Insert: {
+          blocking?: boolean
+          created_at?: string
+          created_by: string
+          customer_comment?: string | null
+          decided_at?: string | null
+          id?: string
+          message?: string | null
+          order_id: string
+          order_item_id?: string | null
+          partner_id?: string | null
+          reminded_at?: string | null
+          source: string
+          status?: string
+          title: string
+        }
+        Update: {
+          blocking?: boolean
+          created_at?: string
+          created_by?: string
+          customer_comment?: string | null
+          decided_at?: string | null
+          id?: string
+          message?: string | null
+          order_id?: string
+          order_item_id?: string | null
+          partner_id?: string | null
+          reminded_at?: string | null
+          source?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_requests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "approval_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_requests_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_requests_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "fason_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_requests_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "v_fason_performance"
+            referencedColumns: ["fason_id"]
+          },
+        ]
       }
       archive_events: {
         Row: {
@@ -655,6 +824,52 @@ export type Database = {
           },
           {
             foreignKeyName: "cart_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      coupon_reservations: {
+        Row: {
+          coupon_id: string
+          created_at: string
+          id: string
+          payment_intent_id: string
+          user_id: string
+        }
+        Insert: {
+          coupon_id: string
+          created_at?: string
+          id?: string
+          payment_intent_id: string
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string
+          created_at?: string
+          id?: string
+          payment_intent_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_reservations_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_reservations_payment_intent_id_fkey"
+            columns: ["payment_intent_id"]
+            isOneToOne: true
+            referencedRelation: "payment_intents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_reservations_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "v_admin_customers"
@@ -1268,48 +1483,6 @@ export type Database = {
           },
         ]
       }
-      ai_usage_logs: {
-        Row: {
-          cost_usd: number
-          created_at: string
-          duration_ms: number | null
-          id: string
-          input_tokens: number
-          model: string
-          output_tokens: number
-          persona: string | null
-          source: string
-          tokens_used: number
-          user_id: string | null
-        }
-        Insert: {
-          cost_usd?: number
-          created_at?: string
-          duration_ms?: number | null
-          id?: string
-          input_tokens?: number
-          model: string
-          output_tokens?: number
-          persona?: string | null
-          source: string
-          tokens_used?: number
-          user_id?: string | null
-        }
-        Update: {
-          cost_usd?: number
-          created_at?: string
-          duration_ms?: number | null
-          id?: string
-          input_tokens?: number
-          model?: string
-          output_tokens?: number
-          persona?: string | null
-          source?: string
-          tokens_used?: number
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       design_quality_checks: {
         Row: {
           agent_name: string
@@ -1585,8 +1758,7 @@ export type Database = {
           last_used_at: string | null
           max_use_count: number
           revoked_at: string | null
-          token: string
-          token_hash: string | null
+          token_hash: string
           use_count: number
         }
         Insert: {
@@ -1598,8 +1770,7 @@ export type Database = {
           last_used_at?: string | null
           max_use_count?: number
           revoked_at?: string | null
-          token: string
-          token_hash?: string | null
+          token_hash: string
           use_count?: number
         }
         Update: {
@@ -1611,8 +1782,7 @@ export type Database = {
           last_used_at?: string | null
           max_use_count?: number
           revoked_at?: string | null
-          token?: string
-          token_hash?: string | null
+          token_hash?: string
           use_count?: number
         }
         Relationships: [
@@ -1856,6 +2026,7 @@ export type Database = {
           express_lead_time_days: number | null
           iban: string | null
           id: string
+          max_concurrent_orders: number
           min_order_amount_try: number | null
           name: string
           notes: string | null
@@ -1890,6 +2061,7 @@ export type Database = {
           express_lead_time_days?: number | null
           iban?: string | null
           id?: string
+          max_concurrent_orders?: number
           min_order_amount_try?: number | null
           name: string
           notes?: string | null
@@ -1924,6 +2096,7 @@ export type Database = {
           express_lead_time_days?: number | null
           iban?: string | null
           id?: string
+          max_concurrent_orders?: number
           min_order_amount_try?: number | null
           name?: string
           notes?: string | null
@@ -2008,6 +2181,27 @@ export type Database = {
           },
         ]
       }
+      integration_secrets: {
+        Row: {
+          expires_at: string | null
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          expires_at?: string | null
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          expires_at?: string | null
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       kvkk_requests: {
         Row: {
           admin_note: string | null
@@ -2022,6 +2216,7 @@ export type Database = {
           processed_at: string | null
           processed_by: string | null
           request_ip: unknown
+          result_expires_at: string | null
           result_path: string | null
           scope: Json
           status: Database["public"]["Enums"]["kvkk_request_status"]
@@ -2043,6 +2238,7 @@ export type Database = {
           processed_at?: string | null
           processed_by?: string | null
           request_ip?: unknown
+          result_expires_at?: string | null
           result_path?: string | null
           scope?: Json
           status?: Database["public"]["Enums"]["kvkk_request_status"]
@@ -2064,6 +2260,7 @@ export type Database = {
           processed_at?: string | null
           processed_by?: string | null
           request_ip?: unknown
+          result_expires_at?: string | null
           result_path?: string | null
           scope?: Json
           status?: Database["public"]["Enums"]["kvkk_request_status"]
@@ -2350,139 +2547,6 @@ export type Database = {
           },
         ]
       }
-      approval_assets: {
-        Row: {
-          id: string
-          mime: string
-          request_id: string
-          sort: number
-          storage_path: string
-        }
-        Insert: {
-          id?: string
-          mime: string
-          request_id: string
-          sort?: number
-          storage_path: string
-        }
-        Update: {
-          id?: string
-          mime?: string
-          request_id?: string
-          sort?: number
-          storage_path?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "approval_assets_request_id_fkey"
-            columns: ["request_id"]
-            isOneToOne: false
-            referencedRelation: "approval_requests"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      approval_requests: {
-        Row: {
-          blocking: boolean
-          created_at: string
-          created_by: string
-          customer_comment: string | null
-          decided_at: string | null
-          id: string
-          message: string | null
-          order_id: string
-          order_item_id: string | null
-          partner_id: string | null
-          reminded_at: string | null
-          source: string
-          status: string
-          title: string
-        }
-        Insert: {
-          blocking?: boolean
-          created_at?: string
-          created_by: string
-          customer_comment?: string | null
-          decided_at?: string | null
-          id?: string
-          message?: string | null
-          order_id: string
-          order_item_id?: string | null
-          partner_id?: string | null
-          reminded_at?: string | null
-          source: string
-          status?: string
-          title: string
-        }
-        Update: {
-          blocking?: boolean
-          created_at?: string
-          created_by?: string
-          customer_comment?: string | null
-          decided_at?: string | null
-          id?: string
-          message?: string | null
-          order_id?: string
-          order_item_id?: string | null
-          partner_id?: string | null
-          reminded_at?: string | null
-          source?: string
-          status?: string
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "approval_requests_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_admin_customers"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "approval_requests_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "approval_requests_order_item_id_fkey"
-            columns: ["order_item_id"]
-            isOneToOne: false
-            referencedRelation: "order_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "approval_requests_partner_id_fkey"
-            columns: ["partner_id"]
-            isOneToOne: false
-            referencedRelation: "fason_partners"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      integration_secrets: {
-        Row: {
-          key: string
-          value: string
-          expires_at: string | null
-          updated_at: string
-        }
-        Insert: {
-          key: string
-          value: string
-          expires_at?: string | null
-          updated_at?: string
-        }
-        Update: {
-          key?: string
-          value?: string
-          expires_at?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       order_events: {
         Row: {
           actor_id: string | null
@@ -2491,6 +2555,7 @@ export type Database = {
           detail: Json | null
           event_type: string
           id: string
+          idempotency_key: string | null
           order_id: string
           status_after: Database["public"]["Enums"]["order_status"] | null
           summary: string
@@ -2502,6 +2567,7 @@ export type Database = {
           detail?: Json | null
           event_type: string
           id?: string
+          idempotency_key?: string | null
           order_id: string
           status_after?: Database["public"]["Enums"]["order_status"] | null
           summary: string
@@ -2513,6 +2579,7 @@ export type Database = {
           detail?: Json | null
           event_type?: string
           id?: string
+          idempotency_key?: string | null
           order_id?: string
           status_after?: Database["public"]["Enums"]["order_status"] | null
           summary?: string
@@ -3125,6 +3192,47 @@ export type Database = {
           },
         ]
       }
+      pim_conversations: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          facts: Json
+          history: Json
+          id: string
+          last_summary: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          facts?: Json
+          history?: Json
+          id?: string
+          last_summary?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          facts?: Json
+          history?: Json
+          id?: string
+          last_summary?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pim_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_customers"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       pricing_config: {
         Row: {
           draft_config: Json
@@ -3267,39 +3375,6 @@ export type Database = {
           svg_id?: string | null
           title_en?: string
           title_tr?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      pim_conversations: {
-        Row: {
-          id: string
-          user_id: string | null
-          display_name: string | null
-          facts: Json
-          history: Json
-          last_summary: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id?: string | null
-          display_name?: string | null
-          facts?: Json
-          history?: Json
-          last_summary?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string | null
-          display_name?: string | null
-          facts?: Json
-          history?: Json
-          last_summary?: string | null
-          created_at?: string
           updated_at?: string
         }
         Relationships: []
@@ -3651,6 +3726,13 @@ export type Database = {
             columns: ["refund_payment_id"]
             isOneToOne: false
             referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "returns_refund_payment_id_fkey"
+            columns: ["refund_payment_id"]
+            isOneToOne: false
+            referencedRelation: "v_customer_payments"
             referencedColumns: ["id"]
           },
           {
@@ -4216,6 +4298,59 @@ export type Database = {
         }
         Relationships: []
       }
+      v_customer_payments: {
+        Row: {
+          amount: number | null
+          card_masked: string | null
+          completed_at: string | null
+          created_at: string | null
+          currency: string | null
+          failure_reason: string | null
+          id: string | null
+          installment: number | null
+          order_id: string | null
+          psp_provider: string | null
+          psp_transaction_id: string | null
+          status: string | null
+        }
+        Insert: {
+          amount?: number | null
+          card_masked?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          failure_reason?: string | null
+          id?: string | null
+          installment?: number | null
+          order_id?: string | null
+          psp_provider?: string | null
+          psp_transaction_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount?: number | null
+          card_masked?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          failure_reason?: string | null
+          id?: string | null
+          installment?: number | null
+          order_id?: string | null
+          psp_provider?: string | null
+          psp_transaction_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_fason_performance: {
         Row: {
           active: boolean | null
@@ -4266,6 +4401,7 @@ export type Database = {
           p_charged_discount?: number
           p_code: string
           p_order_id: string
+          p_payment_intent_id?: string
           p_subtotal: number
           p_user_id: string
         }
@@ -4321,6 +4457,10 @@ export type Database = {
           warn_30day_count: number
         }[]
       }
+      fn_coupon_pending_reservation_count: {
+        Args: { p_coupon_id: string; p_exclude_intent_id?: string }
+        Returns: number
+      }
       fn_create_manual_order: {
         Args: {
           p_address: Json
@@ -4358,6 +4498,16 @@ export type Database = {
           p_partner: Json
         }
         Returns: string
+      }
+      fn_delete_user_pii: {
+        Args: {
+          p_actor_id?: string
+          p_actor_role?: string
+          p_kvkk_request_id?: string
+          p_user_email: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       fn_enqueue_mail: {
         Args: {
@@ -4463,8 +4613,26 @@ export type Database = {
         Args: { p_action: string; p_module: string }
         Returns: boolean
       }
+      fn_increment_fason_token_use: {
+        Args: { p_token: string }
+        Returns: boolean
+      }
       fn_is_suppressed: {
         Args: { p_category: string; p_email: string }
+        Returns: boolean
+      }
+      fn_is_valid_order_bulk_transition: {
+        Args: {
+          p_from: Database["public"]["Enums"]["order_status"]
+          p_to: Database["public"]["Enums"]["order_status"]
+        }
+        Returns: boolean
+      }
+      fn_is_valid_order_forward_transition: {
+        Args: {
+          p_from: Database["public"]["Enums"]["order_status"]
+          p_to: Database["public"]["Enums"]["order_status"]
+        }
         Returns: boolean
       }
       fn_list_admin_roles: {
@@ -4576,21 +4744,23 @@ export type Database = {
           new_score: number
         }[]
       }
+      fn_release_advisory_lock: { Args: { p_key: string }; Returns: undefined }
       fn_release_coupon_reservation: {
         Args: { p_payment_intent_id: string }
         Returns: undefined
       }
-      fn_reserve_coupon_for_payment: {
-        Args: {
-          p_code: string
-          p_payment_intent_id: string
-          p_user_id: string
-        }
-        Returns: Json
-      }
       fn_renew_design_retention: {
         Args: { p_source_order_id: string }
         Returns: number
+      }
+      fn_reorder_gallery: { Args: { p_ids: string[] }; Returns: number }
+      fn_reorder_product_cards: {
+        Args: { p_ids: string[]; p_product_type: string }
+        Returns: number
+      }
+      fn_reserve_coupon_for_payment: {
+        Args: { p_code: string; p_payment_intent_id: string; p_user_id: string }
+        Returns: Json
       }
       fn_revert_pricing_config: {
         Args: { p_history_id: string; p_scope: string }
@@ -4606,6 +4776,27 @@ export type Database = {
           reason: string
         }[]
       }
+      fn_transition_order_status: {
+        Args: {
+          p_actor_email?: string
+          p_actor_id?: string
+          p_actor_role?: string
+          p_audit_action?: string
+          p_audit_detail?: Json
+          p_audit_summary?: string
+          p_detail?: Json
+          p_event_type?: string
+          p_from_status?: Database["public"]["Enums"]["order_status"][]
+          p_idempotency_key?: string
+          p_ip_address?: string
+          p_mode?: string
+          p_order_id: string
+          p_summary?: string
+          p_to_status: Database["public"]["Enums"]["order_status"]
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
       fn_validate_coupon: {
         Args: { p_code: string; p_subtotal: number }
         Returns: Json
@@ -4620,6 +4811,7 @@ export type Database = {
           reason: string
         }[]
       }
+      fn_with_advisory_lock: { Args: { p_key: string }; Returns: boolean }
       get_archive_candidates: {
         Args: { p_days_inactive?: number }
         Returns: {
@@ -4708,8 +4900,8 @@ export type Database = {
         | "customer.view_360"
         | "partner.capability_verify"
         | "partner.capability_unverify"
-        | "partner.address_viewed"
         | "admin.impersonate_partner"
+        | "partner.address_viewed"
       coupon_kind: "percent" | "fixed" | "free_ship"
       design_file_status:
         | "uploaded"
@@ -4733,6 +4925,7 @@ export type Database = {
         | "processing"
         | "completed"
         | "rejected"
+        | "exporting"
       order_status:
         | "paid"
         | "awaiting_upload"
@@ -4742,7 +4935,6 @@ export type Database = {
         | "proof_pending"
         | "proof_validating"
         | "proof_approved"
-        | "operator_print_review"
         | "in_production"
         | "shipped"
         | "delivered"
@@ -4752,7 +4944,13 @@ export type Database = {
         | "human_review"
         | "human_review_failed"
         | "ready_to_ship"
-      payment_intent_status: "pending" | "consumed" | "failed" | "expired" | "needs_review"
+        | "operator_print_review"
+      payment_intent_status:
+        | "pending"
+        | "consumed"
+        | "failed"
+        | "expired"
+        | "needs_review"
       return_reason:
         | "yanlis_urun"
         | "uretim_hatasi"
@@ -4942,8 +5140,8 @@ export const Constants = {
         "customer.view_360",
         "partner.capability_verify",
         "partner.capability_unverify",
-        "partner.address_viewed",
         "admin.impersonate_partner",
+        "partner.address_viewed",
       ],
       coupon_kind: ["percent", "fixed", "free_ship"],
       design_file_status: [
@@ -4970,6 +5168,7 @@ export const Constants = {
         "processing",
         "completed",
         "rejected",
+        "exporting",
       ],
       order_status: [
         "paid",
@@ -4980,7 +5179,6 @@ export const Constants = {
         "proof_pending",
         "proof_validating",
         "proof_approved",
-        "operator_print_review",
         "in_production",
         "shipped",
         "delivered",
@@ -4990,8 +5188,15 @@ export const Constants = {
         "human_review",
         "human_review_failed",
         "ready_to_ship",
+        "operator_print_review",
       ],
-      payment_intent_status: ["pending", "consumed", "failed", "expired", "needs_review"],
+      payment_intent_status: [
+        "pending",
+        "consumed",
+        "failed",
+        "expired",
+        "needs_review",
+      ],
       return_reason: [
         "yanlis_urun",
         "uretim_hatasi",

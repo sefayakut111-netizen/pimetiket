@@ -28,6 +28,7 @@ import { NextResponse } from "next/server";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { casUpdate } from "@/lib/db/cas-update";
 import type { Json } from "@/lib/supabase/types";
 import { executePendingAction } from "@/lib/agents/_shared/proposal";
 import { sendActionAppliedNotification } from "@/lib/agents/_shared/mailer";
@@ -68,7 +69,6 @@ export async function POST(
 
   const { id } = await params;
 
-  // Body parse
   let body: z.infer<typeof BodySchema>;
   try {
     const raw = (await req.json()) as unknown;
@@ -85,7 +85,6 @@ export async function POST(
 
   const admin = createAdminClient();
 
-  // 1) Pending action'ı çek + status kontrolü
   const { data: pendingRow, error: fetchErr } = await admin
     .from("auditor_pending_actions")
     .select("*")
@@ -112,7 +111,6 @@ export async function POST(
     );
   }
 
-  // 2) Karar tipine göre dispatch
   const reviewedAt = new Date().toISOString();
   const note = body.note ?? null;
 
@@ -120,21 +118,27 @@ export async function POST(
     const snoozeUntil = new Date();
     snoozeUntil.setDate(snoozeUntil.getDate() + body.snoozeDays);
 
-    const { error } = await admin
-      .from("auditor_pending_actions")
-      .update({
-        status: "snoozed",
-        reviewed_by: auth.user.id,
-        reviewed_at: reviewedAt,
-        review_note: note,
-        snooze_until: snoozeUntil.toISOString(),
-      })
-      .eq("id", id);
+    const cas = await casUpdate(admin, "auditor_pending_actions", id, {
+      status: "snoozed",
+      reviewed_by: auth.user.id,
+      reviewed_at: reviewedAt,
+      review_note: note,
+      snooze_until: snoozeUntil.toISOString(),
+    }, {
+      expectFrom: "pending",
+      col: "status",
+      select: "id",
+    });
 
-    if (error) {
+    if (!cas.ok) {
       return NextResponse.json(
-        { error: "update_failed", detail: error.message },
-        { status: 500 }
+        cas.reason === "stale"
+          ? {
+              error: "invalid_status",
+              detail: "Bu aksiyon artık pending değil.",
+            }
+          : { error: "update_failed", detail: cas.error?.message },
+        { status: cas.reason === "stale" ? 409 : 500 }
       );
     }
 
@@ -146,20 +150,26 @@ export async function POST(
   }
 
   if (body.decision === "reject") {
-    const { error } = await admin
-      .from("auditor_pending_actions")
-      .update({
-        status: "rejected",
-        reviewed_by: auth.user.id,
-        reviewed_at: reviewedAt,
-        review_note: note,
-      })
-      .eq("id", id);
+    const cas = await casUpdate(admin, "auditor_pending_actions", id, {
+      status: "rejected",
+      reviewed_by: auth.user.id,
+      reviewed_at: reviewedAt,
+      review_note: note,
+    }, {
+      expectFrom: "pending",
+      col: "status",
+      select: "id",
+    });
 
-    if (error) {
+    if (!cas.ok) {
       return NextResponse.json(
-        { error: "update_failed", detail: error.message },
-        { status: 500 }
+        cas.reason === "stale"
+          ? {
+              error: "invalid_status",
+              detail: "Bu aksiyon artık pending değil.",
+            }
+          : { error: "update_failed", detail: cas.error?.message },
+        { status: cas.reason === "stale" ? 409 : 500 }
       );
     }
 
@@ -169,38 +179,39 @@ export async function POST(
     });
   }
 
-  // approve veya approve_with_edit — execute akışı
-  let actionPayload = pending.action_payload;
-
+  const approvePatch: Record<string, unknown> = {
+    status: "approved",
+    reviewed_by: auth.user.id,
+    reviewed_at: reviewedAt,
+    review_note: note,
+  };
   if (body.decision === "approve_with_edit") {
-    actionPayload = body.editedPayload;
-    // action_payload kolonunu güncelle
-    await admin
-      .from("auditor_pending_actions")
-      .update({ action_payload: actionPayload as Json })
-      .eq("id", id);
+    approvePatch.action_payload = body.editedPayload as Json;
   }
 
-  // 3) Status='approved' set et
-  const { error: approveErr } = await admin
-    .from("auditor_pending_actions")
-    .update({
-      status: "approved",
-      reviewed_by: auth.user.id,
-      reviewed_at: reviewedAt,
-      review_note: note,
-    })
-    .eq("id", id);
+  const approveCas = await casUpdate(
+    admin,
+    "auditor_pending_actions",
+    id,
+    approvePatch,
+    { expectFrom: "pending", col: "status", select: "*" }
+  );
 
-  if (approveErr) {
+  if (!approveCas.ok) {
     return NextResponse.json(
-      { error: "approve_update_failed", detail: approveErr.message },
-      { status: 500 }
+      approveCas.reason === "stale"
+        ? {
+            error: "invalid_status",
+            detail: "Bu aksiyon artık pending değil.",
+          }
+        : {
+            error: "approve_update_failed",
+            detail: approveCas.error?.message,
+          },
+      { status: approveCas.reason === "stale" ? 409 : 500 }
     );
   }
 
-  // 4) executePendingAction — handler yoksa "failed" döner ama bu Adım 4'e
-  // kadar normal (ACTION_REGISTRY henüz boş).
   let executeResult: {
     logId: string;
     result: string;
@@ -221,8 +232,6 @@ export async function POST(
     };
   }
 
-  // 5) Aksiyon uygulandı bildirimi (fire-and-forget — mail başarısız olsa
-  // bile karar kaydı geçerli)
   void sendActionAppliedNotification({
     auditorName: pending.auditor_name as AuditorName,
     pendingActionId: id,
@@ -234,9 +243,7 @@ export async function POST(
           ? "partial"
           : "failed",
     error: executeResult.error,
-  }).catch(() => {
-    // sessiz: mail config olmasa bile sistem akışı devam etmeli
-  });
+  }).catch(() => {});
 
   return NextResponse.json({
     ok: true,

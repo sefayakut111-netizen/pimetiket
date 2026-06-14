@@ -12,6 +12,8 @@ import { uploadProofArtifact } from "@/lib/proof/proof-artifacts";
 import {
   STORAGE_BUCKET,
 } from "@/lib/storage/design-files";
+import { deleteFromR2 } from "@/lib/storage/r2-client";
+import { isR2StorageKey } from "@/lib/storage/purge-r2";
 import type { BgDetectResult } from "@/lib/proof/background-detect";
 import type { Json, TablesInsert } from "@/lib/supabase/types";
 
@@ -47,7 +49,7 @@ export async function POST(
 
   const { data: item } = await admin
     .from("order_items")
-    .select("width, height, meta")
+    .select("width, height, meta, proof_status")
     .eq("id", itemId)
     .eq("order_id", orderId)
     .maybeSingle();
@@ -55,6 +57,7 @@ export async function POST(
     width: number;
     height: number;
     meta: Record<string, unknown> | null;
+    proof_status: string;
   } | null;
   if (!itemRow) {
     return NextResponse.json({ error: "item_not_found" }, { status: 404 });
@@ -120,6 +123,19 @@ export async function POST(
     .update({ status: "superseded" })
     .eq("id", designFile.id);
 
+  // B3 — süpersede edilen eski objeyi fiziksel sil (KVKK: müşteri PII dosyası R2/Storage'da
+  // sonsuza kalmasın; purge RPC 'superseded'i taramıyor). Yeni dosya zaten yüklü (109-117) →
+  // güvenli. Best-effort: silme hatası akışı bloklamasın. R2-branch zorunlu (büyük dosya R2'de).
+  try {
+    if (isR2StorageKey(designFile.storage_path)) {
+      await deleteFromR2(designFile.storage_path);
+    } else {
+      await admin.storage.from(STORAGE_BUCKET).remove([designFile.storage_path]);
+    }
+  } catch (e) {
+    console.warn("[bg-remove] eski obje silinemedi:", designFile.storage_path, e);
+  }
+
   const baseName = designFile.original_name.replace(/\.[^.]+$/, "");
   const newRow: TablesInsert<"design_files"> = {
     id: newFileId,
@@ -152,6 +168,9 @@ export async function POST(
         bg_removal_dismissed: true,
         bg_removed_at: new Date().toISOString(),
       } as Json,
+      ...(itemRow.proof_status === "approved"
+        ? { proof_status: "viewed", proof_approved_at: null }
+        : {}),
     })
     .eq("id", itemId);
 

@@ -11,6 +11,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { orderDesignUploadSlotsComplete } from "@/lib/order-design-upload-slots";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 import { scheduleOrderDesignQC } from "./schedule-order-design-qc";
 
 const RESUMABLE_STATUSES = new Set([
@@ -65,13 +66,35 @@ export async function resumeOrderPipelineIfStuck(
     .in("status", ["draft", "auto_generated", "approved", "operator_override"]);
 
   if (cutlineCount && cutlineCount > 0) {
-    if (status === "qc_pending" || status === "paid" || status === "awaiting_upload") {
-      await admin
-        .from("orders")
-        .update({ status: "proof_pending" })
-        .eq("id", orderId)
-        .in("status", ["qc_pending", "paid", "awaiting_upload"]);
+    if (status === "qc_pending" || status === "awaiting_upload") {
+      await transitionOrderStatus(admin, {
+        orderId,
+        to: "proof_pending",
+        from: ["qc_pending", "awaiting_upload"],
+        mode: "forward",
+        actorRole: "system",
+        eventType: "status_changed",
+        summary: "Pipeline resume — cutline mevcut, proof_pending",
+        detail: { reason: "cutline_exists" },
+      });
       return { action: "proof_advanced", reason: "cutline_exists" };
+    }
+    if (status === "paid") {
+      await transitionOrderStatus(admin, {
+        orderId,
+        to: "proof_pending",
+        from: ["paid"],
+        mode: "compensating",
+        actorRole: "system",
+        eventType: "status_changed",
+        summary:
+          "Pipeline resume (compensating) — cutline mevcut, paid'den proof_pending",
+        detail: { reason: "cutline_exists_paid_recovery" },
+      });
+      return {
+        action: "proof_advanced",
+        reason: "cutline_exists_paid_recovery",
+      };
     }
     return { action: "none", reason: "cutline_exists_wrong_status" };
   }
@@ -83,11 +106,15 @@ export async function resumeOrderPipelineIfStuck(
 
   // QC kayıtları var ama cutline yok — doğrudan cutline aşamasına geç
   if ((qcCheckCount ?? 0) > 0 && status === "qc_pending") {
-    await admin
-      .from("orders")
-      .update({ status: "proof_generating" })
-      .eq("id", orderId)
-      .eq("status", "qc_pending");
+    await transitionOrderStatus(admin, {
+      orderId,
+      to: "proof_generating",
+      from: "qc_pending",
+      mode: "forward",
+      actorRole: "system",
+      eventType: "status_changed",
+      summary: "Pipeline resume — QC kayıtları var, cutline başlatılıyor",
+    });
 
     const { runOrderCutlineGeneration } = await import("./run-order-cutline");
     try {
@@ -102,11 +129,15 @@ export async function resumeOrderPipelineIfStuck(
       .eq("id", orderId)
       .maybeSingle();
     if ((after as { status: string } | null)?.status === "proof_generating") {
-      await admin
-        .from("orders")
-        .update({ status: "proof_pending" })
-        .eq("id", orderId)
-        .eq("status", "proof_generating");
+      await transitionOrderStatus(admin, {
+        orderId,
+        to: "proof_pending",
+        from: "proof_generating",
+        mode: "forward",
+        actorRole: "system",
+        eventType: "status_changed",
+        summary: "Pipeline resume cutline fallback — proof_pending",
+      });
     }
 
     return { action: "cutline_only", reason: "qc_checks_exist" };
@@ -120,11 +151,15 @@ export async function resumeOrderPipelineIfStuck(
   lastResumeAt.set(orderId, now);
 
   if (status === "paid" || status === "awaiting_upload") {
-    await admin
-      .from("orders")
-      .update({ status: "qc_pending" })
-      .eq("id", orderId)
-      .in("status", ["paid", "awaiting_upload"]);
+    await transitionOrderStatus(admin, {
+      orderId,
+      to: "qc_pending",
+      from: ["paid", "awaiting_upload"],
+      mode: "forward",
+      actorRole: "system",
+      eventType: "status_changed",
+      summary: "Pipeline resume — qc_pending",
+    });
   }
 
   scheduleOrderDesignQC(admin, orderId);

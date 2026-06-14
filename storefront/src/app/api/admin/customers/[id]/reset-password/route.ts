@@ -10,22 +10,18 @@
  *
  * Akış:
  *   1. auth.users'tan müşteri email'i çek (yoksa 404)
- *   2. admin.auth.admin.generateLink({ type: 'recovery', email }) ile
- *      reset linki üret (GoTrue hash'li token).
- *   3. fason_mail_outbox INSERT (template_key "password_reset",
- *      category "customer", target_type "user")
- *   4. Cron /api/cron/process-mail-outbox 5dk içinde Resend ile yollar
- *   5. audit_log: customer.reset_password (link ASLA detail'a yazılmaz)
- *
- * Güvenlik notu: action_link içinde tek-kullanımlık recovery token
- * var. audit_log'da yalnızca email loglanır, link payload'a (outbox)
- * gider — outbox SELECT politikası admin-only (Mig 020:188).
+ *   2. admin.auth.admin.generateLink({ type: 'recovery', email })
+ *   3. enqueueMail (_prerendered + daily idempotency)
+ *   4. audit_log: customer.reset_password (link ASLA detail'a yazılmaz)
  */
 
 import { NextResponse, type NextRequest } from "next/server";
+import { render } from "@react-email/render";
 import { assertPermission } from "@/lib/supabase/assert-permission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Enums } from "@/lib/supabase/types";
+import { enqueueMail } from "@/lib/mail/enqueue";
+import { PasswordResetEmail } from "@/lib/mail/templates/password-reset";
 
 export const runtime = "nodejs";
 
@@ -48,7 +44,6 @@ export async function POST(
   const { id } = await params;
   const admin = createAdminClient();
 
-  // 1) Müşteri email'i
   const { data: userData, error: userErr } =
     await admin.auth.admin.getUserById(id);
   if (userErr || !userData?.user?.email) {
@@ -59,7 +54,6 @@ export async function POST(
   }
   const email = userData.user.email;
 
-  // 2) Reset link üret
   const { data: linkData, error: linkErr } =
     await admin.auth.admin.generateLink({
       type: "recovery",
@@ -76,33 +70,43 @@ export async function POST(
   }
   const resetLink = linkData.properties.action_link;
 
-  // 3) Outbox INSERT — Resend cron 5dk içinde yollar
-  const { error: outboxErr } = await admin.from("fason_mail_outbox").insert([
-    {
-      assignment_id: null,
-      template_key: "password_reset",
-      to_email: email,
-      subject: "Pim Etiket — Şifre sıfırlama",
-      payload: {
-        reset_link: resetLink,
-        user_email: email,
-      },
-      category: "customer",
-      target_type: "user",
-      target_id: id,
-      status: "pending",
-      attempts: 0,
-    },
-  ]);
+  const today = new Date().toISOString().slice(0, 10);
+  const subject = "Pim Etiket — Şifre sıfırlama";
+  const html = await render(
+    PasswordResetEmail({
+      recipientEmail: email,
+      resetLink,
+    })
+  );
+  const text = `Şifre sıfırlama — ${email}. Link maildeki butonda.`;
 
-  if (outboxErr) {
+  const result = await enqueueMail({
+    templateKey: "_prerendered",
+    to: email,
+    category: "customer",
+    targetType: "user",
+    targetId: id,
+    subject,
+    payload: {
+      subject,
+      html,
+      text,
+      _kind: "password_reset",
+      _user_id: id,
+    },
+    idempotencyKey: `password_reset:${id}:${today}`,
+  });
+
+  if (result.suppressed) {
+    return NextResponse.json({ ok: true, suppressed: true, sent_to: email });
+  }
+  if (!result.ok) {
     return NextResponse.json(
-      { error: "enqueue_failed", detail: outboxErr.message },
+      { error: "enqueue_failed", detail: result.error },
       { status: 500 }
     );
   }
 
-  // 4) Audit — link KAYDEDİLMEZ
   try {
     await admin.from("audit_log").insert([
       {

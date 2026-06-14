@@ -15,6 +15,8 @@ import { z } from "zod";
 import { refundPayment, isPayTrConfigured } from "@/lib/payment/paytr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertPermission } from "@/lib/supabase/assert-permission";
+import { casUpdate } from "@/lib/db/cas-update";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 import type { Json, TablesInsert } from "@/lib/supabase/types";
 
 const RefundBodySchema = z.object({
@@ -114,6 +116,30 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (body.returnId) {
+    const { data: ret } = await admin
+      .from("returns")
+      .select("id, order_id, status")
+      .eq("id", body.returnId)
+      .maybeSingle();
+    if (!ret) {
+      return NextResponse.json({ error: "return_not_found" }, { status: 404 });
+    }
+    const retRow = ret as { id: string; order_id: string; status: string };
+    if (retRow.order_id !== body.orderId) {
+      return NextResponse.json({ error: "return_order_mismatch" }, { status: 409 });
+    }
+    if (retRow.status !== "approved") {
+      return NextResponse.json(
+        {
+          error: "return_not_approved",
+          hint: "Yalnız onaylanmış iade talebi para iadesine çevrilebilir",
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   // Başarılı charge'ı bul (PayTR'de psp_transaction_id = merchant_oid)
   const { data: charges, error: chargeErr } = await admin
     .from("payments")
@@ -179,6 +205,7 @@ export async function POST(req: NextRequest) {
   // PayTR refund call'dan ÖNCE INSERT placeholder (status='processing').
   // Partial unique index aynı anda 2. paralel insert'i fail eder
   // → çift PayTR call önlenir. Sonra PayTR çağrılır, status update.
+  // Mig 069: order başına tek aktif refund — kasıtlı çift-PayTR-call koruması.
   const isPartial = refundAmount < charge.amount;
   const action = isPartial ? "partial_refund" : "refund";
 
@@ -308,14 +335,37 @@ export async function POST(req: NextRequest) {
 
   // returns.refund_payment_id bağla (varsa)
   if (body.returnId && refundRow) {
-    await admin
-      .from("returns")
-      .update({
+    const cas = await casUpdate(
+      admin,
+      "returns",
+      body.returnId,
+      {
         refund_payment_id: (refundRow as { id: string }).id,
         refund_amount: refundAmount,
         status: "refunded",
-      })
-      .eq("id", body.returnId);
+      },
+      { expectFrom: "approved", col: "status" }
+    );
+    if (!cas.ok) {
+      console.warn(
+        "[payment/refund] return status CAS stale after PayTR success:",
+        body.returnId
+      );
+      await admin.from("order_events").insert([
+        {
+          order_id: body.orderId,
+          event_type: "refund_return_status_stale",
+          status_after: null,
+          actor_id: auth.user.id,
+          actor_role: auth.role,
+          summary: `İade durumu güncellenemedi (para iade edildi): ${body.returnId}`,
+          detail: {
+            returnId: body.returnId,
+            casReason: cas.reason,
+          } satisfies Json,
+        } satisfies TablesInsert<"order_events">,
+      ]);
+    }
   }
 
   // order_events log
@@ -347,6 +397,22 @@ export async function POST(req: NextRequest) {
       } satisfies Json,
     } satisfies TablesInsert<"order_events">,
   ]);
+
+  if (!isPartial && body.returnId) {
+    const t = await transitionOrderStatus(admin, {
+      orderId: body.orderId,
+      to: "cancelled",
+      mode: "admin_override",
+      actorId: auth.user.id,
+      actorRole: auth.role === "admin" ? "admin" : "staff",
+      eventType: "status_changed",
+      summary: `Tam iade sonrası iptal (returnId ${body.returnId})`,
+      idempotencyKey: `refund_cancel:${body.orderId}`,
+    });
+    if (!t.ok) {
+      console.warn("[payment/refund] order transition non-fatal:", t.error);
+    }
+  }
 
   const { data: orderForMail } = await admin
     .from("orders")

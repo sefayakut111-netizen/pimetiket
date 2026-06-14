@@ -20,6 +20,7 @@ import type { Database, TablesInsert, TablesUpdate } from "@/lib/supabase/types"
 import { collectDesignTempIds, orderItemHasDesigns, type AdditionalDesignMeta } from "@/lib/order-item-meta";
 import { retryPendingEditorCutlineForItem } from "@/lib/editor/promote-editor-cutline";
 import { STORAGE_BUCKET } from "./design-files";
+import { transitionOrderStatus } from "@/lib/db/transition-order-status";
 
 interface OrderItemWithDesign {
   id: string;
@@ -359,11 +360,15 @@ export async function ensureOrderDesignsPromoted(args: {
     });
 
     if (promoted > 0) {
-      await admin
-        .from("orders")
-        .update({ status: "qc_pending" })
-        .eq("id", orderId)
-        .in("status", ["awaiting_upload", "paid"]);
+      await transitionOrderStatus(admin, {
+        orderId,
+        to: "qc_pending",
+        from: ["awaiting_upload", "paid"],
+        mode: "forward",
+        actorRole: "system",
+        eventType: "status_changed",
+        summary: "Tasarım promote — qc_pending",
+      });
 
       const { scheduleOrderDesignQC } = await import(
         "@/lib/agents/schedule-order-design-qc"

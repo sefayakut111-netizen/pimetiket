@@ -202,27 +202,11 @@ export async function POST(req: Request) {
 
   // 5) Event router
   const nowIso = new Date().toISOString();
-  const updates: Record<string, unknown> = {
-    last_event: evt.type,
-    last_event_at: nowIso,
-  };
 
   switch (evt.type) {
-    case "email.delivered":
-      updates.delivered_at = nowIso;
-      break;
-    case "email.opened":
-      // Sadece ilk açılışı kaydet
-      updates.opened_at = nowIso;
-      break;
-    case "email.clicked":
-      updates.clicked_at = nowIso;
-      break;
     case "email.bounced": {
-      updates.bounced_at = nowIso;
       const bounceType = evt.data.bounce?.type ?? "unknown";
       const bounceMsg = evt.data.bounce?.message ?? "";
-      // Hard bounce → tüm kategorileri blokla
       if (recipient && bounceType === "hard") {
         await recordSuppression({
           email: recipient,
@@ -232,11 +216,9 @@ export async function POST(req: Request) {
           sourceEventId: svixId,
         });
       }
-      // Soft bounce → şimdilik sadece logla, repeat-detection ileride
       break;
     }
     case "email.complained": {
-      updates.complaint_at = nowIso;
       if (recipient) {
         await recordSuppression({
           email: recipient,
@@ -248,29 +230,66 @@ export async function POST(req: Request) {
       }
       break;
     }
-    case "email.failed":
-      // Resend tarafında final fail — outbox'a yansıt
-      updates.last_error = "resend_failed_event";
-      break;
     case "email.sent":
     case "email.delivery_delayed":
-      // Sadece last_event güncelle
+    case "email.delivered":
+    case "email.opened":
+    case "email.clicked":
+    case "email.failed":
       break;
     default:
-      // Bilinmeyen event — 200 dön, retry istemiyoruz
       console.warn("[webhook/resend] unknown event type:", evt.type);
       return NextResponse.json({ ok: true, ignored: true });
   }
 
-  // 6) Outbox row güncelle (varsa)
+  // 6) Outbox row güncelle (varsa) — metadata her zaman; timestamp null-guard
   if (messageId) {
-    // Sadece ilgili alanın null olduğu durumda set et — replay korumalı
-    const { error: updErr } = await admin
+    const metaPatch: Record<string, unknown> = {
+      last_event: evt.type,
+      last_event_at: nowIso,
+    };
+    if (evt.type === "email.failed") {
+      metaPatch.last_error = "resend_failed_event";
+    }
+
+    const { error: metaErr } = await admin
       .from("fason_mail_outbox")
-      .update(updates)
+      .update(metaPatch)
       .eq("resend_message_id", messageId);
-    if (updErr) {
-      console.error("[webhook/resend] outbox update error:", updErr);
+    if (metaErr) {
+      console.error("[webhook/resend] outbox meta update error:", metaErr);
+    }
+
+    let tsField: string | null = null;
+    switch (evt.type) {
+      case "email.delivered":
+        tsField = "delivered_at";
+        break;
+      case "email.opened":
+        tsField = "opened_at";
+        break;
+      case "email.clicked":
+        tsField = "clicked_at";
+        break;
+      case "email.bounced":
+        tsField = "bounced_at";
+        break;
+      case "email.complained":
+        tsField = "complaint_at";
+        break;
+      default:
+        break;
+    }
+
+    if (tsField) {
+      const { error: tsErr } = await admin
+        .from("fason_mail_outbox")
+        .update({ [tsField]: nowIso })
+        .eq("resend_message_id", messageId)
+        .is(tsField, null);
+      if (tsErr) {
+        console.error("[webhook/resend] outbox timestamp update error:", tsErr);
+      }
     }
   }
 

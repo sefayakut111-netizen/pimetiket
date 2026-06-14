@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logOrderEvent } from "@/lib/order-events-server";
+import { transitionOrderStatus, transitionHttpStatus } from "@/lib/db/transition-order-status";
 import { enqueueMail } from "@/lib/mail/enqueue";
 
 export type FasonAction =
@@ -234,6 +235,33 @@ export async function applyAssignmentAction(
     };
   }
 
+  if (opts.action === "shipped") {
+    const res = await transitionOrderStatus(admin, {
+      orderId: opts.orderId,
+      to: "shipped",
+      from: ["in_production", "ready_to_ship"],
+      mode: "forward",
+      actorRole: opts.actorRole ?? "fason",
+      eventType: "shipped",
+      summary: "Sipariş kargoya verildi",
+      detail: {
+        via: opts.via ?? "fason_form",
+        assignment_id: opts.assignmentId,
+      },
+    });
+    if (!res.ok) {
+      console.error(
+        "[apply-assignment-action] order transition failed:",
+        res.error
+      );
+      return {
+        ok: false,
+        error: "Sipariş kargo durumuna alınamadı",
+        status: transitionHttpStatus(res.error),
+      };
+    }
+  }
+
   const { error: updateErr } = await admin
     .from("order_assignments")
     .update(built.payload)
@@ -274,21 +302,6 @@ export async function applyAssignmentAction(
       }),
     },
   });
-
-  if (opts.action === "shipped") {
-    await admin
-      .from("orders")
-      .update({ status: "shipped" })
-      .eq("id", opts.orderId);
-    await logOrderEvent(admin, {
-      orderId: opts.orderId,
-      eventType: "shipped",
-      statusAfter: "shipped",
-      actorRole: "system",
-      summary: "Sipariş kargoya verildi",
-      detail: { via: opts.via ?? "fason_form" },
-    });
-  }
 
   const adminEmails = getAdminNotificationEmails();
   if (adminEmails.length > 0) {

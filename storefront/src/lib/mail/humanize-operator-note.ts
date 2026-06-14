@@ -9,6 +9,10 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { OPENAI_MINI_TIMEOUT_MS } from "@/lib/http/external-timeouts";
+import {
+  isGlobalAiBudgetExceeded,
+  logAiUsage,
+} from "@/lib/pim/ai-usage-log";
 
 const MessageSchema = z.object({
   message: z.string().max(400),
@@ -48,7 +52,7 @@ export async function humanizeOperatorNoteForCustomer(args: {
     return FALLBACK[args.context];
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.OPENAI_API_KEY || (await isGlobalAiBudgetExceeded())) {
     return note;
   }
 
@@ -66,6 +70,12 @@ export async function humanizeOperatorNoteForCustomer(args: {
         .join("\n"),
       temperature: 0.3,
       abortSignal: AbortSignal.timeout(OPENAI_MINI_TIMEOUT_MS),
+    });
+    await logAiUsage({
+      source: "humanize_note",
+      model: "gpt-4o-mini",
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
     });
     const msg = result.object.message.trim();
     return msg.length > 0 ? msg : note;

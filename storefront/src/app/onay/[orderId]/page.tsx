@@ -690,7 +690,15 @@ export default function ProofApprovalPage({
       setData(summary);
 
       // Status doğru değilse yönlendir
-      if (summary.order.status === "proof_approved") {
+      const PROOF_DONE_STATUSES = [
+        "proof_approved",
+        "operator_print_review",
+        "ready_to_ship",
+        "in_production",
+        "shipped",
+        "delivered",
+      ];
+      if (PROOF_DONE_STATUSES.includes(summary.order.status)) {
         router.replace(`/onay/${orderId}/tamamlandi`);
         return;
       }

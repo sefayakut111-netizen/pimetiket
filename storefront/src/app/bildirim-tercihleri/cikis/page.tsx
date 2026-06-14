@@ -41,7 +41,7 @@ function categoryToSuppression(cat: UnsubscribeCategory): {
   blockedCategories: MailCategory[] | undefined;
 } {
   if (cat === "all") {
-    return { type: "unsubscribe_marketing", blockedCategories: undefined };
+    return { type: "unsubscribe_marketing", blockedCategories: ["lead"] };
   }
   if (cat === "blog") {
     return { type: "unsubscribe_blog", blockedCategories: ["lead"] };

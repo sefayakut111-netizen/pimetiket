@@ -142,33 +142,23 @@ export function BlogTab() {
 
     setCoverUploading(true);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-      const sigRes = await fetch("/api/admin/blog/upload-cover", {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/blog/upload-cover", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ extension: ext }),
+        body: fd,
       });
-      const sigJson = (await sigRes.json()) as {
+      const json = (await res.json()) as {
         error?: string;
-        uploadUrl?: string;
+        detail?: string;
         publicUrl?: string;
       };
-      if (!sigRes.ok || !sigJson.uploadUrl || !sigJson.publicUrl) {
-        toast.error(sigJson.error ?? "Upload URL alınamadı");
+      if (!res.ok || !json.publicUrl) {
+        toast.error(json.detail ?? json.error ?? "Kapak yüklenemedi");
         return;
       }
 
-      const putRes = await fetch(sigJson.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "content-type": file.type },
-      });
-      if (!putRes.ok) {
-        toast.error("Dosya yüklenemedi");
-        return;
-      }
-
-      setDraft((d) => ({ ...d, cover_image_url: sigJson.publicUrl! }));
+      setDraft((d) => ({ ...d, cover_image_url: json.publicUrl! }));
       toast.success("Kapak görseli yüklendi");
     } catch {
       toast.error("Yükleme hatası");
@@ -190,27 +180,20 @@ export function BlogTab() {
 
     setInlineUploading(true);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const fd = new FormData();
+      fd.append("file", file);
       const urlRes = await fetch("/api/admin/blog/upload-image", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ extension: ext }),
+        body: fd,
       });
       const urlJson = (await urlRes.json()) as {
         error?: string;
-        uploadUrl?: string;
+        detail?: string;
         publicUrl?: string;
       };
-      if (!urlRes.ok || !urlJson.uploadUrl || !urlJson.publicUrl) {
-        throw new Error(urlJson.error ?? "URL alınamadı");
+      if (!urlRes.ok || !urlJson.publicUrl) {
+        throw new Error(urlJson.detail ?? urlJson.error ?? "URL alınamadı");
       }
-
-      const upRes = await fetch(urlJson.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "content-type": file.type },
-      });
-      if (!upRes.ok) throw new Error("Yükleme başarısız");
 
       const ta = bodyTextareaRef.current;
       if (!ta) return;
