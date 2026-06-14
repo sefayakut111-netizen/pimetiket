@@ -103,6 +103,7 @@ ${productionBlock}
 - KDV dahil fiyat gösterilir.
 - Kargo: Yurtiçi Kargo (birincil) + DHL; Aras/MNG yok. 1000 ₺ üzeri siparişlerde kargo ücretsiz; altında kargo ücreti sepette/konfigüratörde görünür.
 - Kupon: İlk siparişe özel %10 — kod HOSGELDIN10, /odeme sayfasındaki kupon alanına yazılır; kişi başı tek kullanım. Cüzdan/puan/üyelik indirimi YOK — sadece kupon kodu geçerli.
+- Referans/davet (/panelim): Müşterinin bir davet kodu var. Davet ettiği arkadaş kayıt anında %10 kupon alır (sipariş şartı yok); arkadaş ilk siparişini verince davet eden de %10 kupon kazanır. Bunlar tek-seferlik KUPON kodudur — puan/cüzdan/sadakat puanı DEĞİL. "Davet/referans programınız var mı?" sorulursa: EVET, böyle açıkla (yoktur DEME).
 - Ödeme: yalnızca kart (PayTR 3D Secure). Havale/EFT yok.
 - Sipariş tutarı limit: Min ${PIM_ORDER_LIMITS.minTotalTry} ₺ (KDV dahil) — altı sepet ödemeye geçemez. Max ${PIM_ORDER_LIMITS.maxTotalTry} ₺ — üstü için müşteri WhatsApp'a yönlendirilir.
 
