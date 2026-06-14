@@ -92,11 +92,23 @@ export default function HomePage({
 
   const STEPS = useMemo(
     () => [
-      { n: "01", t: t.home.step1, d: t.home.step1Desc },
-      { n: "02", t: t.home.step2, d: t.home.step2Desc },
-      { n: "03", t: t.home.step3, d: t.home.step3Desc },
       {
-        n: "04",
+        image: "/home/steps/01-konfigure-et.png",
+        t: t.home.step1,
+        d: t.home.step1Desc,
+      },
+      {
+        image: "/home/steps/02-dosyani-yukle.png",
+        t: t.home.step2,
+        d: t.home.step2Desc,
+      },
+      {
+        image: "/home/steps/03-provayi-onayla.png",
+        t: t.home.step3,
+        d: t.home.step3Desc,
+      },
+      {
+        image: "/home/steps/04-teslim-al.png",
         t: t.home.step4,
         d:
           homeLocale === "en"
@@ -295,18 +307,25 @@ export default function HomePage({
                 · Üst çizgi: .flow-line — sağa kayan mercan parıltı (3.5s döngü) */}
             <div
               aria-hidden
-              className="hidden md:block absolute left-[12.5%] right-[12.5%] top-9 h-0.5 bg-gri-200 z-0"
+              className="hidden md:block absolute left-[12.5%] right-[12.5%] top-12 h-0.5 bg-gri-200 z-0"
             />
             <div
               aria-hidden
-              className="hidden md:block absolute left-[12.5%] right-[12.5%] top-9 h-0.5 flow-line z-0"
+              className="hidden md:block absolute left-[12.5%] right-[12.5%] top-12 h-0.5 flow-line z-0"
             />
             <div className="relative grid grid-cols-2 md:grid-cols-4 gap-6 z-10">
               {STEPS.map((s, i) => (
                 <div key={i} className="text-center">
-                  {/* step-circle-anim → sırayla pulse (0s, 0.85s, 1.7s, 2.55s) */}
-                  <div className="step-circle-anim grid place-items-center w-[72px] h-[72px] rounded-full bg-white ring-2 ring-gri-200 mx-auto mb-5 font-bold text-[22px] text-pim-mercan-koyu shadow-1">
-                    {s.n}
+                  <div
+                    className="relative w-[96px] h-[96px] mx-auto mb-5 rounded-full overflow-hidden bg-white ring-2 ring-gri-200 shadow-1"
+                  >
+                    <Image
+                      src={s.image}
+                      alt={s.t}
+                      fill
+                      sizes="96px"
+                      className="object-cover scale-[1.08]"
+                    />
                   </div>
                   <h3 className="text-xl font-semibold mb-1.5">{s.t}</h3>
                   <p className="text-base text-gri-700 max-w-[220px] mx-auto leading-relaxed">
