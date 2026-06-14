@@ -20,7 +20,7 @@
  *   - Müşteri linke tıklayınca `confirmed` olur, grace timer başlar.
  */
 
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
@@ -216,7 +216,7 @@ export async function POST(req: Request) {
   });
 
   if (kind === "data_export") {
-    void triggerDataExportProcess();
+    after(() => triggerDataExportProcess());
   }
 
   return NextResponse.json({ request: row });

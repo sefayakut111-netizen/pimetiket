@@ -13,13 +13,19 @@ export const EXPORT_TTL_SECONDS = 604800;
 
 const DESIGNS_BUCKET = SUPABASE_STORAGE_BUCKETS.designs;
 
+export type ExportOrderEvent = {
+  event_type: string;
+  status_after: string | null;
+  created_at: string;
+};
+
 export interface UserExportData {
   profile: unknown;
   addresses: unknown[];
   invoice_profiles: unknown[];
   orders: unknown[];
   order_items: unknown[];
-  order_events: unknown[];
+  order_events: ExportOrderEvent[];
   design_files: Array<{
     id: string;
     original_name: string;
@@ -137,7 +143,7 @@ export async function collectUserExportData(
   const orderIds = (orders ?? []).map((o) => (o as { id: string }).id);
 
   let orderItems: unknown[] = [];
-  let orderEvents: unknown[] = [];
+  let orderEvents: ExportOrderEvent[] = [];
   if (orderIds.length > 0) {
     const { data: items } = await admin
       .from("order_items")
@@ -149,11 +155,9 @@ export async function collectUserExportData(
 
     const { data: events } = await admin
       .from("order_events")
-      .select(
-        "id,order_id,event_type,summary,status_after,detail,created_at"
-      )
+      .select("event_type,status_after,created_at")
       .in("order_id", orderIds);
-    orderEvents = events ?? [];
+    orderEvents = (events ?? []) as ExportOrderEvent[];
   }
 
   const { data: designFileRows } = await admin
