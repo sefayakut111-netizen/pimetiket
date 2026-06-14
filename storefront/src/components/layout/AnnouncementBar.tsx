@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-/** HAZIRAN20 kampanyası — 30 Haziran 2026 23:59 TR sonrası gizlenir. */
-const CAMPAIGN_VALID_UNTIL = new Date("2026-06-30T23:59:59+03:00");
+import { CAMPAIGN_CODE, isCampaignActive } from "@/lib/campaign";
 
 /** Kullanıcı kapatınca tercih burada saklanır (denetim P1-10). */
 const DISMISS_KEY = "pim_announce_haziran20_dismissed";
@@ -12,7 +11,7 @@ const MESSAGES = [
   <>
     <span aria-hidden>🎉</span> Açılışa özel — Haziran boyunca{" "}
     <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-white/15 font-bold tracking-wide">
-      HAZIRAN20
+      {CAMPAIGN_CODE}
     </span>{" "}
     koduyla %20 indirim
   </>,
@@ -57,7 +56,7 @@ export function AnnouncementBar() {
     }
   }, []);
 
-  if (new Date() > CAMPAIGN_VALID_UNTIL || dismissed) {
+  if (!isCampaignActive() || dismissed) {
     return null;
   }
 
