@@ -15,6 +15,7 @@ import { useT } from "@/lib/i18n/context";
 import { HomeReviews } from "@/components/reviews/HomeReviews";
 import { HomeGallery } from "@/components/home/HomeGallery";
 import { HomeInstagram } from "@/components/home/HomeInstagram";
+import { HomePopularProducts } from "@/components/home/HomePopularProducts";
 import { HomeBlogSection } from "@/components/blog/BlogPreview";
 import { Pim } from "@/components/Pim";
 import { useSiteImage } from "@/lib/site-images-client";
@@ -23,8 +24,6 @@ import { ETIKET_ENABLED } from "@/lib/etiket-feature-flags";
 import { useMemo } from "react";
 import { formatDeliveryDaysLabel } from "@/lib/site-settings-shared";
 import { useDeliveryDays } from "@/hooks/useDeliveryDays";
-import { ReviewStatsBand } from "@/components/reviews/ReviewStatsBand";
-import type { ReviewStats } from "@/lib/reviews-server";
 
 // Sefa kararı 17 May v11: baselineStickerPrice/baselineEtiketPrice/
 // formatUnitPriceLocale helper'ları + QuickReorderWidget + Product
@@ -74,11 +73,7 @@ function buildHomeFaqs(
   ];
 }
 
-export default function HomePage({
-  reviewStats,
-}: {
-  reviewStats: ReviewStats;
-}) {
+export default function HomePage() {
   const { t, locale } = useT();
   const { user } = useUser();
   const deliveryDays = useDeliveryDays();
@@ -124,35 +119,6 @@ export default function HomePage({
     [homeLocale, deliveryDays]
   );
 
-  const PRODUCTION_QUALITY = useMemo(
-    () => [
-      {
-        n: 1,
-        image: "/home/quality/01-avrupa-malzeme.webp",
-        title: t.home.productionQuality1Title,
-        desc: t.home.productionQuality1Desc,
-      },
-      {
-        n: 2,
-        image: "/home/quality/02-ai-dosya-kontrolu.webp",
-        title: t.home.productionQuality2Title,
-        desc: t.home.productionQuality2Desc,
-      },
-      {
-        n: 3,
-        image: "/home/quality/03-prova-onayi.webp",
-        title: t.home.productionQuality3Title,
-        desc: t.home.productionQuality3Desc,
-      },
-      {
-        n: 4,
-        image: "/home/quality/04-kalite-kontrol.webp",
-        title: t.home.productionQuality4Title,
-        desc: t.home.productionQuality4Desc,
-      },
-    ],
-    [t.home]
-  );
   return (
     <main className="animate-fade-up">
       {/* ============================== SECTION ORDER ==============================
@@ -338,57 +304,7 @@ export default function HomePage({
         </div>
       </section>
 
-      {/* ============================== PRODUCTION QUALITY ============================== */}
-      <section className="py-16 md:py-20 bg-white">
-        <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-          <div className="mb-10 md:mb-12">
-            <h2 className="text-[28px] md:text-[36px] font-semibold tracking-tight leading-tight text-lacivert max-w-[560px]">
-              {t.home.productionQualityTitle}
-            </h2>
-            <ReviewStatsBand stats={reviewStats} className="mt-3" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-            {PRODUCTION_QUALITY.map((item) => (
-              <div
-                key={item.n}
-                className="rounded-2xl bg-krem-soft ring-1 ring-black/[0.06] overflow-hidden shadow-1"
-              >
-                <div className="relative aspect-[16/9]">
-                  <Image
-                    src={item.image}
-                    alt={item.title}
-                    fill
-                    loading="lazy"
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover object-top"
-                  />
-                </div>
-                <div className="flex items-start gap-3 px-5 py-4">
-                  <span
-                    className="grid shrink-0 place-items-center w-10 h-10 rounded-full bg-pim-mercan text-white font-bold text-lg leading-none"
-                    aria-hidden
-                  >
-                    {item.n}
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="text-lg font-semibold text-lacivert">
-                      {item.title}
-                    </h3>
-                    <p className="mt-1 text-sm md:text-base text-gri-700 leading-relaxed">
-                      {item.desc}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-10">
-            <Button variant="secondary" href="/nasil-uretiyoruz">
-              {t.home.productionQualityCta} <Icon.ChevR size={14} />
-            </Button>
-          </div>
-        </div>
-      </section>
+      <HomePopularProducts locale={locale} />
 
       <HomeGallery locale={locale} />
 
