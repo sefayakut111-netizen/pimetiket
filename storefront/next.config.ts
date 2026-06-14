@@ -69,7 +69,9 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.googletagmanager.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://browser.sentry-cdn.com https://docs.opencv.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.run https://cdn.skypack.dev",
       "script-src-elem 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.googletagmanager.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://browser.sentry-cdn.com https://docs.opencv.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.run https://cdn.skypack.dev",
       // Resimler: Supabase Storage signed URL + dataURL + PostHog session replay snapshots
-      "img-src 'self' data: blob: https://*.supabase.co https://www.google-analytics.com https://eu.i.posthog.com https://eu-assets.i.posthog.com",
+      // Sefa 14 Haz: Instagram anasayfa feed — IG medya görselleri *.cdninstagram.com'dan
+      // doğrudan (unoptimized) yükleniyor; CSP allowlist'e eklenmezse kartlar boş kalır.
+      "img-src 'self' data: blob: https://*.supabase.co https://*.cdninstagram.com https://www.google-analytics.com https://eu.i.posthog.com https://eu-assets.i.posthog.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       // Supabase REST + WS, PayTR API, PostHog event ingestion, Sentry error ingestion
       // Sefa 23 May v68: POC iframe WASM/asset fetch'i — OpenCV.wasm,
