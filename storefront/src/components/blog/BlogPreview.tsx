@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui";
@@ -36,11 +37,14 @@ export function BlogPreview({ limit = 3 }: { limit?: number }) {
           className="group rounded-2xl bg-white ring-1 ring-gri-200 overflow-hidden hover:ring-pim-mercan hover:shadow-lg transition-all"
         >
           {post.cover_image_url && (
-            <div className="h-36 overflow-hidden">
-              <img
+            <div className="relative h-36 overflow-hidden">
+              <Image
                 src={post.cover_image_url}
                 alt={post.title_tr}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                fill
+                loading="lazy"
+                sizes="(max-width: 768px) 100vw, 33vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
             </div>
           )}
@@ -105,11 +109,14 @@ export function HomeBlogSection({
               className="group rounded-2xl bg-white ring-1 ring-gri-200 overflow-hidden hover:ring-pim-mercan hover:shadow-lg transition-all"
             >
               {post.cover_image_url && (
-                <div className="h-36 overflow-hidden">
-                  <img
+                <div className="relative h-36 overflow-hidden">
+                  <Image
                     src={post.cover_image_url}
                     alt={post.title_tr}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    fill
+                    loading="lazy"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 </div>
               )}
