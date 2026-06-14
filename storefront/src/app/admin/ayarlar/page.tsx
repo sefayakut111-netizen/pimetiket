@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pim } from "@/components/Pim";
 import { Icon } from "@/components/Icon";
 import { Button, Card, Input, Eyebrow, useToast, Skeleton, Modal } from "@/components/ui";
+import { InstagramIntegrationCard } from "@/components/admin/InstagramIntegrationCard";
 import {
   DEFAULT_CONTACT_PHONE,
   DEFAULT_CONTACT_WHATSAPP,
@@ -506,6 +507,8 @@ export default function AdminAyarlarPage() {
               />
             </label>
           </Card>
+
+          <InstagramIntegrationCard canUpdate={canUpdate} />
 
           <div className="flex justify-between gap-3 sticky bottom-4 z-10 bg-white/90 backdrop-blur p-4 rounded-2xl shadow-2 ring-1 ring-gri-200">
             <Button
