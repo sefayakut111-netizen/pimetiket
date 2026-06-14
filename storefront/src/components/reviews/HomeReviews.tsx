@@ -172,7 +172,7 @@ function ReviewCard({ review, onPhotoClick }: ReviewCardProps) {
                 type="button"
                 onClick={() => onPhotoClick?.(photo.url!)}
                 aria-label="Fotoğrafı büyüt"
-                className="relative w-12 h-12 rounded-lg overflow-hidden ring-1 ring-gri-200 hover:ring-pim-mercan bg-gri-100 transition-all cursor-zoom-in"
+                className="relative w-12 h-12 rounded-lg overflow-hidden ring-1 ring-gri-200 hover:ring-pim-mercan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan focus-visible:ring-offset-2 bg-gri-100 transition-all cursor-zoom-in"
               >
                 <Image
                   src={photo.url}

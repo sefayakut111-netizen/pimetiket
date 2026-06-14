@@ -87,7 +87,7 @@ export default function MesafeliSatisPage() {
             <li>
               <strong>Tabaka etiket siparişleri</strong>: en geç{" "}
               <strong>
-                {PIM_PRODUCTION_BUSINESS_DAYS.tabaka} (üç) iş günü
+                {PIM_PRODUCTION_BUSINESS_DAYS.tabaka} (beş) iş günü
               </strong>{" "}
               içinde kargoya verilir.
             </li>

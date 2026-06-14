@@ -23,8 +23,7 @@ function InstagramCell({
       href={post.permalink}
       target="_blank"
       rel="noopener noreferrer"
-      className="group relative aspect-square rounded-xl overflow-hidden ring-1 ring-black/[0.06] bg-pim-mercan-tint/40 hover:ring-pim-mercan/30 transition-all"
-      aria-label={post.altText ?? `Instagram gönderisi ${index + 1}`}
+      className="group relative aspect-square rounded-xl overflow-hidden ring-1 ring-black/[0.06] bg-pim-mercan-tint/40 hover:ring-pim-mercan/30 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan focus-visible:ring-offset-2"
     >
       <Image
         src={post.imageUrl}

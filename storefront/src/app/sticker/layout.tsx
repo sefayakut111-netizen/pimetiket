@@ -9,7 +9,7 @@ export const revalidate = 3600;
 // holo, transparan). Sayfa 11 ürün gösteriyor — title daha kapsayıcı.
 const title = "Sticker bastır — özel kesim, holografik ve şeffaf sticker";
 const description =
-  "Die-cut, kare, yuvarlak ve özel kesim sticker. 25 adetten, vinil, holografik, şeffaf malzemeler. AI dosya kontrolü, 5 iş günü kargoda.";
+  "Die-cut, kare, yuvarlak ve özel kesim sticker. 25 adetten, vinil, holografik, şeffaf malzemeler. AI dosya kontrolü, 3 iş günü kargoda.";
 const canonical = "/sticker";
 
 export const metadata: Metadata = {

@@ -72,9 +72,9 @@ function buildProductionBlock(): string {
 
 function buildEtiketPriceRule(): string {
   if (ETIKET_TABAKA_ENABLED) {
-    return `- Kesin FİYAT için: sticker → redirect_to_configurator (product=sticker) veya /sticker konfigüratörü. Tabaka etiket → redirect_to_configurator (product=etiket, formFactor=tabaka) veya /etiket/yapilandir?form=tabaka. Rulo kapalıysa rulo fiyatı VERME — redirect ETME.`;
+    return `- Kesin FİYAT için: sticker → redirect_to_configurator (product=sticker) veya /sticker/yapilandir konfigüratörü. Tabaka etiket → redirect_to_configurator (product=etiket, formFactor=tabaka) veya /etiket/yapilandir?form=tabaka. Rulo kapalıysa rulo fiyatı VERME — redirect ETME.`;
   }
-  return `- Kesin FİYAT için: sticker → redirect_to_configurator veya /sticker konfigüratörü. Etiket siparişi kapalı — tahmini rakam VERME.`;
+  return `- Kesin FİYAT için: sticker → redirect_to_configurator veya /sticker/yapilandir konfigüratörü. Etiket siparişi kapalı — tahmini rakam VERME.`;
 }
 
 /** Pim system prompt'a inject edilen bilgi tabanı (sync). */
@@ -108,7 +108,7 @@ ${productionBlock}
 
 SİTE SAYFALARI (LİNK YÖNLENDİRMESİ):
 ${etiketPageLine}
-- /sticker → sticker konfigüratörü (${DELIVERY_PROMISE.sticker} üretim, ${STICKER_MIN_QTY}+ adet) — TAM AÇIK, sipariş alınır
+- /sticker → sticker tip/form seçici HUB (fiyat YOK); canlı fiyat & sipariş /sticker/yapilandir konfigüratöründe (${DELIVERY_PROMISE.sticker} üretim, ${STICKER_MIN_QTY}+ adet) — TAM AÇIK
 - /editor → tarayıcıda tasarım editörü (şekilli kesim/die-cut, geri alma, mobil uyumlu, baskıya hazır PDF; dosya max 30 MB)
 - /nasil-uretiyoruz → üretim süreci ve kalite (Avrupa malzeme, baskı tekniği, AI kontrol, prova)
 - /malzemeler → tüm malzeme türleri + kullanım alanları (güncel liste)
