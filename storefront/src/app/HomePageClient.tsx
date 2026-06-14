@@ -139,8 +139,8 @@ export default function HomePage({
           Önceki: banner üstte, metin altta. Yeni: metin banner'ın
           ÜZERINDE (sol tarafta vertical center). Banner full-bleed +
           beyaz gradient sol overlay metin okunabilirliği için. */}
-      <section className="relative w-full min-h-[480px] md:min-h-[600px] overflow-hidden">
-        {/* Full-bleed banner görsel — section'un arka planı */}
+      <section className="relative isolate w-full min-h-[500px] md:min-h-[720px] lg:min-h-[800px] overflow-hidden">
+        {/* Full-bleed banner — z-0; metin kartı z-10. (-z-10 section arkasına düşürüyordu) */}
         {homeHero ? (
           <Image
             src={homeHero.publicUrl}
@@ -151,7 +151,7 @@ export default function HomePage({
             fill
             priority
             sizes="100vw"
-            className="object-cover -z-10"
+            className="object-cover z-0"
           />
         ) : (
           <Image
@@ -160,7 +160,7 @@ export default function HomePage({
             fill
             priority
             sizes="100vw"
-            className="object-cover -z-10"
+            className="object-cover z-0"
           />
         )}
 
@@ -170,7 +170,7 @@ export default function HomePage({
             rounded + soft shadow eklendi. */}
 
         {/* Metin overlay — sol-vertical center, container içinde */}
-        <div className="relative mx-auto max-w-[1280px] min-h-[480px] md:min-h-[600px] px-4 md:px-8 flex items-center">
+        <div className="relative z-10 mx-auto max-w-[1280px] min-h-[500px] md:min-h-[720px] lg:min-h-[800px] px-4 md:px-8 flex items-center">
           <div className="max-w-[560px] bg-white/95 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-[0_20px_50px_-15px_rgba(60,40,20,0.18)]">
             <Eyebrow>{t.home.eyebrow}</Eyebrow>
             <h1 className="mt-5 text-[34px] md:text-[56px] leading-[1.04] font-semibold tracking-[-0.02em]">
