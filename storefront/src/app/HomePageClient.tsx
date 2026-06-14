@@ -353,7 +353,7 @@ export default function HomePage({
                 key={item.n}
                 className="rounded-2xl bg-krem-soft ring-1 ring-black/[0.06] overflow-hidden shadow-1"
               >
-                <div className="relative aspect-[16/10]">
+                <div className="relative aspect-[16/9]">
                   <Image
                     src={item.image}
                     alt={item.title}
