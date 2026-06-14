@@ -76,14 +76,18 @@ export const en: TranslationDict = {
     howItWorksEyebrow: "How it works",
     howItWorksTitle: "Print-Ready in 4 Steps.",
     productionQualityTitle: "How quality comes through",
-    productionQuality1Title: "European materials only",
-    productionQuality1Desc: "Avery, Orafol, Fasson",
+    productionQuality1Title: "European materials",
+    productionQuality1Desc:
+      "European-origin, high-quality vinyl and label materials.",
     productionQuality2Title: "AI file check",
-    productionQuality2Desc: "In seconds",
+    productionQuality2Desc:
+      "Your file is checked against technical criteria before production.",
     productionQuality3Title: "Proof approval",
-    productionQuality3Desc: "We don't print until you approve",
+    productionQuality3Desc:
+      "You review a proof before production; we proceed after approval.",
     productionQuality4Title: "Quality control",
-    productionQuality4Desc: "We inspect every job",
+    productionQuality4Desc:
+      "Label, print and cut quality are checked before shipping.",
     productionQualityCta: "How we produce",
     galleryEyebrow: "Gallery",
     galleryTitle: "From our print work",

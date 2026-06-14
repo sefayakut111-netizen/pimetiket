@@ -76,14 +76,18 @@ export const tr: TranslationDict = {
     howItWorksEyebrow: "Nasıl çalışır",
     howItWorksTitle: "4 Adımda Baskı Hazır.",
     productionQualityTitle: "Kalite nasıl çıkıyor",
-    productionQuality1Title: "Sadece Avrupa malzeme",
-    productionQuality1Desc: "Avery, Orafol, Fasson",
+    productionQuality1Title: "Avrupa malzeme",
+    productionQuality1Desc:
+      "Avrupa menşeli, yüksek kaliteli folyo ve etiket malzemeleri.",
     productionQuality2Title: "AI dosya kontrolü",
-    productionQuality2Desc: "Saniyeler içinde",
+    productionQuality2Desc:
+      "Dosyan üretim öncesi teknik kriterlere göre kontrol edilir.",
     productionQuality3Title: "Prova onayı",
-    productionQuality3Desc: "Sen onaylamadan basmıyoruz",
+    productionQuality3Desc:
+      "Üretime geçmeden önce prova görülür, onaydan sonra ilerlenir.",
     productionQuality4Title: "Kalite kontrol",
-    productionQuality4Desc: "Her işi gözden geçiriyoruz",
+    productionQuality4Desc:
+      "Etiket, baskı ve kesim kalitesi gönderim öncesi kontrol edilir.",
     productionQualityCta: "Nasıl üretiyoruz",
     galleryEyebrow: "Galeri",
     galleryTitle: "Baskı örneklerimizden",
