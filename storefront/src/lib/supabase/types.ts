@@ -4092,10 +4092,12 @@ export type Database = {
           partner_auto_assign_enabled: boolean
           pricing_markup_pct: number
           referral_credit_try: number
+          rulo_delivery_days: number
           seo_contact_phone: string | null
           shipping_fee_try: number
           social_links: string | null
           sticker_delivery_days: number
+          tabaka_delivery_days: number
           updated_at: string
           updated_by: string | null
           welcome_credit_try: number
@@ -4113,10 +4115,12 @@ export type Database = {
           partner_auto_assign_enabled?: boolean
           pricing_markup_pct?: number
           referral_credit_try?: number
+          rulo_delivery_days?: number
           seo_contact_phone?: string | null
           shipping_fee_try?: number
           social_links?: string | null
           sticker_delivery_days?: number
+          tabaka_delivery_days?: number
           updated_at?: string
           updated_by?: string | null
           welcome_credit_try?: number
@@ -4134,10 +4138,12 @@ export type Database = {
           partner_auto_assign_enabled?: boolean
           pricing_markup_pct?: number
           referral_credit_try?: number
+          rulo_delivery_days?: number
           seo_contact_phone?: string | null
           shipping_fee_try?: number
           social_links?: string | null
           sticker_delivery_days?: number
+          tabaka_delivery_days?: number
           updated_at?: string
           updated_by?: string | null
           welcome_credit_try?: number
