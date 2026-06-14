@@ -111,6 +111,36 @@ export default function HomePage({
     () => buildHomeFaqs(homeLocale, deliveryDays),
     [homeLocale, deliveryDays]
   );
+
+  const PRODUCTION_QUALITY = useMemo(
+    () => [
+      {
+        n: 1,
+        image: "/home/quality/01-avrupa-malzeme.png",
+        title: t.home.productionQuality1Title,
+        desc: t.home.productionQuality1Desc,
+      },
+      {
+        n: 2,
+        image: "/home/quality/02-ai-dosya-kontrolu.png",
+        title: t.home.productionQuality2Title,
+        desc: t.home.productionQuality2Desc,
+      },
+      {
+        n: 3,
+        image: "/home/quality/03-prova-onayi.png",
+        title: t.home.productionQuality3Title,
+        desc: t.home.productionQuality3Desc,
+      },
+      {
+        n: 4,
+        image: "/home/quality/04-kalite-kontrol.png",
+        title: t.home.productionQuality4Title,
+        desc: t.home.productionQuality4Desc,
+      },
+    ],
+    [t.home]
+  );
   return (
     <main className="animate-fade-up">
       {/* ============================== SECTION ORDER ==============================
@@ -299,42 +329,36 @@ export default function HomePage({
             <ReviewStatsBand stats={reviewStats} className="mt-3" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-            {[
-              {
-                icon: <Icon.Package size={22} />,
-                title: t.home.productionQuality1Title,
-                desc: t.home.productionQuality1Desc,
-              },
-              {
-                icon: <Icon.Sparkle size={22} />,
-                title: t.home.productionQuality2Title,
-                desc: t.home.productionQuality2Desc,
-              },
-              {
-                icon: <Icon.Shield size={22} />,
-                title: t.home.productionQuality3Title,
-                desc: t.home.productionQuality3Desc,
-              },
-              {
-                icon: <Icon.Check size={22} />,
-                title: t.home.productionQuality4Title,
-                desc: t.home.productionQuality4Desc,
-              },
-            ].map((item) => (
+            {PRODUCTION_QUALITY.map((item) => (
               <div
-                key={item.title}
-                className="flex items-start gap-4 rounded-2xl bg-pim-mercan-tint/60 ring-1 ring-pim-mercan/10 p-6 md:p-7"
+                key={item.n}
+                className="rounded-2xl bg-krem-soft ring-1 ring-black/[0.06] overflow-hidden shadow-1"
               >
-                <span className="grid shrink-0 place-items-center w-14 h-14 rounded-full bg-white text-pim-mercan-koyu shadow-1 ring-1 ring-pim-mercan/15">
-                  {item.icon}
-                </span>
-                <div className="min-w-0 pt-0.5">
-                  <h3 className="text-lg font-semibold text-lacivert mb-1">
-                    {item.title}
-                  </h3>
-                  <p className="text-base text-gri-700 leading-relaxed">
-                    {item.desc}
-                  </p>
+                <div className="relative aspect-[16/10] bg-gri-100">
+                  <Image
+                    src={item.image}
+                    alt={item.title}
+                    fill
+                    loading="lazy"
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="flex items-start gap-3 p-5 md:p-6">
+                  <span
+                    className="grid shrink-0 place-items-center w-10 h-10 rounded-full bg-pim-mercan text-white font-bold text-lg leading-none"
+                    aria-hidden
+                  >
+                    {item.n}
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-semibold text-lacivert">
+                      {item.title}
+                    </h3>
+                    <p className="mt-1 text-sm md:text-base text-gri-700 leading-relaxed">
+                      {item.desc}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
