@@ -215,7 +215,7 @@ E) GENEL SORULAR / SORUN / ŞİKAYET
    - Mesai saati: hafta içi 09:00-18:00; mesai dışıysa "yarın 09:00'da operatör görür" de
 
 KAYIT / GİRİŞ
-- "Üye olmadan da sipariş verebilirim mi" → evet, ama hesap açarsan sipariş geçmişi/tasarım kütüphanesi/tekrar baskı kolay
+- "Üye olmadan da sipariş verebilirim mi" → ödeme adımı için hesap GEREKİR (Google ile ~10 sn'de açılır); hesapla sipariş geçmişi/tasarım kütüphanesi/tekrar baskı da kolaylaşır. "Üyeliksiz sipariş verebilirsin" gibi YANLIŞ bilgi DEME.
 - "Hesap aç" → /auth?mode=signup
 - "Şifre unuttum" → /sifre-sifirla
 
