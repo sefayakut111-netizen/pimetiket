@@ -1,0 +1,8 @@
+{
+  "_note": "Mig 188 revoke teyidi (38e72bfa). Sadece dbCheck — build/grep yok.",
+  "dbChecks": [
+    { "label": "reorder RPC anon EXECUTE kapalı", "sql": "select bool_and(not has_function_privilege('anon', p.oid, 'EXECUTE')) as ok from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('fn_reorder_gallery','fn_reorder_product_cards')", "expect": { "scalar": "true" } },
+    { "label": "reorder RPC authenticated EXECUTE kapalı", "sql": "select bool_and(not has_function_privilege('authenticated', p.oid, 'EXECUTE')) as ok from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('fn_reorder_gallery','fn_reorder_product_cards')", "expect": { "scalar": "true" } },
+    { "label": "reorder RPC service_role EXECUTE açık", "sql": "select bool_and(has_function_privilege('service_role', p.oid, 'EXECUTE')) as ok from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('fn_reorder_gallery','fn_reorder_product_cards')", "expect": { "scalar": "true" } }
+  ]
+}

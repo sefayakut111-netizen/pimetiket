@@ -30,6 +30,7 @@ import {
   isR2StorageKey,
   normalizeR2Key,
 } from "@/lib/storage/purge-r2";
+import { deleteFromR2 } from "@/lib/storage/r2-client";
 
 const EDITOR_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -172,6 +173,50 @@ export async function GET(req: Request) {
     console.warn("[purge-expired-designs] editor-drafts purge skip:", err);
   }
 
+  // ---- 2d) Süresi dolmuş KVKK data_export JSON dosyaları (R2) ----
+  let dataExportPurged = 0;
+  let dataExportPurgeErrors = 0;
+  try {
+    const nowIso = new Date().toISOString();
+    const { data: expiredExports } = await admin
+      .from("kvkk_requests")
+      .select("id, user_id, result_path")
+      .eq("kind", "data_export")
+      .eq("status", "completed")
+      .not("result_path", "is", null)
+      .lt("result_expires_at", nowIso)
+      .limit(100);
+
+    for (const row of expiredExports ?? []) {
+      const exp = row as {
+        id: string;
+        user_id: string;
+        result_path: string | null;
+      };
+      if (!exp.result_path) continue;
+
+      const del = await deleteFromR2(exp.result_path);
+      if (!del.success) {
+        dataExportPurgeErrors++;
+        continue;
+      }
+
+      const { error: updErr } = await admin
+        .from("kvkk_requests")
+        .update({ result_path: null })
+        .eq("id", exp.id)
+        .eq("status", "completed");
+
+      if (updErr) {
+        dataExportPurgeErrors++;
+      } else {
+        dataExportPurged++;
+      }
+    }
+  } catch (err) {
+    console.warn("[purge-expired-designs] data_export TTL purge skip:", err);
+  }
+
   // ---- 3) Pim sohbet anonimleştirme (stub — tablo gelince çalışır) ----
   let pimAnonymized: number | null = null;
   try {
@@ -201,7 +246,11 @@ export async function GET(req: Request) {
   }
 
   // ---- Audit log entry (toplu, run özeti) ----
-  if (marked.length > 0 || legalWarn30Day > 0) {
+  if (
+    marked.length > 0 ||
+    legalWarn30Day > 0 ||
+    dataExportPurged > 0
+  ) {
     await logServerAudit(admin, {
       actorId: null,
       actorEmail: null,
@@ -209,13 +258,15 @@ export async function GET(req: Request) {
       action: "settings.update",
       targetType: "cron_run",
       targetId: "purge-expired-designs",
-      summary: `Daily purge: ${marked.length} tasarım soft-delete, ${storageDeleted} storage sil, ${r2Deleted} R2 sil, ${legalWarn30Day} sipariş 30 gün içinde yasal süre doluyor`,
+      summary: `Daily purge: ${marked.length} tasarım soft-delete, ${storageDeleted} storage sil, ${r2Deleted} R2 sil, ${dataExportPurged} data_export TTL, ${legalWarn30Day} sipariş 30 gün içinde yasal süre doluyor`,
       detail: {
         designs_marked: marked.length,
         storage_deleted: storageDeleted,
         storage_errors: storageErrors,
         r2_deleted: r2Deleted,
         r2_errors: r2Errors,
+        data_export_purged: dataExportPurged,
+        data_export_purge_errors: dataExportPurgeErrors,
         pim_anonymized: pimAnonymized,
         legal_candidates: legalCandidateCount,
         legal_warn_30day: legalWarn30Day,
@@ -230,6 +281,8 @@ export async function GET(req: Request) {
         storage_errors: storageErrors,
         r2_deleted: r2Deleted,
         r2_errors: r2Errors,
+        data_export_purged: dataExportPurged,
+        data_export_purge_errors: dataExportPurgeErrors,
         pim_anonymized: pimAnonymized,
         legal_candidates: legalCandidateCount,
         legal_warn_30day: legalWarn30Day,

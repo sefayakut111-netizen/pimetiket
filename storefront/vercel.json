@@ -13,6 +13,9 @@
     "src/app/api/cron/poll-shipments/route.ts": {
       "maxDuration": 300
     },
+    "src/app/api/cron/process-data-export/route.ts": {
+      "maxDuration": 300
+    },
     "src/app/api/cron/archive-inactive/route.ts": {
       "maxDuration": 300
     },
@@ -66,6 +69,10 @@
     {
       "path": "/api/cron/purge-expired-designs",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/process-data-export",
+      "schedule": "0 5 * * *"
     },
     {
       "path": "/api/cron/kvkk-delete-audit",

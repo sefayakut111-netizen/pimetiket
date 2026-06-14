@@ -418,6 +418,32 @@ export async function purgeKvkkUserStorage(
     }
   }
 
+  // ---- R2: exports/{userId}/ (KVKK data export bundles) ----
+  if (purgeScope.full || purgeScope.profile) {
+    const prefix = `exports/${userId}/`;
+    const r = await deleteR2Prefix(prefix);
+    r2Deleted += r.deleted;
+    r2Errors += r.errors;
+    if (r.keys.length > 0) {
+      await logPurgeEvent(admin, {
+        userId,
+        actorId,
+        actorType,
+        resourceType: "data_export_bundle",
+        resourceId: userId,
+        archivePath: prefix,
+        reason,
+        kvkkRequestId,
+        metadata: {
+          prefix,
+          keys_attempted: r.keys.length,
+          deleted: r.deleted,
+          errors: r.errors,
+        },
+      });
+    }
+  }
+
   // ---- R2: profile / reviews snapshots (partial) ----
   if (purgeScope.profile) {
     const key = r2KeyBuilders.customerSnapshot(userId);

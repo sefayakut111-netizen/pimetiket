@@ -1,0 +1,17 @@
+{
+  "_note": "FAZ4-öncesi (cat=all/B2-B5/mig041) doğrulaması — verify-cursor-diff aracının ilk gerçek manifest testi. Sonuç elle GREEN doğrulandı; araç da TÜMÜ GEÇTİ demeli.",
+  "build": true,
+  "commit": "bd8f9576",
+  "denyInChanged": ["request_type"],
+  "requireInFile": [
+    { "file": "src/app/api/mail/unsubscribe/route.ts", "pattern": "blockedCategories: \\[\"lead\"\\]" },
+    { "file": "src/lib/fason/redact-order-address.ts", "pattern": "sanitizeFreeTextForPartner" },
+    { "file": "src/app/api/fason/info/[token]/route.ts", "pattern": "sanitizeFreeTextForPartner" },
+    { "file": "src/lib/agents/auditors/compliance.ts", "pattern": "account_delete" }
+  ],
+  "dbChecks": [
+    { "label": "mig186 backfill temiz (0)", "sql": "select count(*) as n from public.mail_suppressions where suppression_type in ('unsubscribe_marketing','unsubscribe_blog') and blocked_categories is null and reason like 'user_unsubscribe%'", "expect": { "scalar": "0" } },
+    { "label": "reprint unique index var", "sql": "select indexname from pg_indexes where schemaname='public' and indexname='coupons_reprint_source_unique'", "expect": { "includes": "coupons_reprint_source_unique" } },
+    { "label": "fn_delete_user_pii var", "sql": "select proname from pg_proc where proname='fn_delete_user_pii'", "expect": { "includes": "fn_delete_user_pii" } }
+  ]
+}

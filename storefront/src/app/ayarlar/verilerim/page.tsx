@@ -4,7 +4,7 @@
  * Pim Etiket — /ayarlar/verilerim
  *
  * KVKK m.11 ilgili kişi hakları self-serve sayfası:
- *   - Verilerimi indir (m.11/g — ZIP export)
+ *   - Verilerimi indir (m.11/g — tek JSON dosya export)
  *   - Granular silme (sipariş / tasarım / Pim sohbet / yorum / profil)
  *   - Hesabımı tamamen sil (48 saat grace period)
  *
@@ -35,6 +35,7 @@ interface KvkkRequestRow {
     | "confirmed"
     | "cancelled"
     | "processing"
+    | "exporting"
     | "completed"
     | "rejected";
   scope: Record<string, boolean>;
@@ -60,6 +61,7 @@ const STATUS_LABEL: Record<
   pending: { label: "E-posta onayı bekliyor", color: "bg-sari-soft text-sari-koyu" },
   confirmed: { label: "48 saat geri alma süresinde", color: "bg-pim-mercan-tint text-pim-mercan" },
   processing: { label: "İşleniyor", color: "bg-pim-mercan-tint text-pim-mercan" },
+  exporting: { label: "Dosya hazırlanıyor", color: "bg-pim-mercan-tint text-pim-mercan" },
   completed: { label: "Tamamlandı", color: "bg-yesil-soft text-yesil" },
   cancelled: { label: "Vazgeçildi", color: "bg-gri-100 text-gri-700" },
   rejected: { label: "Reddedildi", color: "bg-kirmizi-soft text-kirmizi" },
@@ -139,7 +141,7 @@ export default function VerilerimPage() {
         toast.error(json.error ?? "Talep oluşturulamadı");
         return;
       }
-      toast.success("Veri dışa aktarım talebin alındı. ZIP hazır olunca mail atacağız.");
+      toast.success("Veri dışa aktarım talebin alındı. Dosya hazır olunca mail atacağız.");
       setRequests((arr) => [json.request, ...arr]);
     } finally {
       setExportSubmitting(false);
@@ -324,7 +326,7 @@ export default function VerilerimPage() {
               <h2 className="font-semibold text-base mb-1">Verilerimi indir</h2>
               <p className="text-[13px] text-gri-700 leading-relaxed mb-3">
                 Hesabındaki tüm sipariş, tasarım kayıtları, adresler ve
-                Pim sohbet geçmişini ZIP olarak göndereyim. Birkaç dakika
+                Pim sohbet geçmişini tek dosyada göndereyim. Birkaç dakika
                 sürebilir, e-postana atarım.
               </p>
               <Button
@@ -333,7 +335,7 @@ export default function VerilerimPage() {
                 onClick={requestExport}
                 disabled={exportSubmitting}
               >
-                {exportSubmitting ? "Hazırlanıyor…" : "ZIP isteğinde bulun"}
+                {exportSubmitting ? "Hazırlanıyor…" : "Veri dosyası iste"}
               </Button>
             </div>
           </div>

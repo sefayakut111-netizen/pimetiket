@@ -2216,6 +2216,7 @@ export type Database = {
           processed_at: string | null
           processed_by: string | null
           request_ip: unknown
+          result_expires_at: string | null
           result_path: string | null
           scope: Json
           status: Database["public"]["Enums"]["kvkk_request_status"]
@@ -2237,6 +2238,7 @@ export type Database = {
           processed_at?: string | null
           processed_by?: string | null
           request_ip?: unknown
+          result_expires_at?: string | null
           result_path?: string | null
           scope?: Json
           status?: Database["public"]["Enums"]["kvkk_request_status"]
@@ -2258,6 +2260,7 @@ export type Database = {
           processed_at?: string | null
           processed_by?: string | null
           request_ip?: unknown
+          result_expires_at?: string | null
           result_path?: string | null
           scope?: Json
           status?: Database["public"]["Enums"]["kvkk_request_status"]
@@ -4922,6 +4925,7 @@ export type Database = {
         | "processing"
         | "completed"
         | "rejected"
+        | "exporting"
       order_status:
         | "paid"
         | "awaiting_upload"
@@ -5164,6 +5168,7 @@ export const Constants = {
         "processing",
         "completed",
         "rejected",
+        "exporting",
       ],
       order_status: [
         "paid",

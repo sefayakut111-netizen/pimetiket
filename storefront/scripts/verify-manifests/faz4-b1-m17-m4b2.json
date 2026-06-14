@@ -1,0 +1,15 @@
+{
+  "_note": "FAZ4 Batch1 — M17 blog XSS/upload (a479ac32) + M4-B2 bg-remove reset (123273fe). Migration yok → dbChecks yok.",
+  "build": true,
+  "commit": "a479ac32",
+  "denyInChanged": ["categorizeFile", "createSignedUploadUrl"],
+  "requireInFile": [
+    { "file": "src/lib/storage/magic-bytes.ts", "pattern": "image/webp" },
+    { "file": "src/app/blog/[slug]/page.tsx", "pattern": "mailto:" },
+    { "file": "src/app/api/admin/blog/route.ts", "pattern": "javascript:" },
+    { "file": "src/app/api/admin/blog/upload-cover/route.ts", "pattern": "detectMimeFromMagicBytes" },
+    { "file": "src/app/api/admin/blog/upload-cover/route.ts", "pattern": "image/webp" },
+    { "file": "src/app/api/admin/blog/upload-image/route.ts", "pattern": "detectMimeFromMagicBytes" },
+    { "file": "src/app/api/orders/[id]/proof/[itemId]/background/remove/route.ts", "pattern": "\"viewed\"" }
+  ]
+}

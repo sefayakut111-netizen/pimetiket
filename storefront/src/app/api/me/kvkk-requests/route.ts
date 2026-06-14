@@ -26,6 +26,7 @@ import { createClient } from "@supabase/supabase-js";
 import { logServerAudit } from "@/lib/audit-log-server";
 import { isSameOriginRequest } from "@/lib/security/csrf-origin";
 import { verifyStepUpAuth } from "@/lib/security/step-up-auth";
+import { triggerDataExportProcess } from "@/lib/kvkk/trigger-data-export";
 
 export const dynamic = "force-dynamic";
 
@@ -213,6 +214,10 @@ export async function POST(req: Request) {
     ipAddress: req.headers.get("x-forwarded-for"),
     userAgent: req.headers.get("user-agent"),
   });
+
+  if (kind === "data_export") {
+    void triggerDataExportProcess();
+  }
 
   return NextResponse.json({ request: row });
 }
