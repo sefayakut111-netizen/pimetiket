@@ -30,7 +30,7 @@ function InstagramCell({
         src={post.imageUrl}
         alt={post.altText ?? `Pim Etiket Instagram ${index + 1}`}
         fill
-        sizes="(max-width: 640px) 33vw, 16vw"
+        sizes="(max-width: 640px) 50vw, 25vw"
         className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
         unoptimized={post.imageUrl.includes("cdninstagram.com")}
       />
@@ -100,12 +100,12 @@ export function HomeInstagram({ locale }: HomeInstagramProps) {
           </Button>
         </div>
 
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {posts.length > 0
-            ? posts.map((post, i) => (
+            ? posts.slice(0, 4).map((post, i) => (
                 <InstagramCell key={post.id} post={post} index={i} />
               ))
-            : Array.from({ length: 6 }, (_, i) => (
+            : Array.from({ length: 4 }, (_, i) => (
                 <PlaceholderCell key={i} index={i} />
               ))}
         </div>
