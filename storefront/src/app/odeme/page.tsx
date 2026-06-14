@@ -63,6 +63,7 @@ import {
   validateCoupon,
   type CouponValidateResult,
 } from "@/lib/customer-coupon";
+import { CAMPAIGN_CODE, isCampaignActive } from "@/lib/campaign";
 import {
   listMyAddresses,
   deleteMyAddress,
@@ -478,7 +479,12 @@ export default function OdemePage() {
   // Sefa 20 May v68 UX paket B #12: Kupon collapse — default kapalı,
   // "İndirim kodun var mı?" linkine tıklayınca açılır. Kupon zaten
   // uygulanmışsa otomatik açık tut.
-  const [couponCode, setCouponCode] = useState("");
+  const [couponCode, setCouponCode] = useState(() =>
+    // Açılış kampanyası aktifse kupon alanını ön-doldur (denetim P1-2) — kullanıcı
+    // duyurudaki HAZIRAN20'yi elle yazmak zorunda kalmasın (otomatik UYGULAMAZ,
+    // sadece doldurur). Kayıtlı taslak/param varsa restore (parsed.code) bunu ezer.
+    isCampaignActive() ? CAMPAIGN_CODE : ""
+  );
   const [couponResult, setCouponResult] = useState<CouponValidateResult | null>(
     null
   );
