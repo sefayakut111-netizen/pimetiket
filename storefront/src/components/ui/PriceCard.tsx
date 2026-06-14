@@ -89,20 +89,20 @@ export function PriceCard({
             "hover:bg-sari/20 hover:ring-sari/50 cursor-pointer"
           )}
         >
-          <span className="font-semibold">⚠️ Tahmini fiyat</span> —{" "}
-          <strong>{pendingStepsCount} adım</strong> seçilmedi
+          <span className="font-semibold">Varsayılan seçimlerle fiyat</span> —{" "}
+          <strong>{pendingStepsCount} adımı</strong> kişiselleştirebilirsin
           {firstPendingStepLabel ? ` (önce "${firstPendingStepLabel}")` : ""}.
-          Seçimini tamamladıkça gerçek fiyat oluşur.{" "}
+          Seçim değiştikçe fiyat güncellenir.{" "}
           <span className="font-semibold text-pim-mercan underline underline-offset-2">
             Adıma git →
           </span>
         </button>
       ) : (
         <div className="mb-4 rounded-lg bg-sari-soft ring-1 ring-sari/30 px-3.5 py-2.5 text-[12.5px] text-lacivert">
-          <span className="font-semibold">⚠️ Tahmini fiyat</span> —{" "}
-          <strong>{pendingStepsCount} adım</strong> seçilmedi
+          <span className="font-semibold">Varsayılan seçimlerle fiyat</span> —{" "}
+          <strong>{pendingStepsCount} adımı</strong> kişiselleştirebilirsin
           {firstPendingStepLabel ? ` (önce "${firstPendingStepLabel}")` : ""}.
-          Seçimini tamamladıkça gerçek fiyat oluşur.
+          Seçim değiştikçe fiyat güncellenir.
         </div>
       )
     ) : null;

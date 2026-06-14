@@ -405,9 +405,9 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
     {
       q: "Pim Etiket üretim süresi ne kadardır?",
       summary:
-        "Sticker 3, tabaka etiket 3, rulo etiket 10 iş günü (tasarım onayından sonra; resmi tatiller hariç).",
+        "Sticker 3, tabaka etiket 5, rulo etiket 10 iş günü (tasarım onayından sonra; resmi tatiller hariç).",
       detail:
-        "Üretim süreleri tasarım onayınızdan sonra başlar; cumartesi, pazar ve resmi tatil günleri sayılmaz. Sticker: 3 iş günü. Tabaka etiket: 3 iş günü. Rulo etiket: 10 iş günü (rulo sipariş 29 Haziran 2026'da açılacak). Üretim tamamlandıktan sonra kargo süresi eklenir (İstanbul 1, diğer iller 2-3 iş günü). Tahmini teslim tarihi konfigüratör ve sepet ekranında otomatik gösterilir.",
+        "Üretim süreleri tasarım onayınızdan sonra başlar; cumartesi, pazar ve resmi tatil günleri sayılmaz. Sticker: 3 iş günü. Tabaka etiket: 5 iş günü. Rulo etiket: 10 iş günü (rulo sipariş 29 Haziran 2026'da açılacak). Üretim tamamlandıktan sonra kargo süresi eklenir (İstanbul 1, diğer iller 2-3 iş günü). Tahmini teslim tarihi konfigüratör ve sepet ekranında otomatik gösterilir.",
     },
     {
       q: "Siparişlerinizi hangi kargo firmasıyla gönderiyorsunuz?",
@@ -421,7 +421,7 @@ export const SSS_FAQS_TR: Record<SssCategory, SssFaqItem[]> = {
       summary:
         "Evet, sepete eklediğiniz andan itibaren tahmini teslim tarihi konfigüratör ekranında otomatik gösterilir.",
       detail:
-        "Hesaplama formülü: sipariş tarihi + üretim süresi (sticker 3, tabaka etiket 3, rulo etiket 10 iş günü) + kargo süresi (1-3 iş günü). Hafta sonları ve resmi tatil günleri sayılmaz. Olası gecikmede beklenen teslim tarihinden en az 48 saat önce e-posta ve sistem bildirimi ile bilgilendirilirsiniz.",
+        "Hesaplama formülü: sipariş tarihi + üretim süresi (sticker 3, tabaka etiket 5, rulo etiket 10 iş günü) + kargo süresi (1-3 iş günü). Hafta sonları ve resmi tatil günleri sayılmaz. Olası gecikmede beklenen teslim tarihinden en az 48 saat önce e-posta ve sistem bildirimi ile bilgilendirilirsiniz.",
     },
     {
       q: "Hızlı baskı veya acil sipariş hizmetiniz var mı?",

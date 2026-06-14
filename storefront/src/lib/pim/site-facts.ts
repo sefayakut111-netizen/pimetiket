@@ -9,7 +9,7 @@ export const PIM_CARRIER_NAME = "Yurtiçi Kargo + DHL";
 /** Üretimden kargoya verme (iş günü, tasarım onayından sonra; hafta sonu + resmi tatil hariç) */
 export const PIM_PRODUCTION_BUSINESS_DAYS = {
   sticker: 3,
-  tabaka: 3,
+  tabaka: 5,
   rulo: 10,
 } as const;
 

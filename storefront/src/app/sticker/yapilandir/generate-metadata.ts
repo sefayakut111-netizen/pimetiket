@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getStickerProductName } from "@/lib/sticker-product-name";
 
 const DESCRIPTION =
-  "Sticker şekli, malzemesi, yüzeyi ve adetini seç; gerçek zamanlı fiyat ve önizleme. AI dosya kontrolü, 5 iş günü içinde kargoda.";
+  "Sticker şekli, malzemesi, yüzeyi ve adetini seç; gerçek zamanlı fiyat ve önizleme. AI dosya kontrolü, 3 iş günü içinde kargoda.";
 
 function pickParam(
   value: string | string[] | undefined

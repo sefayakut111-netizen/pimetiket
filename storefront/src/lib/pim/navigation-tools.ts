@@ -84,7 +84,10 @@ function buildConfiguratorUrl(params: {
 
   return {
     type: "redirect",
-    url: query ? `/sticker?${query}` : "/sticker",
+    // /sticker tip-seçici HUB (fiyat yok); canlı fiyat /sticker/yapilandir'da
+    // (etiket dalıyla aynı desen). Önceden /sticker'a düşürüp müşteriyi
+    // fiyatsız sayfada bırakıyordu.
+    url: query ? `/sticker/yapilandir?${query}` : "/sticker/yapilandir",
     label: `Sticker — hazır ayarlarla git${detail}`,
   };
 }
