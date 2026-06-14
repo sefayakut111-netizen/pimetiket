@@ -30,7 +30,7 @@ import { queryYurticiShipment } from "@/lib/shipping/yurtici-api";
 import { persistShipmentPoll } from "@/lib/shipping/persist-shipment-poll";
 import { findCarrier, getTrackingUrl } from "@/lib/shipping/carriers";
 import { logOrderEvent } from "@/lib/order-events-server";
-import { transitionOrderStatus } from "@/lib/db/transition-order-status";
+import { transitionOrderStatus, transitionHttpStatus } from "@/lib/db/transition-order-status";
 import type { OrderStatus } from "@/lib/order";
 import { sendOrderShipped } from "@/lib/mail/notifications";
 import { shouldSkipAdminOrderShippedMail } from "@/lib/mail/shipped-mail-guard";
@@ -146,6 +146,45 @@ export async function POST(
     );
   }
 
+  const orderRow = order as { id: string; user_id: string; status: string };
+  const ALLOWED_SHIP_FROM: OrderStatus[] = ["in_production", "ready_to_ship"];
+
+  if (
+    orderRow.status !== "shipped" &&
+    orderRow.status !== "delivered"
+  ) {
+    if (!ALLOWED_SHIP_FROM.includes(orderRow.status as OrderStatus)) {
+      return NextResponse.json(
+        { error: `Sipariş kargolanacak durumda değil (${orderRow.status})` },
+        { status: 409 }
+      );
+    }
+
+    const shipResult = await transitionOrderStatus(supabase, {
+      orderId,
+      to: "shipped",
+      from: orderRow.status as OrderStatus,
+      mode: "forward",
+      actorId: auth.user.id,
+      actorRole: auth.role === "admin" ? "admin" : "staff",
+      eventType: "status_changed",
+      summary: `Kargo takip no eklendi — ${orderRow.status} → shipped`,
+      detail: {
+        carrier_code: carrier.code,
+        tracking_number: trackingNumber,
+      },
+    });
+    if (!shipResult.ok) {
+      return NextResponse.json(
+        {
+          error: "Sipariş kargo durumuna alınamadı",
+          detail: shipResult.error,
+        },
+        { status: transitionHttpStatus(shipResult.error) }
+      );
+    }
+  }
+
   // Mevcut assignment var mı?
   const { data: existing } = await supabase
     .from("order_assignments")
@@ -213,25 +252,6 @@ export async function POST(
     });
   }
 
-  // Order events log + sipariş statüsünü kargoda olarak senkronize et
-  const orderRow = order as { id: string; status: string };
-  if (orderRow.status !== "shipped" && orderRow.status !== "delivered") {
-    await transitionOrderStatus(supabase, {
-      orderId,
-      to: "shipped",
-      from: orderRow.status as OrderStatus,
-      mode: "forward",
-      actorId: auth.user.id,
-      actorRole: auth.role === "admin" ? "admin" : "staff",
-      eventType: "status_changed",
-      summary: `Kargo takip no eklendi — ${orderRow.status} → shipped`,
-      detail: {
-        carrier_code: carrier.code,
-        tracking_number: trackingNumber,
-      },
-    });
-  }
-
   await logOrderEvent(supabase, {
     orderId,
     eventType: "shipping_tracking_added",
@@ -260,7 +280,7 @@ export async function POST(
         orderId
       );
     } else {
-      const orderUserId = (order as { user_id: string }).user_id;
+      const orderUserId = orderRow.user_id;
       const { data: items } = await supabase
         .from("order_items")
         .select("product")

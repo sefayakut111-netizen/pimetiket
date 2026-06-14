@@ -66,11 +66,11 @@ export async function resumeOrderPipelineIfStuck(
     .in("status", ["draft", "auto_generated", "approved", "operator_override"]);
 
   if (cutlineCount && cutlineCount > 0) {
-    if (status === "qc_pending" || status === "paid" || status === "awaiting_upload") {
+    if (status === "qc_pending" || status === "awaiting_upload") {
       await transitionOrderStatus(admin, {
         orderId,
         to: "proof_pending",
-        from: ["qc_pending", "paid", "awaiting_upload"],
+        from: ["qc_pending", "awaiting_upload"],
         mode: "forward",
         actorRole: "system",
         eventType: "status_changed",
@@ -78,6 +78,23 @@ export async function resumeOrderPipelineIfStuck(
         detail: { reason: "cutline_exists" },
       });
       return { action: "proof_advanced", reason: "cutline_exists" };
+    }
+    if (status === "paid") {
+      await transitionOrderStatus(admin, {
+        orderId,
+        to: "proof_pending",
+        from: ["paid"],
+        mode: "compensating",
+        actorRole: "system",
+        eventType: "status_changed",
+        summary:
+          "Pipeline resume (compensating) — cutline mevcut, paid'den proof_pending",
+        detail: { reason: "cutline_exists_paid_recovery" },
+      });
+      return {
+        action: "proof_advanced",
+        reason: "cutline_exists_paid_recovery",
+      };
     }
     return { action: "none", reason: "cutline_exists_wrong_status" };
   }
