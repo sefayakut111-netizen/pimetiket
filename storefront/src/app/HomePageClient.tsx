@@ -93,22 +93,22 @@ export default function HomePage({
   const STEPS = useMemo(
     () => [
       {
-        image: "/home/steps/01-konfigure-et.png",
+        image: "/home/steps/01-konfigure-et.webp",
         t: t.home.step1,
         d: t.home.step1Desc,
       },
       {
-        image: "/home/steps/02-dosyani-yukle.png",
+        image: "/home/steps/02-dosyani-yukle.webp",
         t: t.home.step2,
         d: t.home.step2Desc,
       },
       {
-        image: "/home/steps/03-provayi-onayla.png",
+        image: "/home/steps/03-provayi-onayla.webp",
         t: t.home.step3,
         d: t.home.step3Desc,
       },
       {
-        image: "/home/steps/04-teslim-al.png",
+        image: "/home/steps/04-teslim-al.webp",
         t: t.home.step4,
         d:
           homeLocale === "en"
@@ -128,25 +128,25 @@ export default function HomePage({
     () => [
       {
         n: 1,
-        image: "/home/quality/01-avrupa-malzeme.png",
+        image: "/home/quality/01-avrupa-malzeme.webp",
         title: t.home.productionQuality1Title,
         desc: t.home.productionQuality1Desc,
       },
       {
         n: 2,
-        image: "/home/quality/02-ai-dosya-kontrolu.png",
+        image: "/home/quality/02-ai-dosya-kontrolu.webp",
         title: t.home.productionQuality2Title,
         desc: t.home.productionQuality2Desc,
       },
       {
         n: 3,
-        image: "/home/quality/03-prova-onayi.png",
+        image: "/home/quality/03-prova-onayi.webp",
         title: t.home.productionQuality3Title,
         desc: t.home.productionQuality3Desc,
       },
       {
         n: 4,
-        image: "/home/quality/04-kalite-kontrol.png",
+        image: "/home/quality/04-kalite-kontrol.webp",
         title: t.home.productionQuality4Title,
         desc: t.home.productionQuality4Desc,
       },
