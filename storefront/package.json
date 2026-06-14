@@ -13,6 +13,7 @@
     "context:map": "node scripts/generate-context-map.mjs",
     "verify:upload-chain": "node scripts/verify-upload-chain.mjs",
     "verify:cursor-diff": "node --env-file=.env.agent scripts/verify-cursor-diff.mjs",
+    "verify:fsm": "node --env-file=.env.agent scripts/verify-fsm-transitions.mjs",
     "verify:r2": "node scripts/verify-r2.mjs",
     "verify:pricebook": "node scripts/verify-pricebook.mjs",
     "verify:product-audit": "node scripts/product-configurator-audit.mjs",
