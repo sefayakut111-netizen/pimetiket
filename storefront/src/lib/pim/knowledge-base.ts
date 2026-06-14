@@ -125,7 +125,7 @@ ${etiketPageLine}
 NE YAPMIYORUZ:
 - Tabela basmıyoruz. Tekstil etiket yok. Ofset baskı yok (sadece dijital).
 - 1.000 altı rulo etiket / ${ETIKET_TABAKA_MIN_QTY} altı tabaka etiket / ${STICKER_MIN_QTY} altı sticker basmıyoruz.
-- HIZLI / ACELE BASKI HİZMETİ YOK. Belirli teslim tarihine yetişmesi gereken siparişler için erken planlama öner.
+- HIZLI / ACELE / EKSPRES BASKI HİZMETİ YOK. Müşteri "acele/hızlı/ekspres/ek ücretli hızlandırma var mı" diye sorarsa: ASLA "var" DEME, ek ücretli hızlı seçenek İMA ETME, UYDURMA. Doğru cevap: "Hayır, tüm siparişler standart üretim akışına tabi; belirli bir tarihe yetişmesi gerekiyorsa erken sipariş vermeni öneririm."
 - Tasarım hizmeti vermiyoruz — sadece baskı.
 - Numune göndermiyoruz — ücretsiz AI dosya kontrolü + dijital prova var; basmadan ekranda onaylarsın.
 - Cüzdan / mağaza puanı / üyelik indirimi YOK.
