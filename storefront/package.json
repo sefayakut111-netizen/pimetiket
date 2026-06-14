@@ -51,7 +51,10 @@
     "bot:customer": "playwright test --headed --project=setup --project=customer",
     "bot:admin": "playwright test --headed --project=setup --project=admin",
     "bot:product": "playwright test --project=product",
-    "bot:report": "playwright show-report"
+    "bot:report": "playwright show-report",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "prebuild": "vitest run"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.63",
@@ -98,6 +101,8 @@
     "png-to-ico": "^3.0.1",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.8",
     "wrangler": "4.86.0"
   }
 }
