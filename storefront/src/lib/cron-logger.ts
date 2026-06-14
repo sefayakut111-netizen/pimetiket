@@ -84,72 +84,51 @@ const CRON_SKIP_PAYLOAD = {
   reason: "already_running",
 } as const;
 
-/** Cron route'larında tekrarlayan try/catch + log + tek-instance kilidi */
+/** Cron route'larında tekrarlayan try/catch + log + tek-instance kilidi.
+ *  Tek-instance: cron_runs_one_running_per_name partial unique index (Mig 180).
+ *  Advisory lock KALDIRILDI (14 Haz): pg_try_advisory_lock session-scoped + supabase-js
+ *  RPC'leri PostgREST'in havuzlanmış bağlantılarında çalışır → lock COMMIT'te düşmez,
+ *  release farklı bağlantıya gidebilir → sızar → cron'lar yanlışlıkla 'already_running'
+ *  ile atlanır. Gerçek garanti unique index'te (startCronRun 23505 → skip). */
 export async function withCronRun<T>(
   cronName: string,
   handler: () => Promise<CronRunResult<T>>
 ): Promise<T> {
   const admin = createCronAdmin();
-  const lockKey = `cron:${cronName}`;
 
-  const { data: locked, error: lockErr } = await admin.rpc(
-    "fn_with_advisory_lock",
-    { p_key: lockKey }
-  );
-
-  if (lockErr) {
-    console.error(`[cron:${cronName}] advisory lock error:`, lockErr.message);
+  // stale 'running' reaper: crash/timeout'ta takılı kalan kaydı 'error' yap.
+  // startCronRun INSERT'inden ÖNCE çalışır; aksi halde takılı 'running' unique index'i
+  // bloklar. 30dk cutoff: en uzun cron maxDuration=300sn ≪ 30dk → meşru uzun-run asla
+  // 'error' işaretlenmez. Terminal status 'error' (cron_runs CHECK 'failed' kabul etmez).
+  // Koşulsuz çalışır (eski advisory-lock gate kalktı): idempotent — yalnız 30dk+ satırları
+  // etkiler; eşzamanlı iki reaper aynı satırı yarıştırırsa ikincisi 0 satır eşler.
+  const staleCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const { error: reapErr } = await admin
+    .from("cron_runs")
+    .update({
+      status: "error",
+      finished_at: new Date().toISOString(),
+      error_message: "stale_running_reaped (30dk+ tamamlanmadı — crash/timeout)",
+    })
+    .eq("cron_name", cronName)
+    .eq("status", "running")
+    .lt("started_at", staleCutoff);
+  if (reapErr) {
+    console.error(`[cron:${cronName}] stale-running reap error:`, reapErr.message);
   }
 
-  if (!locked) {
+  const cron = await startCronRun(cronName);
+  if (cron.skipped) {
     return CRON_SKIP_PAYLOAD as unknown as T;
   }
 
   try {
-    // #8/#12 — stale 'running' reaper: crash/timeout'ta takılı kalan kaydı 'error' yap.
-    // startCronRun INSERT'inden ÖNCE çalışmalı; aksi halde cron_runs_one_running_per_name
-    // unique index (Mig 180) takılı 'running' yüzünden insert'i 23505 ile bloklar, reaper hiç
-    // çalışmaz. 30dk cutoff: en uzun cron maxDuration=300sn≪30dk → meşru uzun-run asla 'error'
-    // işaretlenmez. Terminal status 'error' (cron_runs CHECK 'failed' kabul etmez, fail() ile aynı).
-    const staleCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    const { error: reapErr } = await admin
-      .from("cron_runs")
-      .update({
-        status: "error",
-        finished_at: new Date().toISOString(),
-        error_message: "stale_running_reaped (30dk+ tamamlanmadı — crash/timeout)",
-      })
-      .eq("cron_name", cronName)
-      .eq("status", "running")
-      .lt("started_at", staleCutoff);
-    if (reapErr) {
-      console.error(`[cron:${cronName}] stale-running reap error:`, reapErr.message);
-    }
-
-    const cron = await startCronRun(cronName);
-    if (cron.skipped) {
-      return CRON_SKIP_PAYLOAD as unknown as T;
-    }
-
-    try {
-      const result = await handler();
-      await cron.complete(result.summary, result.itemsProcessed ?? 0);
-      return result.data;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      await cron.fail(msg);
-      throw err;
-    }
-  } finally {
-    const { error: releaseErr } = await admin.rpc(
-      "fn_release_advisory_lock",
-      { p_key: lockKey }
-    );
-    if (releaseErr) {
-      console.error(
-        `[cron:${cronName}] advisory unlock error:`,
-        releaseErr.message
-      );
-    }
+    const result = await handler();
+    await cron.complete(result.summary, result.itemsProcessed ?? 0);
+    return result.data;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await cron.fail(msg);
+    throw err;
   }
 }
