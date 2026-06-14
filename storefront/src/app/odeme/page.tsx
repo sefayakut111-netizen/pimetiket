@@ -73,7 +73,6 @@ import {
   listMyInvoiceProfiles,
   createMyInvoiceProfile,
   deleteMyInvoiceProfile,
-  setDefaultInvoiceProfile,
   type CustomerInvoiceProfile,
 } from "@/lib/customer-invoice";
 import { TR_IL_LIST, getIlceler } from "@/lib/locations/tr-locations";
@@ -417,7 +416,7 @@ const COPY = {
 
 export default function OdemePage() {
   const router = useRouter();
-  const { t, locale } = useT();
+  const { locale } = useT();
   const c = locale === "en" ? COPY.en : COPY.tr;
   const toast = useToast();
 
@@ -629,6 +628,7 @@ export default function OdemePage() {
         if (pending) {
           const parsed = JSON.parse(pending) as { code?: string };
           if (parsed.code) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setCouponCode(parsed.code);
           }
         }
@@ -649,7 +649,6 @@ export default function OdemePage() {
   const summary = summarizeCustomerCart();
   const subtotal = summary.subtotal;
   const shipping = summary.shipping;
-  const total = summary.total;
   const fmt = (n: number) => Math.round(n).toLocaleString(c.locale);
   const vatBreakdown = vatBreakdownFromGross(subtotal);
 
@@ -2359,7 +2358,10 @@ export default function OdemePage() {
 /**
  * Sefa 20 May v68 UX paket B #16: Eksiklik bildirimi tıklanabilir.
  * Her eksik madde için ilgili form alanının id'sini döner.
+ * ⚠️ Şu an ÇAĞRILMIYOR — B#16 "tıklanabilir eksik" özelliği bir refactor'da
+ * koptu (call-site yok, denetim 14 Haz). Rewire edilene dek tutuluyor.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getAnchorForMissing(label: string): string | null {
   if (label === "teslimat adresi") return "addr-first-name";
   if (label.startsWith("TC kimlik")) return "tc-checkout";
