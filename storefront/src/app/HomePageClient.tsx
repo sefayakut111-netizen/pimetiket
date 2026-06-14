@@ -231,7 +231,7 @@ export default function HomePage() {
                 </span>
                 <Link
                   href="/auth?mode=signup"
-                  className="text-pim-mercan-koyu font-semibold underline underline-offset-2 decoration-1 hover:decoration-2"
+                  className="py-1 -my-1 text-pim-mercan-koyu font-semibold underline underline-offset-2 decoration-1 hover:decoration-2"
                 >
                   {locale === "en"
                     ? "create a free account"

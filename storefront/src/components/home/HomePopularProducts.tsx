@@ -122,9 +122,10 @@ function PopularCard({
           className="object-cover"
         />
       </div>
-      <h3 className="text-base font-semibold text-lacivert group-hover:text-pim-mercan transition-colors">
+      {/* Kart başlığı h4: bölüm h2 → grup h3 → kart h4 (doğru SR hiyerarşisi) */}
+      <h4 className="text-base font-semibold text-lacivert group-hover:text-pim-mercan transition-colors">
         {title}
-      </h3>
+      </h4>
       <p className="mt-1 text-sm text-gri-600 line-clamp-1">{desc}</p>
     </>
   );
