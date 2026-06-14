@@ -61,6 +61,8 @@ export function Button(props: ButtonProps) {
     "inline-flex items-center justify-center gap-2 rounded-full font-semibold whitespace-nowrap select-none",
     "transition-all duration-150 ease-out",
     "active:translate-y-0 active:scale-[0.97]",
+    // WCAG 2.4.7 Focus Visible (Level A): klavye odağı için görünür halka
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pim-mercan focus-visible:ring-offset-2",
     "disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0",
     VARIANT_CLASS[variant],
     SIZE_CLASS[size],

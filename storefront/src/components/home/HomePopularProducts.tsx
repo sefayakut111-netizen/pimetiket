@@ -109,6 +109,8 @@ function PopularCard({
         {product.comingSoon && (
           <span className="absolute top-2 right-2 z-10 px-2 py-0.5 rounded-full bg-lacivert/90 text-white text-[11px] font-semibold uppercase tracking-wide">
             {isEn ? "Coming soon" : "Yakında"}
+            {/* Ekran okuyucu için durumu zenginleştir (rozet görsel kalır) */}
+            <span className="sr-only"> — {isEn ? "available June 29" : "29 Haziran'da"}</span>
           </span>
         )}
         <Image
@@ -128,11 +130,10 @@ function PopularCard({
   );
 
   if (product.comingSoon) {
+    // Bilgilendirici (etkileşimsiz) kart — aria-disabled non-interaktif div'de
+    // standart değil; durum "Yakında" rozeti + sr-only metniyle iletilir.
     return (
-      <div
-        aria-disabled="true"
-        className="block bg-white rounded-2xl border border-gri-200 p-4 opacity-75 pointer-events-none select-none"
-      >
+      <div className="block bg-white rounded-2xl border border-gri-200 p-4 opacity-75 pointer-events-none select-none">
         {inner}
       </div>
     );
