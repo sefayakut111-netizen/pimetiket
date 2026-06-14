@@ -2,7 +2,7 @@
  * /etiket — Görsel ürün filtresi (StickerMule pattern).
  *
  * Sefa 20 May v68 (Konfigüratör reform Aşama A + grid v2 + SVG yenileme):
- * 2 section: üst Rulo etiket (6 şekil), alt Tabaka etiket (5 şekil).
+ * 2 section: sol/üst Tabaka etiket (5 şekil), sağ/alt Rulo etiket (6 şekil). Mobil 2-sütun (sticker ile aynı).
  * Tıkla → /etiket/yapilandir?form=...&shape=...
  *
  * Görsel mimari (Sefa kararı 20 May):
@@ -345,37 +345,8 @@ export default function EtiketGridPage({
             ince dikey ayırıcı çizgi (lg:divide-x).
             sm/md: alt alta (mobile-first), gap ile ayrılır, çizgi yok. */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-0 lg:divide-x lg:divide-gri-200 mb-12">
-          {/* SOL SÜTUN — Rulo etiket (6 kart) */}
+          {/* SOL SÜTUN — Tabaka etiket (5 kart) */}
           <section className="lg:pr-8">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-px flex-1 bg-gri-200" />
-              <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
-                {isEn ? "Roll labels" : "Rulo etiket"}
-              </h2>
-              <div className="h-px flex-1 bg-gri-200" />
-            </div>
-            <p className="text-center text-[13px] text-gri-700 mb-5 leading-relaxed max-w-md mx-auto">
-              {isEn
-                ? "Wound on a core, applied quickly by machine. Starts at 1,000 pcs — preferred for serial production in cosmetics, food, beverages."
-                : "Bobin halinde sarılı, makineyle hızlıca yapıştırılır. 1.000 adetten başlar — kozmetik, gıda, içecek gibi seri üretimde tercih edilir."}
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {ruloCards.map((card) => (
-                <ProductCard
-                  key={`${card.form}-${card.shape}`}
-                  card={card}
-                  isEn={isEn}
-                  previewOnly={ruloPreviewOnly}
-                  comingSoonLabel={
-                    ruloPreviewOnly ? t.etiket.comingSoonBadge : undefined
-                  }
-                />
-              ))}
-            </div>
-          </section>
-
-          {/* SAĞ SÜTUN — Tabaka etiket (5 kart) */}
-          <section className="lg:pl-8">
             <div className="flex items-center gap-3 mb-2">
               <div className="h-px flex-1 bg-gri-200" />
               <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
@@ -388,7 +359,7 @@ export default function EtiketGridPage({
                 ? "Comes on sheets, applied by hand. Starts at 250 pcs — ideal for boutique runs, gift packaging, and events."
                 : "Sayfa halinde gelir, elle yapıştırılır. 250 adetten başlar — butik tiraj, hediye paketi ve etkinlikler için ideal."}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {tabakaCards.map((card) => (
                 <ProductCard
                   key={`${card.form}-${card.shape}`}
@@ -397,6 +368,35 @@ export default function EtiketGridPage({
                   previewOnly={tabakaPreviewOnly}
                   comingSoonLabel={
                     tabakaPreviewOnly ? t.etiket.comingSoonBadge : undefined
+                  }
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* SAĞ SÜTUN — Rulo etiket (6 kart) */}
+          <section className="lg:pl-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-px flex-1 bg-gri-200" />
+              <h2 className="text-lg font-bold text-lacivert uppercase tracking-[0.08em]">
+                {isEn ? "Roll labels" : "Rulo etiket"}
+              </h2>
+              <div className="h-px flex-1 bg-gri-200" />
+            </div>
+            <p className="text-center text-[13px] text-gri-700 mb-5 leading-relaxed max-w-md mx-auto">
+              {isEn
+                ? "Wound on a core, applied quickly by machine. Starts at 1,000 pcs — preferred for serial production in cosmetics, food, beverages."
+                : "Bobin halinde sarılı, makineyle hızlıca yapıştırılır. 1.000 adetten başlar — kozmetik, gıda, içecek gibi seri üretimde tercih edilir."}
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {ruloCards.map((card) => (
+                <ProductCard
+                  key={`${card.form}-${card.shape}`}
+                  card={card}
+                  isEn={isEn}
+                  previewOnly={ruloPreviewOnly}
+                  comingSoonLabel={
+                    ruloPreviewOnly ? t.etiket.comingSoonBadge : undefined
                   }
                 />
               ))}
