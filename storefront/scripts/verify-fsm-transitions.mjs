@@ -139,7 +139,7 @@ function expandFromTo(fileRel, objText, orderConsts) {
       label: "bulk-status (VALID_BULK_TRANSITIONS)",
     }));
   } else if (fileRel.includes("admin/orders/[id]/tracking/route.ts")) {
-    froms = ["in_production", "ready_to_ship"];
+    froms = ["in_production"];
     tos = ["shipped"];
   } else if (fileRel.includes("orders/[id]/cancel/route.ts")) {
     if (tos?.[0] === "cancelled" && !froms) {

@@ -147,7 +147,7 @@ export async function POST(
   }
 
   const orderRow = order as { id: string; user_id: string; status: string };
-  const ALLOWED_SHIP_FROM: OrderStatus[] = ["in_production", "ready_to_ship"];
+  const ALLOWED_SHIP_FROM: OrderStatus[] = ["in_production"];
 
   if (
     orderRow.status !== "shipped" &&
