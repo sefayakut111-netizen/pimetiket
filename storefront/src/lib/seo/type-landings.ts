@@ -78,6 +78,147 @@ export const ETIKET_TYPE_LANDINGS: TypeLanding[] = [
       },
     ],
   },
+
+  // --- Sektör / kullanım-alanı landing'leri ---
+  {
+    slug: "kozmetik",
+    productType: "etiket",
+    name: "Kozmetik etiketi",
+    h1: "Kozmetik etiket baskı",
+    description:
+      "Kozmetik etiket baskı — krem, serum ve şişe etiketleri. Şeffaf, kuşe ve metalik malzeme, su/yağ dayanımı, AI dosya kontrolü.",
+    intro:
+      "Kozmetik ürünleri için etiket; cam ve plastik ambalajda net duruş, krem ve yağa karşı dayanım ister. Şeffaf 'no-label' görünüm ve metalik premium seçenekler kozmetik markalarında öne çıkar.",
+    useCases: [
+      "Krem, serum ve kavanoz etiketleri",
+      "Şampuan ve şişe sırt etiketleri",
+      "Butik ve el yapımı kozmetik (tabaka)",
+    ],
+    configHref: "/etiket/yapilandir",
+    faqs: [
+      {
+        q: "Kozmetik etiketi suya/yağa dayanır mı?",
+        a: "Laminasyon ve uygun malzeme ile krem, yağ ve nemde dayanım sağlanır; konfigüratörde kaplama seçilir.",
+      },
+      {
+        q: "Şeffaf kozmetik etiketi yapılır mı?",
+        a: "Evet — ultra clear şeffaf malzemeyle 'baskısız' görünüm; açık tasarımlarda beyaz alt baskı önerilir.",
+      },
+      {
+        q: "Düşük adet kozmetik etiketi?",
+        a: "Butik üretim için 250 adetten tabaka etiket; seri üretim için 1.000 adetten rulo uygundur.",
+      },
+    ],
+  },
+  {
+    slug: "gida",
+    productType: "etiket",
+    name: "Gıda etiketi",
+    h1: "Gıda etiketi baskı",
+    description:
+      "Gıda etiketi baskı — reçel, bal, baharat ve paketli gıda etiketleri. Kraft ve kuşe malzeme, doğal görünüm, AI dosya kontrolü.",
+    intro:
+      "Gıda ambalajı etiketleri; içerik, son kullanma ve marka bilgisini taşır. Kraft doğal görünüm ve kuşe canlı baskı gıda ürünlerinde en çok tercih edilen malzemelerdir.",
+    useCases: [
+      "Reçel, bal ve kavanoz etiketleri",
+      "Baharat ve kuruyemiş paketleri",
+      "Paketli gıda ve fırın ürünleri",
+    ],
+    configHref: "/etiket/yapilandir",
+    faqs: [
+      {
+        q: "Gıda etiketinde hangi malzeme?",
+        a: "Doğal görünüm için kraft, canlı renk için kuşe; nemli ürünlerde laminasyonlu seçenek önerilir.",
+      },
+      {
+        q: "Buzdolabı/dondurucu ürününe yapışır mı?",
+        a: "Soğuk yüzey yapıştırıcılı malzeme ile nemli ve soğuk ambalajlarda tutunma sağlanır.",
+      },
+      {
+        q: "Gıda etiketi minimum adet?",
+        a: "Tabaka 250, rulo 1.000 adetten; konfigüratörde malzeme ve boyuta göre anlık fiyat görürsünüz.",
+      },
+    ],
+  },
+  {
+    slug: "icecek",
+    productType: "etiket",
+    name: "İçecek etiketi",
+    h1: "İçecek etiketi baskı",
+    description:
+      "İçecek etiketi baskı — şişe, kombucha, soğuk kahve ve içecek etiketleri. Şeffaf ve su geçirmez malzeme, AI dosya kontrolü.",
+    intro:
+      "İçecek şişeleri için etiket; buzdolabı nemine ve su temasına dayanmalı. Şeffaf malzeme cam şişede premium duruş, su geçirmez vinil ise dayanım sağlar.",
+    useCases: [
+      "Cam şişe ve kavanoz içecek",
+      "Kombucha, soğuk kahve, limonata",
+      "Butik içecek ve el yapımı seri",
+    ],
+    configHref: "/etiket/yapilandir",
+    faqs: [
+      {
+        q: "İçecek etiketi suda dağılır mı?",
+        a: "Su geçirmez malzeme ve laminasyon ile buzdolabı nemine ve ıslanmaya karşı korur.",
+      },
+      {
+        q: "Cam şişede şeffaf etiket?",
+        a: "Ultra clear şeffaf malzeme cam üzerinde 'no-label' görünüm verir.",
+      },
+    ],
+  },
+  {
+    slug: "parfum",
+    productType: "etiket",
+    name: "Parfüm etiketi",
+    h1: "Parfüm etiket baskı",
+    description:
+      "Parfüm etiket baskı — premium şişe etiketleri. Metalik, şeffaf ve dokulu malzeme, ince tipografi, AI dosya kontrolü.",
+    intro:
+      "Parfüm etiketi; küçük şişede yüksek kaliteli, premium duruş ister. Metalik ve şeffaf malzemeler, ince tipografi ile lüks marka algısı oluşturur.",
+    useCases: [
+      "Parfüm ve kolonya şişeleri",
+      "Premium butik parfüm serileri",
+      "Oda kokusu ve difüzör etiketleri",
+    ],
+    configHref: "/etiket/yapilandir",
+    faqs: [
+      {
+        q: "Parfüm etiketi alkole dayanır mı?",
+        a: "Laminasyon ve uygun malzeme ile alkol temasına karşı dayanım sağlanır.",
+      },
+      {
+        q: "Metalik/parlak parfüm etiketi?",
+        a: "Metalik malzeme ile ışıltılı zemin sağlanır; özel efektler için konfigüratör üzerinden bize ulaşın.",
+      },
+    ],
+  },
+  {
+    slug: "mum",
+    productType: "etiket",
+    name: "Mum etiketi",
+    h1: "Mum etiketi baskı",
+    description:
+      "Mum etiketi baskı — bardak mum, soya mumu ve kavanoz etiketleri. Kraft ve şeffaf malzeme, düşük adet (tabaka), AI dosya kontrolü.",
+    intro:
+      "Mum etiketi; cam kavanoz ve bardak mumlarda marka ve güvenlik bilgisini taşır. Butik mum üreticileri için düşük adetli tabaka etiket en pratik seçenektir.",
+    useCases: [
+      "Bardak ve kavanoz mum etiketleri",
+      "Soya mumu butik seriler",
+      "Alt güvenlik / uyarı etiketleri",
+    ],
+    configHref: "/etiket/yapilandir",
+    configQuery: "form=tabaka",
+    faqs: [
+      {
+        q: "Mum etiketi ısıdan etkilenir mi?",
+        a: "Cam dış yüzeydeki ılık ısıya dayanır; doğrudan alev teması için tasarlanmaz.",
+      },
+      {
+        q: "Az adet mum etiketi?",
+        a: "Butik üretim için 250 adetten tabaka etiket idealdir.",
+      },
+    ],
+  },
 ];
 
 export const STICKER_TYPE_LANDINGS: TypeLanding[] = [
@@ -186,6 +327,89 @@ export const STICKER_TYPE_LANDINGS: TypeLanding[] = [
       {
         q: "Beyaz mürekkep gerekir mi?",
         a: "Açık renkli tasarımlarda beyaz alt baskı önerilir; konfigüratörde dosya kontrolü yapılır.",
+      },
+    ],
+  },
+
+  // --- Kullanım-alanı landing'leri ---
+  {
+    slug: "marka",
+    productType: "sticker",
+    name: "Marka stickerı",
+    h1: "Marka stickerı baskı",
+    description:
+      "Marka stickerı baskı — logo ve promosyon stickerları. Die-cut özel kesim, holografik ve mat seçenekler, AI dosya kontrolü.",
+    intro:
+      "Marka stickerı; logonuzu ambalaja, kutuya ve ürün üzerinde görünür kılar. Die-cut özel kesim ile logo formunda, holografik ile premium duruş sağlanır.",
+    useCases: [
+      "Logo ve marka kimliği stickerları",
+      "Ambalaj ve kutu kapama",
+      "Promosyon ve hediye dağıtımı",
+    ],
+    configHref: "/sticker/yapilandir",
+    configQuery: "shape=diecut",
+    faqs: [
+      {
+        q: "Logo formunda sticker (die-cut) yapılır mı?",
+        a: "Evet — tasarımın dış konturuna göre özel kesim die-cut sticker üretilir.",
+      },
+      {
+        q: "Marka stickerı minimum adet?",
+        a: "Konfigüratörde adet ve ölçü seçerek anlık fiyat görürsünüz.",
+      },
+    ],
+  },
+  {
+    slug: "laptop",
+    productType: "sticker",
+    name: "Laptop stickerı",
+    h1: "Laptop stickerı baskı",
+    description:
+      "Laptop stickerı baskı — dayanıklı vinil, su ve çizilmeye dayanıklı. Die-cut özel kesim, mat ve şeffaf seçenekler.",
+    intro:
+      "Laptop stickerı; sık temas ve sürtünmeye dayanmalı. Laminasyonlu vinil malzeme su, çizik ve UV'ye karşı korur; die-cut ile özel form verir.",
+    useCases: [
+      "Laptop ve tablet stickerları",
+      "Su şişesi ve termos",
+      "Telefon ve aksesuar stickerı",
+    ],
+    configHref: "/sticker/yapilandir",
+    configQuery: "shape=diecut",
+    faqs: [
+      {
+        q: "Laptop stickerı çıkarken iz bırakır mı?",
+        a: "Kaliteli vinil temiz soyulur; uzun kullanımda zemine göre değişebilir.",
+      },
+      {
+        q: "Suya ve çizilmeye dayanır mı?",
+        a: "Laminasyon ile su, çizik ve solmaya karşı dayanım sağlanır.",
+      },
+    ],
+  },
+  {
+    slug: "etkinlik",
+    productType: "sticker",
+    name: "Etkinlik stickerı",
+    h1: "Etkinlik stickerı baskı",
+    description:
+      "Etkinlik stickerı baskı — düğün, doğum günü ve organizasyon stickerları. Kiss-cut sayfa, hızlı dağıtım, AI dosya kontrolü.",
+    intro:
+      "Etkinlik stickerı; davet, hediye ve hatıra paketlerinde marka ve tema taşır. Kiss-cut sayfa formatı çoklu sticker'ı kolay dağıtım için idealdir.",
+    useCases: [
+      "Düğün ve nişan hatıra stickerları",
+      "Doğum günü ve parti paketi",
+      "Kurumsal etkinlik ve fuar",
+    ],
+    configHref: "/sticker/yapilandir",
+    configQuery: "shape=kisscut",
+    faqs: [
+      {
+        q: "Çok adetli etkinlik stickerı?",
+        a: "Kiss-cut sayfa formatı ile bir sayfada çoklu sticker; toplu dağıtım için pratiktir.",
+      },
+      {
+        q: "Kısa sürede teslim olur mu?",
+        a: "Konfigüratörde tahmini üretim ve kargo süresi gösterilir.",
       },
     ],
   },
