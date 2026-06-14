@@ -6,6 +6,13 @@ import { Pill } from "./Pill";
 import { Button } from "./Button";
 import { cn } from "@/lib/cn";
 
+// Kargo şeffaflığı (denetim P0-3): konfigüratör kargoyu sepete kadar
+// gizliyordu → fiyat şoku. Değerler CANLI DB (1000/100, /api/public/settings)
+// ile aynı; eşik bir Sefa kararı (denetim #12) — değişirse burayı + admin'i
+// güncelle. İleride runtime'dan (settings) beslenmeli.
+const KARGO_UCRETSIZ_ESIK = 1000;
+const KARGO_UCRETI = 100;
+
 type Variant = "quiet" | "bold";
 
 interface Upsell {
@@ -107,6 +114,13 @@ export function PriceCard({
       )
     ) : null;
 
+  const shippingText =
+    total <= 0
+      ? null
+      : total < KARGO_UCRETSIZ_ESIK
+        ? `+ ${fmt(KARGO_UCRETI)} ₺ kargo · ${fmt(KARGO_UCRETSIZ_ESIK)} ₺ üzeri ücretsiz`
+        : "Kargo ücretsiz ✓";
+
   if (variant === "bold") {
     return (
       <div
@@ -156,6 +170,11 @@ export function PriceCard({
             <span className="text-white/75 text-[12px] pl-[22px]">
               Üretim: <strong>{deliveryPromiseRange}</strong>
               {deliveryPromiseNote ? ` · ${deliveryPromiseNote}` : ""}
+            </span>
+          ) : null}
+          {shippingText ? (
+            <span className="text-white/75 text-[12px] pl-[22px]">
+              {shippingText}
             </span>
           ) : null}
         </div>
@@ -285,6 +304,11 @@ export function PriceCard({
           <span className="text-gri-700 text-[12px] pl-[26px]">
             Üretim: <strong>{deliveryPromiseRange}</strong>
             {deliveryPromiseNote ? ` · ${deliveryPromiseNote}` : ""}
+          </span>
+        ) : null}
+        {shippingText ? (
+          <span className="text-gri-700 text-[12px] pl-[26px]">
+            {shippingText}
           </span>
         ) : null}
       </div>
