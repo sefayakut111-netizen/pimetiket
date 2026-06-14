@@ -31,6 +31,9 @@ type Locale = "tr" | "en";
 // Not: Source-of-truth konfigüratör içinde MATERIALS/COATINGS/SHAPES
 // const'ları var ama bunlar component-local. Helper buradan import etmek
 // için minimal label map yeterli (yeni eklemelerde admin DB'den de gelir).
+// ⚠️ SENKRON TUT (denetim P1-1): etiket adları app/etiket/yapilandir/page.tsx
+// MATERIALS[].name ile, sticker adları i18n t.sticker.material* ile birebir
+// eşleşmeli — yeni malzeme eklenince buraya da ekle, yoksa özet ham id gösterir.
 
 const STICKER_MATERIAL_LABEL: Record<string, string> = {
   vinil: "Vinil",
@@ -67,8 +70,10 @@ const ETIKET_MATERIAL_LABEL: Record<string, string> = {
   kuse: "Kuşe Etiket",
   kraft: "Kraft Etiket",
   beyaz: "Opak PP Etiket",
-  ultra: "Ultra Clear",
-  metalik: "Metalik",
+  folyo: "Folyo Etiket",
+  seffaf: "Şeffaf Etiket",
+  ultra: "Ultra Clear Etiket",
+  metalik: "Metalize Etiket",
 };
 
 const ETIKET_COATING_LABEL: Record<string, string> = {
