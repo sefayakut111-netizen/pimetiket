@@ -108,15 +108,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let supersededStoragePath: string | null = null;
   if (body.replaceFileId && body.orderItemId) {
     const { data: replaceTarget } = await admin
       .from("design_files")
-      .select("id")
+      .select("id, storage_path")
       .eq("id", body.replaceFileId)
       .eq("order_id", body.orderId)
       .eq("order_item_id", body.orderItemId)
       .maybeSingle();
     if (replaceTarget) {
+      // B3 — status'u superseded yap AMA eski objeyi BURADA SİLME: yeni dosya henüz
+      // yüklenmedi (signed URL döndü, client PUT etmedi); silersek ve client tamamlamazsa
+      // hem eski hem yeni kaybolur (veri kaybı). Fiziksel silme upload-complete'e ertelenir
+      // (yeni dosya teyitlenince). Eski path'i yeni satırın ai_check'ine taşı.
+      supersededStoragePath =
+        (replaceTarget as { storage_path?: string | null }).storage_path ?? null;
       await admin
         .from("design_files")
         .update({ status: "superseded" })
@@ -169,6 +176,16 @@ export async function POST(req: NextRequest) {
   // file size + sha256 ile finalize edilir)
   // Faz 3b: kind=white için ai_check.kind meta'sını set et — UI/üretici
   // bu dosyayı normal tasarımdan ayırır.
+  // B3 — ai_check: white meta + (replace ise) süpersede eski path'i taşı (upload-complete siler).
+  const aiCheckMeta: Record<string, unknown> = {};
+  if (kind === "white") {
+    aiCheckMeta.kind = "white";
+    aiCheckMeta.flags = [];
+  }
+  if (supersededStoragePath) {
+    aiCheckMeta._supersededStoragePath = supersededStoragePath;
+  }
+
   const { error: insertErr } = await admin.from("design_files").insert([
     {
       id: fileId,
@@ -182,7 +199,7 @@ export async function POST(req: NextRequest) {
       version,
       status: "uploaded",
       ai_check:
-        kind === "white" ? ({ kind: "white", flags: [] } as Json) : null,
+        Object.keys(aiCheckMeta).length > 0 ? (aiCheckMeta as Json) : null,
     } satisfies TablesInsert<"design_files">,
   ]);
 

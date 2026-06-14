@@ -8,6 +8,8 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runProofValidationAfterEdit } from "@/lib/proof/orchestrator";
 import { STORAGE_BUCKET } from "@/lib/storage/design-files";
+import { deleteFromR2 } from "@/lib/storage/r2-client";
+import { isR2StorageKey } from "@/lib/storage/purge-r2";
 import type { Json, TablesInsert } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
@@ -120,6 +122,18 @@ export async function POST(req: Request) {
     .from("design_files")
     .update({ status: "superseded" })
     .eq("id", designFile.id);
+
+  // B3 — süpersede edilen eski objeyi fiziksel sil (KVKK orphan; purge 'superseded' taramıyor).
+  // Yeni dosya zaten yüklü (109-117) → güvenli. Best-effort, R2-branch zorunlu (büyük dosya R2'de).
+  try {
+    if (isR2StorageKey(designFile.storage_path)) {
+      await deleteFromR2(designFile.storage_path);
+    } else {
+      await admin.storage.from(STORAGE_BUCKET).remove([designFile.storage_path]);
+    }
+  } catch (e) {
+    console.warn("[enhance-accept] eski obje silinemedi:", designFile.storage_path, e);
+  }
 
   const baseName = designFile.original_name.replace(/\.[^.]+$/, "");
   const newRow: TablesInsert<"design_files"> = {

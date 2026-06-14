@@ -234,6 +234,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // B3 — replace ile süpersede edilen eski objeyi ŞİMDİ sil (yeni dosya artık 'analyzing' = teyitli).
+  // upload-init ertelemişti (o noktada yeni dosya yüklenmemişti → veri kaybı riski); abandon olursa
+  // eski sağ kalır, tamamlanınca burada silinir. Best-effort, R2-branch zorunlu (KVKK orphan).
+  const supersededPath = (
+    file as { ai_check?: { _supersededStoragePath?: unknown } | null }
+  ).ai_check?._supersededStoragePath;
+  if (
+    typeof supersededPath === "string" &&
+    supersededPath.trim() &&
+    supersededPath !== fileRow.storage_path
+  ) {
+    try {
+      if (isR2StorageKey(supersededPath)) {
+        await deleteFromR2(supersededPath);
+      } else {
+        await admin.storage.from(STORAGE_BUCKET).remove([supersededPath]);
+      }
+    } catch (e) {
+      console.warn(
+        "[upload-complete] süpersede edilen eski obje silinemedi:",
+        supersededPath,
+        e
+      );
+    }
+  }
+
   // 3) order_events 'file_uploaded' log
   await admin.from("order_events").insert([
     {

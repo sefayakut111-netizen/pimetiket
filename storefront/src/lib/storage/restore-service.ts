@@ -60,13 +60,14 @@ export async function getArchivedDesignFileUrl(params: {
     return { error: "Dosya bulunamadı" };
   }
 
-  if (file.archive_status !== "cold" || !file.archive_path) {
-    return { error: "Dosya arşivde değil (durum: " + file.archive_status + ")" };
+  // B1 — Yetki kontrolü cold-check'ten ÖNCE: sahibi olmayan 'user' dosyanın varlığını/durumunu
+  // öğrenmesin (anti-enumeration). Generic mesaj → route 404'e eşler. admin/cowork ownership atlar.
+  if (params.requesterType === "user" && file.user_id !== params.requesterId) {
+    return { error: "Dosya bulunamadı" };
   }
 
-  // Yetki kontrolü
-  if (params.requesterType === "user" && file.user_id !== params.requesterId) {
-    return { error: "Yetkisiz erişim" };
+  if (file.archive_status !== "cold" || !file.archive_path) {
+    return { error: "Dosya arşivde değil (durum: " + file.archive_status + ")" };
   }
 
   const ttl = params.ttlSeconds ?? 3600; // 1 saat default

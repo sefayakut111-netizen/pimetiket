@@ -106,6 +106,26 @@ export async function withCronRun<T>(
   }
 
   try {
+    // #8/#12 — stale 'running' reaper: crash/timeout'ta takılı kalan kaydı 'error' yap.
+    // startCronRun INSERT'inden ÖNCE çalışmalı; aksi halde cron_runs_one_running_per_name
+    // unique index (Mig 180) takılı 'running' yüzünden insert'i 23505 ile bloklar, reaper hiç
+    // çalışmaz. 30dk cutoff: en uzun cron maxDuration=300sn≪30dk → meşru uzun-run asla 'error'
+    // işaretlenmez. Terminal status 'error' (cron_runs CHECK 'failed' kabul etmez, fail() ile aynı).
+    const staleCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const { error: reapErr } = await admin
+      .from("cron_runs")
+      .update({
+        status: "error",
+        finished_at: new Date().toISOString(),
+        error_message: "stale_running_reaped (30dk+ tamamlanmadı — crash/timeout)",
+      })
+      .eq("cron_name", cronName)
+      .eq("status", "running")
+      .lt("started_at", staleCutoff);
+    if (reapErr) {
+      console.error(`[cron:${cronName}] stale-running reap error:`, reapErr.message);
+    }
+
     const cron = await startCronRun(cronName);
     if (cron.skipped) {
       return CRON_SKIP_PAYLOAD as unknown as T;
