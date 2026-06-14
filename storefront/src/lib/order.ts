@@ -39,7 +39,7 @@ export type OrderStatus =
   // proof_validating: müşteri düzenleme yaptı, AI tekrar doğruluyor (kısa ömürlü 3-10sn)
   | "proof_validating"
   | "proof_approved" // Tüm itemler müşteri tarafından onaylandı (Mig 059)
-  | "operator_print_review" // Baskı öncesi operatör onayı (Mig 154 — FAZ 1, henüz akışta değil)
+  | "operator_print_review" // Baskı öncesi operatör onayı (Mig 154); finalize sonrası buraya gelir, /admin/prova → admin status (admin_override) ile ilerletilir
 
   // Üretim
   | "ready_to_ship" // AI QC + prova geçti, üretime hazır (Mig 039)
