@@ -1509,6 +1509,11 @@
     box-shadow: none;
     border-radius: 0;
     background: transparent;
+    /* İnteraktif düzenleme yüzeyi — dikey sürükleme sayfayı kaydırmasın, görseli taşısın (P2) */
+    touch-action: none;
+  }
+  html.pim-standalone-restricted #canvas {
+    touch-action: none;
   }
   .meta-order-size .val {
     font-weight: 700;
@@ -1852,6 +1857,7 @@ let pimCvWorker = null;
 let pimUseCvWorker = false;
 let pimCvWorkerRequests = new Map();
 let pimCvRequestId = 0;
+const PIM_CV_REQUEST_TIMEOUT_MS = 8000;
 let pimCutlineComputeJob = 0;
 let pimPaddedCanvas = null;
 const PIM_MAX_FILE_BYTES = 30 * 1024 * 1024;
@@ -2140,7 +2146,10 @@ function pimPostToParent(payload) {
       }
     }
     if (window.parent && window.parent !== window) {
-      window.parent.postMessage(full, '*');
+      // Aynı-origin editör (/editor, /studio) için hedef origin'i kısıtla; yalnızca
+      // çapraz-origin embed senaryosunda geriye dönük uyumluluk için '*' bırakılır (P2 güvenlik).
+      const targetOrigin = PIM_PARAMS.embed ? '*' : window.location.origin;
+      window.parent.postMessage(full, targetOrigin);
     }
   } catch (e) {
     /* sessiz fail */
@@ -2304,9 +2313,10 @@ window.addEventListener('message', (e) => {
         if (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) {
           pimFitEditorPreviewToFrame();
         }
-        void generateCutline();
-        void generateWhitePlan();
+        // Çerçeve anında güncellensin ama ağır cutline/white-plan debounce edilsin —
+        // hızlı boyut mesajlarında (her tuş) fallback freeze'i önler (P1.5)
         render();
+        pimScheduleCutlineRefresh();
         if (PIM_PARAMS.standalone || PIM_PARAMS.editorShell) {
           pimAutoFitViewZoomToWrap();
         }
@@ -2404,7 +2414,8 @@ window.addEventListener('message', (e) => {
         cutlineCornerRadiusMm = msg.cornerRadiusMm;
       }
       const mode = msg.mode || (msg.shape === 'circle' ? 'circle' : msg.shape === 'rect' || msg.shape === 'ellipse' ? 'rect' : 'contour');
-      pimOnCutModeChanged(mode);
+      // Mod değişmediyse (yalnız köşe yarıçapı/boyut parametresi) yerleşimi koru — görsel sıçramasın (D6)
+      pimOnCutModeChanged(mode, { keepPlacement: mode === currentMode });
     }
   } catch (err) {
     pimPostToParent({ type: 'pim-poc-error', error: String(err) });
@@ -2642,15 +2653,41 @@ function pimGetPaddedImageData() {
   return ctx.getImageData(0, 0, pimPaddedCanvas.width, pimPaddedCanvas.height);
 }
 
-function pimCvRequest(type, payload) {
+function pimRejectAllCvRequests(reason) {
+  if (!pimCvWorkerRequests.size) return;
+  const pending = Array.from(pimCvWorkerRequests.values());
+  pimCvWorkerRequests.clear();
+  pending.forEach(function (entry) {
+    if (entry.timer) clearTimeout(entry.timer);
+    try {
+      entry.reject(new Error(reason || 'cv_worker_aborted'));
+    } catch (err) {
+      /* yoksay */
+    }
+  });
+}
+
+function pimCvRequest(type, payload, transfer) {
   return new Promise(function (resolve, reject) {
     if (!pimUseCvWorker || !pimCvWorker) {
       reject(new Error('cv_worker_unavailable'));
       return;
     }
     const requestId = ++pimCvRequestId;
-    pimCvWorkerRequests.set(requestId, { resolve, reject });
-    pimCvWorker.postMessage({ type, requestId, ...payload });
+    const timer = setTimeout(function () {
+      const pending = pimCvWorkerRequests.get(requestId);
+      if (!pending) return;
+      pimCvWorkerRequests.delete(requestId);
+      pending.reject(new Error('cv_worker_timeout'));
+    }, PIM_CV_REQUEST_TIMEOUT_MS);
+    pimCvWorkerRequests.set(requestId, { resolve, reject, timer });
+    // transfer: ImageData buffer'ını kopyalamadan (zero-copy) aktar — structured-clone
+    // GC baskısını azaltır (~3.7MB/çağrı). Buffer aktarımdan sonra ana iş parçacığında
+    // detach olur; çağıranlar her seferinde taze getImageData üretir, tekrar kullanmaz (P2).
+    pimCvWorker.postMessage(
+      { type, requestId, ...payload },
+      Array.isArray(transfer) ? transfer : []
+    );
   });
 }
 
@@ -2692,15 +2729,20 @@ function pimInitCvWorker() {
         const pending = pimCvWorkerRequests.get(msg.requestId);
         if (!pending) return;
         pimCvWorkerRequests.delete(msg.requestId);
+        if (pending.timer) clearTimeout(pending.timer);
         if (msg.error) pending.reject(new Error(msg.error));
         else pending.resolve(msg);
       }
     };
     pimCvWorker.onerror = function () {
+      pimRejectAllCvRequests('cv_worker_error');
       pimInitCvMainThreadFallback();
     };
     setTimeout(function () {
-      if (!cvReady) pimInitCvMainThreadFallback();
+      if (!cvReady) {
+        pimRejectAllCvRequests('cv_worker_init_timeout');
+        pimInitCvMainThreadFallback();
+      }
     }, 45_000);
   } catch (err) {
     pimInitCvMainThreadFallback();
@@ -3523,7 +3565,7 @@ async function computeContentRadialMetrics() {
             height: imageData.height,
           },
           bboxDiag,
-        });
+        }, [imageData.data.buffer]);
         const m = workerMsg.result || {};
         if (m.method === 'diagonal') return diagonalFallback;
         if (m.rContent > 0) {
@@ -3863,7 +3905,7 @@ async function processImage(img, file) {
     try {
       const scaledCtx = scaled.canvas.getContext('2d');
       const scaledId = scaledCtx.getImageData(0, 0, scaled.w, scaled.h);
-      const trimMsg = await pimCvRequest('trim-image', { imageData: scaledId });
+      const trimMsg = await pimCvRequest('trim-image', { imageData: scaledId }, [scaledId.data.buffer]);
       srcW = trimMsg.width;
       srcH = trimMsg.height;
       srcCanvas = document.createElement('canvas');
@@ -4128,7 +4170,7 @@ async function generateCutline() {
           safePx,
           smoothness,
         },
-      });
+      }, [imageData.data.buffer]);
       if (jobId !== pimCutlineComputeJob) return;
       pimApplyMaskMetaFromWorker(workerMsg.result && workerMsg.result.maskMeta);
       pimApplyCutlineFromWorker(workerMsg, offsetPx, bleedPx, safePx);
@@ -4302,7 +4344,7 @@ async function generateWhitePlan() {
           height: imageData.height,
         },
         params: { whitePlanMode },
-      });
+      }, [imageData.data.buffer]);
       whitePlanPaths = (workerMsg.result && workerMsg.result.paths) || [];
       if (workerMsg.result && workerMsg.result.maskMeta) {
         pimApplyMaskMetaFromWorker(workerMsg.result.maskMeta);
@@ -5647,12 +5689,15 @@ document.getElementById('btnHelp').addEventListener('click', () => {
   window.location.href = '/destek';
 });
 // Mode butonları — kesim modu değişince state temizle + yeniden üret
-function pimOnCutModeChanged(mode) {
+// keepPlacement: yalnızca parametre (köşe yarıçapı/boyut) değiştiyse kullanıcının
+// elle yerleştirdiği görseli sıfırlamamak için true geçilir (D6 fix).
+function pimOnCutModeChanged(mode, options) {
+  const keepPlacement = !!(options && options.keepPlacement);
   currentMode = mode;
   document.querySelectorAll('.mode-btn').forEach((b) => {
     b.classList.toggle('active', b.dataset.mode === mode);
   });
-  if (PIM_PARAMS.standalone) {
+  if (PIM_PARAMS.standalone && !keepPlacement) {
     pimUserMovedImage = false;
   }
   pimLastCircleRadialFit = null;
@@ -5668,7 +5713,7 @@ function pimOnCutModeChanged(mode) {
   }
   pimEditorOnOrderSizeChange();
   if (currentMat) {
-    if ((PIM_PARAMS.editorShell || PIM_PARAMS.embed || PIM_PARAMS.standalone) && getPlacementFrame()) {
+    if (!keepPlacement && (PIM_PARAMS.editorShell || PIM_PARAMS.embed || PIM_PARAMS.standalone) && getPlacementFrame()) {
       pimUserMovedImage = false;
       if (PIM_PARAMS.embed && !PIM_PARAMS.standalone && !PIM_PARAMS.editorShell) {
         pimApplyEmbedDefaultPlacement();
@@ -6010,6 +6055,10 @@ document.getElementById('exportCompositeApi')?.addEventListener('click', () => p
     if (isDraggingArt) {
       isDraggingArt = false;
       canvas.classList.remove('pim-dragging');
+      // Sürükle bitti — taban/gölge/kontur yeni konuma gelsin (D4: "sticker havada uçuyor" fix)
+      if (pimUserMovedImage) {
+        pimScheduleCutlineRefresh(true);
+      }
       if (PIM_PARAMS.standalone && pimUserMovedImage) {
         pimScheduleAutoSave();
         pimScheduleHeightReport();

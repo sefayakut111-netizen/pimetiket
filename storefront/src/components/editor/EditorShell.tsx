@@ -472,6 +472,10 @@ export default function EditorShell() {
     postToPoc({ type: "pim-bg-remove-accept" });
     setBgRemovePreview(null);
     setDirty(true);
+    // poc kabulde orijinal görsel yedeğini siler → eski "Geri al" görseli geri
+    // getiremez. Yanıltmasın diye undo'yu kapat (D7 fix).
+    undoSnapshotRef.current = null;
+    setCanUndo(false);
   }, [postToPoc]);
 
   const handleBgRemoveReject = useCallback(() => {
@@ -544,6 +548,46 @@ export default function EditorShell() {
 
   const applyPendingSablon = applyPendingTemplate;
 
+  // Mesaj dinleyicisinin her boyut/ölçek değişiminde söküp yeniden takılmasını
+  // önlemek için son değerleri/callback'leri ref'te tutuyoruz (P1.4). Dinleyici
+  // mount'ta bir kez kurulur → 120sn watchdog + `loaded` bayrağı resetlenmez.
+  const msgCtxRef = useRef({
+    widthMm,
+    heightMm,
+    cutType,
+    imageScalePct,
+    cutMode,
+    cutSource,
+    applyPendingSablon,
+    applyCoordinatedScale,
+    applyCoordinatedSize,
+    setBaseFromSize,
+    syncSizeToPoc,
+    syncCutTypeToPoc,
+    markCutlinePending,
+    reportCutlineFailure,
+    toast,
+  });
+  useEffect(() => {
+    msgCtxRef.current = {
+      widthMm,
+      heightMm,
+      cutType,
+      imageScalePct,
+      cutMode,
+      cutSource,
+      applyPendingSablon,
+      applyCoordinatedScale,
+      applyCoordinatedSize,
+      setBaseFromSize,
+      syncSizeToPoc,
+      syncCutTypeToPoc,
+      markCutlinePending,
+      reportCutlineFailure,
+      toast,
+    };
+  });
+
   useEffect(() => {
     let timeoutHandle: number | null = null;
     let loaded = false;
@@ -555,6 +599,24 @@ export default function EditorShell() {
       }
       const data = e.data as Record<string, unknown> | undefined;
       if (!data || typeof data.type !== "string") return;
+
+      const {
+        widthMm,
+        heightMm,
+        cutType,
+        imageScalePct,
+        cutMode,
+        cutSource,
+        applyPendingSablon,
+        applyCoordinatedScale,
+        applyCoordinatedSize,
+        setBaseFromSize,
+        syncSizeToPoc,
+        syncCutTypeToPoc,
+        markCutlinePending,
+        reportCutlineFailure,
+        toast,
+      } = msgCtxRef.current;
 
       if (data.type === "pim-poc-ready") {
         setPocStatus({ state: "ready", message: "Görsel yükle — bıçak otomatik netleşir" });
@@ -794,7 +856,8 @@ export default function EditorShell() {
       window.removeEventListener("message", handler);
       if (timeoutHandle) window.clearTimeout(timeoutHandle);
     };
-  }, [applyPendingSablon, applyCoordinatedScale, applyCoordinatedSize, setBaseFromSize, syncSizeToPoc, syncCutTypeToPoc, cutType, widthMm, heightMm, imageScalePct, cutMode, cutSource, markCutlinePending, reportCutlineFailure, toast]);
+    // Dinleyici mount'ta bir kez kurulur; güncel değerler msgCtxRef üzerinden okunur.
+  }, []);
 
   useEffect(() => {
     if (!designLoaded || cutlineReady || cutlineError) return;
